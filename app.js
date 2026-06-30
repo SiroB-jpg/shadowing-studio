@@ -101,7 +101,109 @@ const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
 
 const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>this.provider());},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
-const Verb={tenseOrder:["presente","passato","imperfetto","trapassato"],names:{presente:"congiuntivo presente",passato:"congiuntivo passato",imperfetto:"congiuntivo imperfetto",trapassato:"congiuntivo trapassato"},V:{essere:{en:"to be",presente:["sia","sia","sia","siamo","siate","siano"],imperfetto:["fossi","fossi","fosse","fossimo","foste","fossero"],aux:"essere",part:"stato"},avere:{en:"to have",presente:["abbia","abbia","abbia","abbiamo","abbiate","abbiano"],imperfetto:["avessi","avessi","avesse","avessimo","aveste","avessero"],aux:"avere",part:"avuto"},andare:{en:"to go",presente:["vada","vada","vada","andiamo","andiate","vadano"],imperfetto:["andassi","andassi","andasse","andassimo","andaste","andassero"],aux:"essere",part:"andato"},venire:{en:"to come",presente:["venga","venga","venga","veniamo","veniate","vengano"],imperfetto:["venissi","venissi","venisse","venissimo","veniste","venissero"],aux:"essere",part:"venuto"},potere:{en:"to be able to",presente:["possa","possa","possa","possiamo","possiate","possano"],imperfetto:["potessi","potessi","potesse","potessimo","poteste","potessero"],aux:"avere",part:"potuto"},volere:{en:"to want",presente:["voglia","voglia","voglia","vogliamo","vogliate","vogliano"],imperfetto:["volessi","volessi","volesse","volessimo","voleste","volessero"],aux:"avere",part:"voluto"},dovere:{en:"to have to",presente:["debba","debba","debba","dobbiamo","dobbiate","debbano"],imperfetto:["dovessi","dovessi","dovesse","dovessimo","doveste","dovessero"],aux:"avere",part:"dovuto"},dire:{en:"to say",presente:["dica","dica","dica","diciamo","diciate","dicano"],imperfetto:["dicessi","dicessi","dicesse","dicessimo","diceste","dicessero"],aux:"avere",part:"detto"},capire:{en:"to understand",presente:["capisca","capisca","capisca","capiamo","capiate","capiscano"],imperfetto:["capissi","capissi","capisse","capissimo","capiste","capissero"],aux:"avere",part:"capito"},parlare:{en:"to speak",presente:["parli","parli","parli","parliamo","parliate","parlino"],imperfetto:["parlassi","parlassi","parlasse","parlassimo","parlaste","parlassero"],aux:"avere",part:"parlato"},pensare:{en:"to think",presente:["pensi","pensi","pensi","pensiamo","pensiate","pensino"],imperfetto:["pensassi","pensassi","pensasse","pensassimo","pensaste","pensassero"],aux:"avere",part:"pensato"},credere:{en:"to believe",presente:["creda","creda","creda","crediamo","crediate","credano"],imperfetto:["credessi","credessi","credesse","credessimo","credeste","credessero"],aux:"avere",part:"creduto"},sperare:{en:"to hope",presente:["speri","speri","speri","speriamo","speriate","sperino"],imperfetto:["sperassi","sperassi","sperasse","sperassimo","speraste","sperassero"],aux:"avere",part:"sperato"},fare:{en:"to do / make",presente:["faccia","faccia","faccia","facciamo","facciate","facciano"],imperfetto:["facessi","facessi","facesse","facessimo","faceste","facessero"],aux:"avere",part:"fatto"},finire:{en:"to finish",presente:["finisca","finisca","finisca","finiamo","finiate","finiscano"],imperfetto:["finissi","finissi","finisse","finissimo","finiste","finissero"],aux:"avere",part:"finito"}},part(part,i){let p={stato:"stati",andato:"andati",venuto:"venuti"};return i>=3?(p[part]||part):part;},forms(v,t){let d=this.V[v];if(!d)return[];if(t==="presente"||t==="imperfetto")return d[t];let aux=this.V[d.aux][t==="passato"?"presente":"imperfetto"];return aux.map((x,i)=>x+" "+this.part(d.part,i));},line(v,t){return this.forms(v,t).join(", ");},scope(){let s=$("verbScope").value;if(s==="group")return Library.group();if(s==="chapter")return Library.chapter();if(s==="book")return App.sentences.filter(x=>x.book==App.cur.book);return App.sentences;},detect(texts){let all=texts.join(" ").toLowerCase(),found=new Set();Object.keys(this.V).forEach(v=>{[...this.forms(v,"presente"),...this.forms(v,"imperfetto")].forEach(f=>{let simple=f.split(" ")[0];if(new RegExp("\\b"+simple+"\\b","i").test(all))found.add(v);});if(new RegExp("\\b"+v+"\\b","i").test(all))found.add(v);});return[...found].sort(Util.nat);},selectedTense(){return this.tenseOrder[App.verbTenseIndex]||this.tenseOrder[0];},render(){if(!$("verbSel"))return;let old=$("verbSel").value,verbs=this.detect(this.scope().map(s=>s.italian));if(!verbs.length)verbs=Object.keys(this.V).sort(Util.nat);UI.fill($("verbSel"),verbs,verbs.includes(old)?old:verbs[0]);$("detected").innerHTML="Detected/available verbs: "+verbs.map(v=>`<span class="pill">${v}</span>`).join(" ");this.renderView();},renderView(){let v=$("verbSel").value,d=this.V[v];if(!d){$("verbView").innerHTML="";return;}$("verbView").innerHTML=`<div class="verbRef"><strong>${v}</strong> = ${Util.esc(d.en)} · reference: <strong>${Util.esc(this.forms(v,"presente")[0])}</strong></div><div class="tenseGrid">${this.tenseOrder.map(t=>`<div class="tenseCard" id="tense_${t}"><h3>${this.names[t]}</h3><div class="formsLine">${Util.esc(this.line(v,t))}</div></div>`).join("")}</div>`;this.highlight();},highlight(){document.querySelectorAll(".tenseCard").forEach(x=>x.classList.remove("active"));let c=$("tense_"+this.selectedTense());if(c)c.classList.add("active");},provider(){let mode=$("verbMode").value,verbs=[...$("verbSel").options].map(o=>o.value),vi=$("verbSel").selectedIndex<0?0:$("verbSel").selectedIndex,ti=App.verbTenseIndex;if(mode==="once")return this.tenseProvider(verbs,vi,ti,false);if(mode==="looptense")return this.tenseProvider(verbs,vi,ti,true);if(mode==="loopverb")return this.verbProvider(verbs,vi,ti,true,false);if(mode==="nextverb")return this.verbProvider(verbs,vi,ti,false,false);if(mode==="loopverbs")return this.verbProvider(verbs,vi,ti,false,true);return this.tenseProvider(verbs,vi,ti,false);},tenseProvider(verbs,vi,ti,loop){let done=false;return{next:()=>{if(done&&!loop)return null;done=true;let v=verbs[vi],t=this.tenseOrder[ti];return{text:this.line(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=vi;App.verbTenseIndex=ti;this.renderView();}};}};},verbProvider(verbs,vi,ti,loopVerb,loopVerbs){let curV=vi,curT=ti;return{next:()=>{if(curV>=verbs.length){if(loopVerbs)curV=0;else return null;}let v=verbs[curV],t=this.tenseOrder[curT];let item={text:this.line(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=curV;App.verbTenseIndex=curT;this.renderView();}};curT++;if(curT>=this.tenseOrder.length){curT=0;if(!loopVerb)curV++;}return item;}};},toggle(){VerbPlayer.toggle(()=>this.provider());},restart(){if(VerbPlayer.playing)VerbPlayer.restart(()=>this.provider());},moveTense(delta){App.verbTenseIndex+=delta;if(App.verbTenseIndex<0)App.verbTenseIndex=this.tenseOrder.length-1;if(App.verbTenseIndex>=this.tenseOrder.length)App.verbTenseIndex=0;this.renderView();if(VerbPlayer.playing)this.restart();}};
+const Verb={
+  tenseOrder:["presente","passato","imperfetto","trapassato"],
+  names:{presente:"congiuntivo presente",passato:"congiuntivo passato",imperfetto:"congiuntivo imperfetto",trapassato:"congiuntivo trapassato"},
+  V:{
+    /* — essere / avere — */
+    essere:{en:"to be",presente:["sia","sia","sia","siamo","siate","siano"],imperfetto:["fossi","fossi","fosse","fossimo","foste","fossero"],aux:"essere",part:"stato"},
+    avere:{en:"to have",presente:["abbia","abbia","abbia","abbiamo","abbiate","abbiano"],imperfetto:["avessi","avessi","avesse","avessimo","aveste","avessero"],aux:"avere",part:"avuto"},
+    /* — modal / high-frequency — */
+    potere:{en:"to be able to",presente:["possa","possa","possa","possiamo","possiate","possano"],imperfetto:["potessi","potessi","potesse","potessimo","poteste","potessero"],aux:"avere",part:"potuto"},
+    volere:{en:"to want",presente:["voglia","voglia","voglia","vogliamo","vogliate","vogliano"],imperfetto:["volessi","volessi","volesse","volessimo","voleste","volessero"],aux:"avere",part:"voluto"},
+    dovere:{en:"to have to",presente:["debba","debba","debba","dobbiamo","dobbiate","debbano"],imperfetto:["dovessi","dovessi","dovesse","dovessimo","doveste","dovessero"],aux:"avere",part:"dovuto"},
+    sapere:{en:"to know",presente:["sappia","sappia","sappia","sappiamo","sappiate","sappiano"],imperfetto:["sapessi","sapessi","sapesse","sapessimo","sapeste","sapessero"],aux:"avere",part:"saputo"},
+    /* — motion — */
+    andare:{en:"to go",presente:["vada","vada","vada","andiamo","andiate","vadano"],imperfetto:["andassi","andassi","andasse","andassimo","andaste","andassero"],aux:"essere",part:"andato"},
+    venire:{en:"to come",presente:["venga","venga","venga","veniamo","veniate","vengano"],imperfetto:["venissi","venissi","venisse","venissimo","veniste","venissero"],aux:"essere",part:"venuto"},
+    partire:{en:"to leave",presente:["parta","parta","parta","partiamo","partiate","partano"],imperfetto:["partissi","partissi","partisse","partissimo","partiste","partissero"],aux:"essere",part:"partito"},
+    arrivare:{en:"to arrive",presente:["arrivi","arrivi","arrivi","arriviamo","arriviate","arrivino"],imperfetto:["arrivassi","arrivassi","arrivasse","arrivassimo","arrivaste","arrivassero"],aux:"essere",part:"arrivato"},
+    uscire:{en:"to go out",presente:["esca","esca","esca","usciamo","usciate","escano"],imperfetto:["uscissi","uscissi","uscisse","uscissimo","usciste","uscissero"],aux:"essere",part:"uscito"},
+    /* — communication / cognition — */
+    dire:{en:"to say",presente:["dica","dica","dica","diciamo","diciate","dicano"],imperfetto:["dicessi","dicessi","dicesse","dicessimo","diceste","dicessero"],aux:"avere",part:"detto"},
+    parlare:{en:"to speak",presente:["parli","parli","parli","parliamo","parliate","parlino"],imperfetto:["parlassi","parlassi","parlasse","parlassimo","parlaste","parlassero"],aux:"avere",part:"parlato"},
+    chiedere:{en:"to ask",presente:["chieda","chieda","chieda","chiediamo","chiediate","chiedano"],imperfetto:["chiedessi","chiedessi","chiedesse","chiedessimo","chiedeste","chiedessero"],aux:"avere",part:"chiesto"},
+    rispondere:{en:"to answer",presente:["risponda","risponda","risponda","rispondiamo","rispondiate","rispondano"],imperfetto:["rispondessi","rispondessi","rispondesse","rispondessimo","rispondeste","rispondessero"],aux:"avere",part:"risposto"},
+    capire:{en:"to understand",presente:["capisca","capisca","capisca","capiamo","capiate","capiscano"],imperfetto:["capissi","capissi","capisse","capissimo","capiste","capissero"],aux:"avere",part:"capito"},
+    pensare:{en:"to think",presente:["pensi","pensi","pensi","pensiamo","pensiate","pensino"],imperfetto:["pensassi","pensassi","pensasse","pensassimo","pensaste","pensassero"],aux:"avere",part:"pensato"},
+    credere:{en:"to believe",presente:["creda","creda","creda","crediamo","crediate","credano"],imperfetto:["credessi","credessi","credesse","credessimo","credeste","credessero"],aux:"avere",part:"creduto"},
+    sperare:{en:"to hope",presente:["speri","speri","speri","speriamo","speriate","sperino"],imperfetto:["sperassi","sperassi","sperasse","sperassimo","speraste","sperassero"],aux:"avere",part:"sperato"},
+    sapere:{en:"to know",presente:["sappia","sappia","sappia","sappiamo","sappiate","sappiano"],imperfetto:["sapessi","sapessi","sapesse","sapessimo","sapeste","sapessero"],aux:"avere",part:"saputo"},
+    conoscere:{en:"to know (person/place)",presente:["conosca","conosca","conosca","conosciamo","conosciate","conoscano"],imperfetto:["conoscessi","conoscessi","conoscesse","conoscessimo","conosceste","conoscessero"],aux:"avere",part:"conosciuto"},
+    /* — action — */
+    fare:{en:"to do / make",presente:["faccia","faccia","faccia","facciamo","facciate","facciano"],imperfetto:["facessi","facessi","facesse","facessimo","faceste","facessero"],aux:"avere",part:"fatto"},
+    dare:{en:"to give",presente:["dia","dia","dia","diamo","diate","diano"],imperfetto:["dessi","dessi","desse","dessimo","deste","dessero"],aux:"avere",part:"dato"},
+    stare:{en:"to stay / be",presente:["stia","stia","stia","stiamo","stiate","stiano"],imperfetto:["stessi","stessi","stesse","stessimo","steste","stessero"],aux:"essere",part:"stato"},
+    mettere:{en:"to put",presente:["metta","metta","metta","mettiamo","mettiate","mettano"],imperfetto:["mettessi","mettessi","mettesse","mettessimo","metteste","mettessero"],aux:"avere",part:"messo"},
+    prendere:{en:"to take",presente:["prenda","prenda","prenda","prendiamo","prendiate","prendano"],imperfetto:["prendessi","prendessi","prendesse","prendessimo","prendeste","prendessero"],aux:"avere",part:"preso"},
+    portare:{en:"to bring / carry",presente:["porti","porti","porti","portiamo","portiate","portino"],imperfetto:["portassi","portassi","portasse","portassimo","portaste","portassero"],aux:"avere",part:"portato"},
+    trovare:{en:"to find",presente:["trovi","trovi","trovi","troviamo","troviate","trovino"],imperfetto:["trovassi","trovassi","trovasse","trovassimo","trovaste","trovassero"],aux:"avere",part:"trovato"},
+    aprire:{en:"to open",presente:["apra","apra","apra","apriamo","apriate","aprano"],imperfetto:["aprissi","aprissi","aprisse","aprissimo","apriste","aprissero"],aux:"avere",part:"aperto"},
+    /* — perception / state — */
+    vedere:{en:"to see",presente:["veda","veda","veda","vediamo","vediate","vedano"],imperfetto:["vedessi","vedessi","vedesse","vedessimo","vedeste","vedessero"],aux:"avere",part:"visto"},
+    sentire:{en:"to feel / hear",presente:["senta","senta","senta","sentiamo","sentiate","sentano"],imperfetto:["sentissi","sentissi","sentisse","sentissimo","sentiste","sentissero"],aux:"avere",part:"sentito"},
+    leggere:{en:"to read",presente:["legga","legga","legga","leggiamo","leggiate","leggano"],imperfetto:["leggessi","leggessi","leggesse","leggessimo","leggeste","leggessero"],aux:"avere",part:"letto"},
+    scrivere:{en:"to write",presente:["scriva","scriva","scriva","scriviamo","scriviate","scrivano"],imperfetto:["scrivessi","scrivessi","scrivesse","scrivessimo","scriveste","scrivessero"],aux:"avere",part:"scritto"},
+    vivere:{en:"to live",presente:["viva","viva","viva","viviamo","viviate","vivano"],imperfetto:["vivessi","vivessi","vivesse","vivessimo","viveste","vivessero"],aux:"avere",part:"vissuto"},
+    finire:{en:"to finish",presente:["finisca","finisca","finisca","finiamo","finiate","finiscano"],imperfetto:["finissi","finissi","finisse","finissimo","finiste","finissero"],aux:"avere",part:"finito"},
+    dormire:{en:"to sleep",presente:["dorma","dorma","dorma","dormiamo","dormiate","dormano"],imperfetto:["dormissi","dormissi","dormisse","dormissimo","dormiste","dormissero"],aux:"avere",part:"dormito"},
+    lavorare:{en:"to work",presente:["lavori","lavori","lavori","lavoriamo","lavoriate","lavorino"],imperfetto:["lavorassi","lavorassi","lavorasse","lavorassimo","lavoraste","lavorassero"],aux:"avere",part:"lavorato"},
+    aspettare:{en:"to wait",presente:["aspetti","aspetti","aspetti","aspettiamo","aspettiate","aspettino"],imperfetto:["aspettassi","aspettassi","aspettasse","aspettassimo","aspettaste","aspettassero"],aux:"avere",part:"aspettato"},
+    amare:{en:"to love",presente:["ami","ami","ami","amiamo","amiate","amino"],imperfetto:["amassi","amassi","amasse","amassimo","amaste","amassero"],aux:"avere",part:"amato"},
+    mangiare:{en:"to eat",presente:["mangi","mangi","mangi","mangiamo","mangiate","mangino"],imperfetto:["mangiassi","mangiassi","mangiasse","mangiassimo","mangiaste","mangiassero"],aux:"avere",part:"mangiato"},
+    chiamare:{en:"to call",presente:["chiami","chiami","chiami","chiamiamo","chiamiate","chiamino"],imperfetto:["chiamassi","chiamassi","chiamasse","chiamassimo","chiamaste","chiamassero"],aux:"avere",part:"chiamato"},
+    guardare:{en:"to watch / look",presente:["guardi","guardi","guardi","guardiamo","guardiate","guardino"],imperfetto:["guardassi","guardassi","guardasse","guardassimo","guardaste","guardassero"],aux:"avere",part:"guardato"}
+  },
+  part(part,i){
+    const plural={
+      stato:"stati",andato:"andati",venuto:"venuti",partito:"partiti",
+      arrivato:"arrivati",uscito:"usciti",vissuto:"vissuti"
+    };
+    return i>=3?(plural[part]||part):part;
+  },
+  forms(v,t){let d=this.V[v];if(!d)return[];if(t==="presente"||t==="imperfetto")return d[t];let aux=this.V[d.aux][t==="passato"?"presente":"imperfetto"];return aux.map((x,i)=>x+" "+this.part(d.part,i));},
+  line(v,t){return this.forms(v,t).join(", ");},
+  scope(){let s=$("verbScope").value;if(s==="group")return Library.group();if(s==="chapter")return Library.chapter();if(s==="book")return App.sentences.filter(x=>x.book==App.cur.book);return App.sentences;},
+  detect(texts){
+    let all=texts.join(" ").toLowerCase(),found=new Set();
+    Object.keys(this.V).forEach(v=>{
+      let d=this.V[v];
+      // Check infinitive
+      if(new RegExp("\\b"+v+"\\b","i").test(all))found.add(v);
+      // Check past participle (catches compound tenses in the corpus)
+      if(new RegExp("\\b"+d.part+"\\b","i").test(all))found.add(v);
+      // Check subjunctive presente and imperfetto forms
+      [...this.forms(v,"presente"),...this.forms(v,"imperfetto")].forEach(f=>{
+        let simple=f.split(" ")[0];
+        if(new RegExp("\\b"+simple+"\\b","i").test(all))found.add(v);
+      });
+    });
+    return[...found].sort(Util.nat);
+  },
+  selectedTense(){return this.tenseOrder[App.verbTenseIndex]||this.tenseOrder[0];},
+  render(){
+    if(!$("verbSel"))return;
+    let old=$("verbSel").value,detected=this.detect(this.scope().map(s=>s.italian));
+    let verbs=detected.length?detected:Object.keys(this.V).sort(Util.nat);
+    UI.fill($("verbSel"),verbs,verbs.includes(old)?old:verbs[0]);
+    if(detected.length){
+      $("detected").innerHTML=`Detected verbs (${detected.length}): `+detected.map(v=>`<span class="pill">${v}</span>`).join(" ");
+      $("detected").className="status oktxt";
+    }else{
+      $("detected").innerHTML=`No verbs detected in this scope — showing all ${verbs.length} available.`;
+      $("detected").className="status warntxt";
+    }
+    this.renderView();
+  },
+  renderView(){let v=$("verbSel").value,d=this.V[v];if(!d){$("verbView").innerHTML="";return;}$("verbView").innerHTML=`<div class="verbRef"><strong>${v}</strong> = ${Util.esc(d.en)} · reference: <strong>${Util.esc(this.forms(v,"presente")[0])}</strong></div><div class="tenseGrid">${this.tenseOrder.map(t=>`<div class="tenseCard" id="tense_${t}"><h3>${this.names[t]}</h3><div class="formsLine">${Util.esc(this.line(v,t))}</div></div>`).join("")}</div>`;this.highlight();},
+  highlight(){document.querySelectorAll(".tenseCard").forEach(x=>x.classList.remove("active"));let c=$("tense_"+this.selectedTense());if(c)c.classList.add("active");},
+  provider(){let mode=$("verbMode").value,verbs=[...$("verbSel").options].map(o=>o.value),vi=$("verbSel").selectedIndex<0?0:$("verbSel").selectedIndex,ti=App.verbTenseIndex;if(mode==="once")return this.tenseProvider(verbs,vi,ti,false);if(mode==="looptense")return this.tenseProvider(verbs,vi,ti,true);if(mode==="loopverb")return this.verbProvider(verbs,vi,ti,true,false);if(mode==="nextverb")return this.verbProvider(verbs,vi,ti,false,false);if(mode==="loopverbs")return this.verbProvider(verbs,vi,ti,false,true);return this.tenseProvider(verbs,vi,ti,false);},
+  tenseProvider(verbs,vi,ti,loop){let done=false;return{next:()=>{if(done&&!loop)return null;done=true;let v=verbs[vi],t=this.tenseOrder[ti];return{text:this.line(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=vi;App.verbTenseIndex=ti;this.renderView();}};}};},
+  verbProvider(verbs,vi,ti,loopVerb,loopVerbs){let curV=vi,curT=ti;return{next:()=>{if(curV>=verbs.length){if(loopVerbs)curV=0;else return null;}let v=verbs[curV],t=this.tenseOrder[curT];let item={text:this.line(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=curV;App.verbTenseIndex=curT;this.renderView();}};curT++;if(curT>=this.tenseOrder.length){curT=0;if(!loopVerb)curV++;}return item;}};},
+  toggle(){VerbPlayer.toggle(()=>this.provider());},
+  restart(){if(VerbPlayer.playing)VerbPlayer.restart(()=>this.provider());},
+  moveTense(delta){App.verbTenseIndex+=delta;if(App.verbTenseIndex<0)App.verbTenseIndex=this.tenseOrder.length-1;if(App.verbTenseIndex>=this.tenseOrder.length)App.verbTenseIndex=0;this.renderView();if(VerbPlayer.playing)this.restart();}
+};
 
 const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.italian||"";$("editEnglish").value=s.english||"";$("editModal").style.display="flex";setTimeout(()=>$("editItalian").focus(),50);},close(){$("editModal").style.display="none";this.sentence=null;},async save(){let s=this.sentence;if(!s)return;s.italian=$("editItalian").value.trim();s.english=$("editEnglish").value.trim();if(!s.italian){alert("Italian sentence cannot be empty.");return;}await Storage.put(SS,s);this.close();await Library.refresh();UI.status("Sentence updated.","oktxt");}};
 
@@ -118,19 +220,16 @@ const Preloader={
     if(s==="book")return App.sentences.filter(x=>x.book===App.cur.book);
     return App.sentences;
   },
-  async start(){
-    if(this.running)return;
-    if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
-    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
-    if(!api||!vid){UI.status("Enter ElevenLabs API key and Voice ID first.","warntxt");return;}
-    this.running=true;this.cancelled=false;
-    $("preloadBtn").disabled=true;$("preloadCancel").classList.remove("hidden");
-    let items=this.sentences(),total=items.length,done=0,fetched=0,skipped=0,failed=0;
-    for(let s of items){
+  _setAllPreloadBtns(disabled){
+    ["preloadBtn","verbPreloadBtn"].forEach(id=>{let el=$(id);if(el)el.disabled=disabled;});
+  },
+  async _runLoop(items,labelFn,cancelBtnId){
+    let total=items.length,done=0,fetched=0,skipped=0,failed=0;
+    for(let item of items){
       if(this.cancelled)break;
-      UI.status(`Pre-downloading ${done+1} of ${total}…`);
+      UI.status(labelFn(done+1,total));
       try{
-        let result=await Speech.prefetch(s.italian);
+        let result=await Speech.prefetch(item);
         if(result==="cached")skipped++;
         else if(result==="fetched")fetched++;
       }catch(e){
@@ -141,9 +240,35 @@ const Preloader={
       if(!this.cancelled&&done<total)await Util.sleep(400);
     }
     this.running=false;
-    $("preloadBtn").disabled=false;$("preloadCancel").classList.add("hidden");
+    this._setAllPreloadBtns(false);
+    if($(cancelBtnId))$(cancelBtnId).classList.add("hidden");
     if(this.cancelled){UI.status(`Cancelled. ${fetched} downloaded, ${skipped} already cached.`,"warntxt");}
     else{UI.status(`Done: ${fetched} downloaded, ${skipped} already cached${failed?", "+failed+" failed":""}.`,"oktxt");}
+  },
+  async start(){
+    if(this.running)return;
+    if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
+    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
+    if(!api||!vid){UI.status("Enter ElevenLabs API key and Voice ID first.","warntxt");return;}
+    this.running=true;this.cancelled=false;
+    this._setAllPreloadBtns(true);
+    $("preloadCancel").classList.remove("hidden");
+    let texts=this.sentences().map(s=>s.italian);
+    await this._runLoop(texts,(n,t)=>`Pre-downloading sentence ${n} of ${t}…`,"preloadCancel");
+  },
+  async startVerbs(){
+    if(this.running)return;
+    if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
+    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
+    if(!api||!vid){UI.status("Enter ElevenLabs API key and Voice ID first.","warntxt");return;}
+    let verbs=[...$("verbSel").options].map(o=>o.value);
+    let texts=[];
+    verbs.forEach(v=>Verb.tenseOrder.forEach(t=>{let line=Verb.line(v,t);if(line.trim())texts.push(line);}));
+    if(!texts.length){UI.status("No verb audio to download.","warntxt");return;}
+    this.running=true;this.cancelled=false;
+    this._setAllPreloadBtns(true);
+    $("verbPreloadCancel").classList.remove("hidden");
+    await this._runLoop(texts,(n,t)=>`Pre-downloading verb audio ${n} of ${t}…`,"verbPreloadCancel");
   },
   cancel(){
     this.cancelled=true;
@@ -154,7 +279,48 @@ const Preloader={
 function toCSV(){let h=["book","chapter","order","italian","english","bookmarked","difficult","notes"];return h.join(",")+"\n"+App.sentences.map(s=>h.map(k=>`"${String(s[k]??"").replace(/"/g,'""')}"`).join(",")).join("\n");}
 function download(name,text,type){let b=new Blob([text],{type}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
 
-function bind(){MainPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");document.querySelectorAll("[data-panel]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));b.classList.add("active");$(b.dataset.panel).classList.remove("hidden");if(b.dataset.panel==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(b.dataset.panel==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");});$("openImport").onclick=()=>Importer.open();$("closeImport").onclick=()=>$("importModal").style.display="none";$("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}Importer.preview(Library.parseCSV(await f.text(),{book:$("defaultBook").value,chapter:$("defaultChapter").value}));};$("analysePaste").onclick=()=>Importer.preview(Library.parseCSV($("pasteCsv").value,{book:$("defaultBook").value,chapter:$("defaultChapter").value}));$("importPreviewed").onclick=()=>Importer.import();$("exportCsv").onclick=()=>download("italian-shadowing-library-v103.csv",toCSV(),"text/csv;charset=utf-8");$("clearAll").onclick=async()=>{if(confirm("Delete whole local library and audio cache?")){await Storage.clear(SS);await Storage.clear(AS);App.sentences=[];App.cur={book:"",chapter:"",group:1,index:0};UI.renderAll();}};$("bookSel").onchange=e=>{App.cur.book=e.target.value;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};$("chapterSel").onchange=e=>{App.cur.chapter=e.target.value;App.cur.group=1;App.cur.index=0;UI.renderAll();};$("groupSel").onchange=e=>{App.cur.group=Number(e.target.value);App.cur.index=0;UI.renderAll();};$("prevGroup").onclick=()=>Nav.prevGroup();$("nextGroup").onclick=()=>Nav.nextGroup();$("prevSentence").onclick=()=>SentenceController.prev();$("nextSentence").onclick=()=>SentenceController.next();$("mainToggle").onclick=()=>SentenceController.toggle();$("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");};["displayMode","showEnglish"].forEach(id=>$(id).onchange=()=>UI.renderViewer());$("playMode").onchange=()=>SentenceController.restart();$("search").oninput=()=>UI.renderViewer();$("closeEdit").onclick=()=>Editor.close();$("closeEditBottom").onclick=()=>Editor.close();$("saveEdit").onclick=()=>Editor.save();$("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();};});$("voiceMode").onchange=()=>{localStorage.setItem("v08voiceMode",$("voiceMode").value);$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");};$("saveElevenBtn").onclick=()=>{if($("saveEleven").value==="yes"){localStorage.setItem("v08key",$("apiKey").value);localStorage.setItem("v08voice",$("voiceId").value);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs settings saved.","oktxt");}else{UI.status("Settings not saved — change 'Save locally' to save on this browser.","warntxt");}};$("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("apiKey").value="";$("voiceId").value="";UI.status("ElevenLabs settings cleared.","warntxt");};$("preloadBtn").onclick=()=>Preloader.start();$("preloadCancel").onclick=()=>Preloader.cancel();$("verbScope").onchange=()=>Verb.render();$("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};$("verbMode").onchange=()=>Verb.restart();$("verbToggle").onclick=()=>Verb.toggle();$("prevTense").onclick=()=>Verb.moveTense(-1);$("nextTense").onclick=()=>Verb.moveTense(1);$("showBookmarks").onclick=()=>{$("reviewView").innerHTML=App.sentences.filter(s=>s.bookmarked).map(s=>`<div class="card"><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("")||"<p>No bookmarked sentences.</p>";};$("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};}
+function bind(){
+  MainPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
+  document.querySelectorAll("[data-panel]").forEach(b=>b.onclick=()=>{document.querySelectorAll("[data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));b.classList.add("active");$(b.dataset.panel).classList.remove("hidden");if(b.dataset.panel==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(b.dataset.panel==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");});
+  $("openImport").onclick=()=>Importer.open();
+  $("closeImport").onclick=()=>$("importModal").style.display="none";
+  $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}Importer.preview(Library.parseCSV(await f.text(),{book:$("defaultBook").value,chapter:$("defaultChapter").value}));};
+  $("analysePaste").onclick=()=>Importer.preview(Library.parseCSV($("pasteCsv").value,{book:$("defaultBook").value,chapter:$("defaultChapter").value}));
+  $("importPreviewed").onclick=()=>Importer.import();
+  $("exportCsv").onclick=()=>download("italian-shadowing-library-v103.csv",toCSV(),"text/csv;charset=utf-8");
+  $("clearAll").onclick=async()=>{if(confirm("Delete whole local library and audio cache?")){await Storage.clear(SS);await Storage.clear(AS);App.sentences=[];App.cur={book:"",chapter:"",group:1,index:0};UI.renderAll();}};
+  $("bookSel").onchange=e=>{App.cur.book=e.target.value;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};
+  $("chapterSel").onchange=e=>{App.cur.chapter=e.target.value;App.cur.group=1;App.cur.index=0;UI.renderAll();};
+  $("groupSel").onchange=e=>{App.cur.group=Number(e.target.value);App.cur.index=0;UI.renderAll();};
+  $("prevGroup").onclick=()=>Nav.prevGroup();
+  $("nextGroup").onclick=()=>Nav.nextGroup();
+  $("prevSentence").onclick=()=>SentenceController.prev();
+  $("nextSentence").onclick=()=>SentenceController.next();
+  $("mainToggle").onclick=()=>SentenceController.toggle();
+  $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");};
+  ["displayMode","showEnglish"].forEach(id=>$(id).onchange=()=>UI.renderViewer());
+  $("playMode").onchange=()=>SentenceController.restart();
+  $("search").oninput=()=>UI.renderViewer();
+  $("closeEdit").onclick=()=>Editor.close();
+  $("closeEditBottom").onclick=()=>Editor.close();
+  $("saveEdit").onclick=()=>Editor.save();
+  $("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};
+  ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();};});
+  $("voiceMode").onchange=()=>{localStorage.setItem("v08voiceMode",$("voiceMode").value);$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");};
+  $("saveElevenBtn").onclick=()=>{if($("saveEleven").value==="yes"){localStorage.setItem("v08key",$("apiKey").value);localStorage.setItem("v08voice",$("voiceId").value);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs settings saved.","oktxt");}else{UI.status("Settings not saved — change 'Save locally' to save on this browser.","warntxt");}};
+  $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("apiKey").value="";$("voiceId").value="";UI.status("ElevenLabs settings cleared.","warntxt");};
+  $("preloadBtn").onclick=()=>Preloader.start();
+  $("preloadCancel").onclick=()=>Preloader.cancel();
+  $("verbScope").onchange=()=>Verb.render();
+  $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
+  $("verbMode").onchange=()=>Verb.restart();
+  $("verbToggle").onclick=()=>Verb.toggle();
+  $("prevTense").onclick=()=>Verb.moveTense(-1);
+  $("nextTense").onclick=()=>Verb.moveTense(1);
+  $("verbPreloadBtn").onclick=()=>Preloader.startVerbs();
+  $("verbPreloadCancel").onclick=()=>Preloader.cancel();
+  $("showBookmarks").onclick=()=>{$("reviewView").innerHTML=App.sentences.filter(s=>s.bookmarked).map(s=>`<div class="card"><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("")||"<p>No bookmarked sentences.</p>";};
+  $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
 (async function init(){App.db=await Storage.open();bind();Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();

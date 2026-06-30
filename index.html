@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.0.5</title>
+<title>Italian Shadowing Studio — v1.0.6</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#25211d">
@@ -15,7 +15,7 @@
 <body>
 <header>
   <h1>Italian Shadowing Studio</h1>
-  <p>v1.0.5 — Pre-download audio for lag-free playback.</p>
+  <p>v1.0.6 — Verb drill: expanded verb library, improved detection, verb audio pre-download.</p>
 </header>
 
 <main>
@@ -63,10 +63,17 @@
       <div class="row mt"><button id="saveElevenBtn" class="secondary">Save settings</button><button id="clearElevenBtn" class="danger">Clear settings</button></div>
       <hr>
       <div class="preloadRow">
-        <div><label>Pre-download scope</label><select id="preloadScope"><option value="group">current group</option><option value="chapter" selected>current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div>
-        <div class="preloadBtns"><button id="preloadBtn" class="ok">⬇ Pre-download audio</button><button id="preloadCancel" class="danger hidden">Cancel</button></div>
+        <div><label>Pre-download scope</label><select id="preloadScope">
+          <option value="group">current group</option>
+          <option value="chapter" selected>current chapter</option>
+          <option value="book">current book</option>
+          <option value="all">whole library</option>
+        </select></div>
+        <div class="preloadBtns">
+          <button id="preloadBtn" class="ok">⬇ Pre-download audio</button>
+          <button id="preloadCancel" class="danger hidden">Cancel</button>
+        </div>
       </div>
-      <p class="small">Pre-download stores audio locally so playback runs without any ElevenLabs delay. Re-run whenever you add new sentences. Audio stays cached until you clear all.</p>
     </div>
 
     <div class="controls">
@@ -82,9 +89,14 @@
 
   <div id="verbs" class="panel hidden">
     <h2>Verb drill</h2>
-    <p class="small">The verb drill now uses the same playback engine as the sentence drill.</p>
+    <p class="small">The verb drill now uses the same playback engine as the sentence drill. Verbs are detected automatically from the sentences in the chosen scope.</p>
     <div class="grid">
-      <div><label>Verb source</label><select id="verbScope"><option value="group">current group</option><option value="chapter">current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div>
+      <div><label>Verb source</label><select id="verbScope">
+        <option value="group">current group</option>
+        <option value="chapter" selected>current chapter</option>
+        <option value="book">current book</option>
+        <option value="all">whole library</option>
+      </select></div>
       <div><label>Verb</label><select id="verbSel"></select></div>
       <div><label>Mode</label><select id="verbMode"><option value="once">play current tense once</option><option value="looptense">loop current tense</option><option value="loopverb">loop whole verb</option><option value="nextverb">continue to next verb</option><option value="loopverbs">loop through verbs</option></select></div>
       <div><label>Repeat each tense</label><select id="verbRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option value="infinite">∞ loop</option></select></div>
@@ -94,6 +106,13 @@
       <div><label>Move tense</label><div class="row"><button id="prevTense" class="light">← Tense</button><button id="nextTense" class="light">Tense →</button></div></div>
     </div>
     <div id="detected" class="status"></div>
+    <div class="preloadRow mt">
+      <div><span class="small">Pre-download all verb conjugations for the verbs above using ElevenLabs</span></div>
+      <div class="preloadBtns">
+        <button id="verbPreloadBtn" class="ok">⬇ Pre-download verb audio</button>
+        <button id="verbPreloadCancel" class="danger hidden">Cancel</button>
+      </div>
+    </div>
     <div id="verbView"></div>
   </div>
 

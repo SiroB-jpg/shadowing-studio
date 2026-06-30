@@ -1,18 +1,20 @@
-# Italian Shadowing Studio v1.0.1
+# Italian Shadowing Studio v1.0.2
 
-Offline-capable browser/PWA app for Italian sentence shadowing and subjunctive verb drill practice.
+A browser/PWA shadowing tool for Italian sentence practice and subjunctive drilling.
 
-## Run
+## v1.0.2 notes
 
-Open `index.html` in a browser, or serve the folder from a local web server for service-worker/PWA behaviour.
+Playback now separates repeat count from loop mode again.
 
-## Notes
+- **Repeat each sentence** controls how many times each sentence is spoken before moving on.
+- **Playback mode** controls the range and whether it loops.
 
-- Existing browser data from v0.8 is intentionally preserved by keeping the same IndexedDB/localStorage keys.
-- ElevenLabs settings remain local to the browser if saved.
-- System voice fallback uses an Italian system voice where available, with Alice preferred on Apple systems.
+The default mode is hands-free progression through the current group, with 1.0× speed and a short pause.
 
+ElevenLabs requests now have a timeout. If ElevenLabs stalls or fails, the app falls back to the system voice instead of hanging indefinitely.
 
-## v1.0.1 playback logic
+## Deployment
 
-The default sentence playback now progresses hands-free through the current group at 1.0× speed with a short pause. The old separate “loop current …” modes have been removed. To loop, choose ∞ in the repetitions menu and select the playback range: current sentence, current group, or current chapter.
+Replace the existing GitHub Pages files as a set, commit to `main`, push to GitHub, then allow GitHub Pages time to redeploy.
+
+If the old version remains visible, unregister/clear the service worker or remove website data for the app, especially on iPad/iPhone.

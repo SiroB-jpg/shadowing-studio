@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.0.7</title>
+<title>Italian Shadowing Studio — v1.0.8</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#25211d">
@@ -11,11 +11,21 @@
 <meta name="apple-mobile-web-app-title" content="Italian Studio">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>(function(){var t=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",t);})();</script>
 </head>
 <body>
 <header>
-  <h1>Italian Shadowing Studio</h1>
-  <p>v1.0.7 — Verb drill: expanded verb library, improved detection, verb audio pre-download. Fix: tense highlight now stays in sync with spoken audio.</p>
+  <div class="header-inner">
+    <div class="header-text">
+      <h1>Italian Shadowing Studio</h1>
+      <p>v1.0.8 — Soft sage theme, dark mode toggle, improved iPhone layout.</p>
+    </div>
+    <label class="theme-toggle" title="Toggle dark mode">
+      <input type="checkbox" id="themeToggle">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="toggle-label">Dark mode</span>
+    </label>
+  </div>
 </header>
 
 <main>

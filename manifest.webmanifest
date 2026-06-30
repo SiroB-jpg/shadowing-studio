@@ -1,13 +1,11 @@
 {
   "name": "Italian Shadowing Studio",
   "short_name": "Italian Studio",
-  "description": "A bespoke Italian shadowing and subjunctive verb-drill app.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f7f4ef",
   "theme_color": "#25211d",
-  "orientation": "any",
   "icons": [
     {
       "src": "icons/icon-192.png",

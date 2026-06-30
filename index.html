@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.0.4</title>
+<title>Italian Shadowing Studio — v1.0.5</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#25211d">
@@ -15,7 +15,7 @@
 <body>
 <header>
   <h1>Italian Shadowing Studio</h1>
-  <p>v1.0.4 — Bug fixes: ghost playback, ∞ repeat, group navigation, tab isolation.</p>
+  <p>v1.0.5 — Pre-download audio for lag-free playback.</p>
 </header>
 
 <main>
@@ -61,6 +61,12 @@
         <div><label>Save locally</label><select id="saveEleven"><option value="no">do not save</option><option value="yes">save on this browser</option></select></div>
       </div>
       <div class="row mt"><button id="saveElevenBtn" class="secondary">Save settings</button><button id="clearElevenBtn" class="danger">Clear settings</button></div>
+      <hr>
+      <div class="preloadRow">
+        <div><label>Pre-download scope</label><select id="preloadScope"><option value="group">current group</option><option value="chapter" selected>current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div>
+        <div class="preloadBtns"><button id="preloadBtn" class="ok">⬇ Pre-download audio</button><button id="preloadCancel" class="danger hidden">Cancel</button></div>
+      </div>
+      <p class="small">Pre-download stores audio locally so playback runs without any ElevenLabs delay. Re-run whenever you add new sentences. Audio stays cached until you clear all.</p>
     </div>
 
     <div class="controls">

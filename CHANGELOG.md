@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.3
+
+### Fixed
+- Reworked ElevenLabs/audio playback cleanup so the player does not leave a stale audio object after the first sentence.
+- Added faster detection when browser audio fails to start, stalls, times out, or receives empty ElevenLabs audio.
+- Updated service-worker cache name to force browsers to fetch the new app files.
+- Updated visible version text to v1.0.3.
+
+### Changed
+- ElevenLabs fetch timeout increased slightly to 15 seconds, but playback start is now separately guarded.
+
 ## v1.0.2
 
 ### Fixed

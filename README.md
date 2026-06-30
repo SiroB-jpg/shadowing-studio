@@ -1,6 +1,9 @@
-# Italian Shadowing Studio v1.0.2
+# Italian Shadowing Studio v1.0.3
 
-A browser/PWA shadowing tool for Italian sentence practice and subjunctive drilling.
+## v1.0.3 notes
+
+This build keeps the v1.0.2 loop controls, but fixes a playback issue where the first sentence could speak and later sentences could advance visually without speaking. It also updates the service-worker cache name so GitHub Pages/iPad browsers are more likely to fetch the new code after deployment.
+
 
 ## v1.0.2 notes
 

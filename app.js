@@ -334,9 +334,9 @@ const CSVTemplate={
 const GEN_BOOK="Generated";
 
 const Generator={
-  running:false,cancelled:false,abort:null,rows:[],csv:"",meta:null,
-  key(){return ($("aiKey")?$("aiKey").value:"").trim();},
-  model(){return (($("aiModel")?$("aiModel").value:"").trim())||"gpt-4o-mini";},
+  running:false,cancelled:false,abort:null,rows:[],csv:"",meta:null,lastModel:"",
+  relayUrl(){return ($("relayUrl")?$("relayUrl").value:"").trim().replace(/\/+$/,"");},
+  token(){return ($("relayToken")?$("relayToken").value:"").trim();},
   status(msg,cls=""){let el=$("genStatus");if(el){el.textContent=msg;el.className="status "+cls;}},
   setBusy(b){
     ["genBtn","genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=b;});
@@ -346,113 +346,48 @@ const Generator={
   setOutputButtons(on){["genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=!on;});},
   setPreview(html){let el=$("genPreview");if(!el)return;el.innerHTML=html;el.classList.toggle("hidden",!html);},
 
-  instructions(o){
-    let tense=o.tense==="mixed"
-      ? "Spread the sentences naturally across a range of tenses and moods that a real speaker would use with this word; do not confine them to one tense."
-      : `Every sentence must place the target expression in the ${o.tense}. Where the target word itself cannot carry that tense (for example a noun or an adverb), the main verb of the sentence must be in the ${o.tense}.`;
-    let register={
-      neutral:"Use neutral, everyday contemporary Italian.",
-      formal:"Use a formal, professional register suitable for work or study contexts.",
-      colloquial:"Use relaxed, colloquial spoken Italian of the kind heard between friends.",
-      literary:"Use a careful written register of the kind found in essays and quality journalism."
-    }[o.register]||"Use neutral, everyday contemporary Italian.";
-    return [
-      "You write Italian shadowing material for an English-speaking adult learner.",
-      "",
-      `Target expression: "${o.word}".`,
-      `Write exactly ${o.batch} sentences.`,
-      "",
-      "Rules:",
-      "1. Every sentence must contain the target expression, correctly inflected for the grammar of that sentence. Pronominal and idiomatic expressions may appear in their split or conjugated forms.",
-      "2. Each sentence must be sayable in one breath: roughly 6 to 14 words.",
-      "3. Vary the grammatical person, the situation and the sentence shape across the set. Do not reuse the same opening twice.",
-      "4. The Italian must be idiomatic and natural. Never produce a translation of an English sentence.",
-      "5. " + tense,
-      "6. " + register,
-      o.english
-        ? "7. Give an idiomatic English translation of each sentence — natural English, not word-for-word glossing."
-        : "7. Leave every English field as an empty string.",
-      "8. No numbering, no bullets, no surrounding quotation marks, no commentary.",
-      o.avoid.length?`9. Do not repeat any of these sentences already produced: ${o.avoid.slice(-40).map(s=>'"'+s+'"').join("; ")}`:"",
-      "",
-      'Reply with JSON only, in this exact shape: {"sentences":[{"italian":"...","english":"..."}]}'
-    ].filter(Boolean).join("\n");
-  },
-
-  async call(body){
+  /* The relay builds the prompt and holds the Google key; the app only asks. */
+  async batch(o){
     const controller=new AbortController();
     this.abort=controller;
     let timer=setTimeout(()=>controller.abort(),90000),r;
     try{
-      r=await fetch("https://api.openai.com/v1/chat/completions",{
+      r=await fetch(this.relayUrl(),{
         method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":"Bearer "+this.key()},
-        body:JSON.stringify(body),
+        headers:{"Content-Type":"application/json","X-App-Token":this.token()},
+        body:JSON.stringify({word:o.word,count:o.batch,tense:o.tense,register:o.register,english:o.english,avoid:o.avoid}),
         signal:controller.signal
       });
     }catch(e){
-      if(e&&e.name==="AbortError"){if(this.cancelled)return null;throw new Error("OpenAI request timed out");}
-      throw new Error("Could not reach OpenAI: "+(e&&e.message?e.message:e));
+      if(e&&e.name==="AbortError"){if(this.cancelled)return[];throw new Error("The generator took too long to answer.");}
+      throw new Error("Could not reach your generator. Check the address in Settings, and your internet connection.");
     }finally{clearTimeout(timer);if(this.abort===controller)this.abort=null;}
-    if(r.status===401)throw new Error("OpenAI rejected the API key (401).");
-    if(r.status===429)throw new Error("OpenAI rate limit or quota reached (429).");
+
+    let data=null;
+    try{data=await r.json();}catch(e){}
     if(!r.ok){
-      let detail="";try{let j=await r.json();detail=j?.error?.message||"";}catch(e){}
-      let err=new Error("OpenAI error "+r.status+(detail?": "+detail:""));err.status=r.status;err.detail=detail;throw err;
+      if(r.status===401)throw new Error("The passphrase in Settings does not match the one on your generator.");
+      if(r.status===403)throw new Error("Your generator is set up for a different web address than this one.");
+      if(r.status===429)throw new Error(data?.error||"Today's free allowance is used up. Try again later.");
+      if(r.status===500)throw new Error(data?.error||"Your generator is missing one of its settings.");
+      throw new Error(data?.error||("The generator returned an error ("+r.status+")."));
     }
-    return r.json();
-  },
-
-  /* Some models reject temperature or JSON mode; retry progressively plainer. */
-  async batch(o){
-    let base={model:this.model(),messages:[{role:"user",content:this.instructions(o)}]};
-    let attempts=[
-      {...base,temperature:.85,response_format:{type:"json_object"}},
-      {...base,response_format:{type:"json_object"}},
-      base
-    ];
-    let lastErr=null;
-    for(let body of attempts){
-      try{
-        let j=await this.call(body);
-        if(j===null)return[];
-        let text=j?.choices?.[0]?.message?.content||"";
-        let out=this.parse(text);
-        if(out.length)return out;
-        lastErr=new Error("OpenAI returned no usable sentences.");
-      }catch(e){
-        lastErr=e;
-        if(e.status!==400)throw e;
-      }
-    }
-    throw lastErr||new Error("Generation failed.");
-  },
-
-  parse(text){
-    let obj=null;
-    try{obj=JSON.parse(text);}
-    catch(e){let m=text.match(/\{[\s\S]*\}/);if(m){try{obj=JSON.parse(m[0]);}catch(e2){}}}
-    if(!obj)return[];
-    let list=Array.isArray(obj)?obj:(obj.sentences||obj.items||obj.data||[]);
-    if(!Array.isArray(list))return[];
-    return list.map(x=>{
-      if(typeof x==="string")return{italian:Util.clean(x),english:""};
-      return{italian:Util.clean(x.italian||x.it||x.sentence||""),english:Util.clean(x.english||x.en||x.translation||"")};
-    }).filter(x=>x.italian);
+    if(data?.model)this.lastModel=data.model;
+    return Array.isArray(data?.sentences)?data.sentences.filter(x=>x&&x.italian):[];
   },
 
   async start(){
     if(this.running)return;
     let word=($("genWord").value||"").trim();
     if(!word){this.status("Enter the word or expression you want to shadow.","warntxt");return;}
-    if(!this.key()){this.status("Add your OpenAI API key in Settings first.","warntxt");return;}
+    if(!this.relayUrl()||!this.token()){this.status("Add your generator address and passphrase in Settings first.","warntxt");return;}
     let total=Number($("genCount").value)||20,
         tense=$("genTense").value,
         register=$("genRegister").value,
         english=$("genEnglish").value!=="no",
         chapter=($("genChapter").value||"").trim()||word;
 
-    this.running=true;this.cancelled=false;this.rows=[];this.csv="";
+    this.running=true;this.cancelled=false;this.rows=[];this.csv="";this.lastModel="";
     this.setBusy(true);
     this.setPreview("");
 
@@ -461,25 +396,26 @@ const Generator={
       while(collected.length<total&&rounds<maxRounds&&!this.cancelled){
         rounds++;
         let need=Math.min(15,total-collected.length);
-        this.status(`Generating… ${collected.length} of ${total} sentences so far.`);
+        this.status(`Writing sentences… ${collected.length} of ${total} so far.`);
         let got=await this.batch({word,batch:need,tense,register,english,avoid:collected.map(s=>s.italian)});
         if(this.cancelled)break;
         for(let s of got){
           let k=Util.norm(s.italian);
           if(!k||seen.has(k))continue;
-          seen.add(k);collected.push(s);
+          seen.add(k);collected.push({italian:String(s.italian||"").trim(),english:String(s.english||"").trim()});
           if(collected.length>=total)break;
         }
+        if(!got.length)break;
       }
     }catch(e){
       this.running=false;this.setBusy(false);
-      this.status(e&&e.message?e.message:"Generation failed.","dangertxt");
+      this.status(e&&e.message?e.message:"Something went wrong.","dangertxt");
       return;
     }
 
     this.running=false;
     if(this.cancelled&&!collected.length){this.setBusy(false);this.status("Cancelled.","warntxt");return;}
-    if(!collected.length){this.setBusy(false);this.status("No sentences were produced. Try again, or check the model name in Settings.","dangertxt");return;}
+    if(!collected.length){this.setBusy(false);this.status("No sentences came back. Try again in a moment.","dangertxt");return;}
 
     this.meta={word,chapter,tense,register,total};
     let startOrder=this.nextOrder(chapter);
@@ -488,7 +424,7 @@ const Generator={
       chapterTitle:tense==="mixed"?`${word} — mixed tenses`:`${word} — ${tense}`,
       idPrefix:"GEN-"+Util.slug(word).toUpperCase(),
       startOrder,
-      sourceFile:"AI generated in app ("+this.model()+")",
+      sourceFile:"Generated in app"+(this.lastModel?" ("+this.lastModel+")":""),
       notes:"Generated from target expression \""+word+"\"; "+(tense==="mixed"?"mixed tenses":tense)+"; "+register+" register. Not reviewed."
     });
     this.csv=CSVTemplate.build(this.rows);
@@ -577,8 +513,8 @@ function bind(){
   $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("apiKey").value="";$("voiceId").value="";UI.status("ElevenLabs settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
-  $("saveAiBtn").onclick=()=>{if($("saveAi").value==="yes"){localStorage.setItem("v08aiKey",$("aiKey").value);localStorage.setItem("v08aiModel",$("aiModel").value);UI.status("AI settings saved on this browser.","oktxt");}else{UI.status("AI settings not saved — change 'Save locally' to save on this browser.","warntxt");}};
-  $("clearAiBtn").onclick=()=>{["v08aiKey","v08aiModel"].forEach(k=>localStorage.removeItem(k));$("aiKey").value="";$("aiModel").value="gpt-4o-mini";UI.status("AI settings cleared.","warntxt");};
+  $("saveAiBtn").onclick=()=>{if($("saveAi").value==="yes"){localStorage.setItem("v08relayUrl",$("relayUrl").value);localStorage.setItem("v08relayToken",$("relayToken").value);UI.status("Generator settings saved on this browser.","oktxt");}else{UI.status("Not saved — change 'Save locally' to keep these on this browser.","warntxt");}};
+  $("clearAiBtn").onclick=()=>{["v08relayUrl","v08relayToken"].forEach(k=>localStorage.removeItem(k));$("relayUrl").value="";$("relayToken").value="";UI.status("Generator settings cleared.","warntxt");};
   $("genBtn").onclick=()=>Generator.start();
   $("genCancel").onclick=()=>Generator.cancel();
   $("genSave").onclick=()=>Generator.save();
@@ -598,4 +534,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("aiKey").value=localStorage.getItem("v08aiKey")||"";$("aiModel").value=localStorage.getItem("v08aiModel")||"gpt-4o-mini";if(localStorage.getItem("v08aiKey"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();

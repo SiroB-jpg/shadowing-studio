@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.3.0
+
+### Changed
+- **Sentence generation now runs through your own relay rather than calling a provider directly.** The app sends a target word, count, tense and register to a small Cloudflare Worker you host; the Worker builds the prompt, calls Google's Gemini API, and returns clean sentences. See `SETUP-GENERATOR.md`.
+- **No API key is stored in the browser any more.** Settings now takes a generator address and a passphrase instead of a provider key. The Google key lives only on the Worker.
+- **The prompt moved server-side.** A leaked passphrase now yields Italian practice sentences and nothing else, rather than general-purpose access to a language model.
+- Failure messages rewritten in plain language: wrong passphrase, wrong web address, exhausted free quota, missing Worker settings, unreachable generator, and Google being down are each explained distinctly.
+- The model that produced a set is recorded in the CSV `SourceFile` column.
+- Service worker no longer intercepts relay traffic. Cache name updated to `v1-3-0`.
+
+### Added
+- `worker.js` — the relay. Checks the passphrase, restricts calls to your own web address, caps the number of sentences per request, and never echoes Google's error text (which can contain the key) back to the browser.
+- `SETUP-GENERATOR.md` — non-technical, browser-only setup instructions.
+
+### Notes
+Choice of provider followed a comparison of thirty Italian generation tasks covering pronominal verbs, all four subjunctive tenses, tense control, discourse markers and clitic agreement. Gemini handled participle and clitic agreement correctly throughout and was adopted on that basis.
+
 ## v1.2.0
 
 ### Added

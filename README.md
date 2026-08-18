@@ -1,4 +1,16 @@
-# Italian Shadowing Studio v1.2.0
+# Italian Shadowing Studio v1.3.0
+
+## v1.3.0 notes — private sentence generator
+
+The Generate tab now works through a small relay you host yourself on
+Cloudflare, rather than calling an AI provider straight from the browser.
+Google does not accept requests made directly by a web page, and this also
+keeps your API key out of the browser entirely.
+
+**Setting it up is a one-off, browser-only job — see `SETUP-GENERATOR.md`.**
+
+In Settings you enter two things: your generator's address and a passphrase
+you invent. No provider key is stored in the app.
 
 ## v1.2.0 notes — Generate tab
 

@@ -101,6 +101,7 @@ td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertic
   body[data-screen="library"] aside{display:block}
   body[data-screen="study"] section,
   body[data-screen="verbs"] section,
+  body[data-screen="generate"] section,
   body[data-screen="settings"] section{display:block}
   .desktop-tabs{display:none}
   .mobile-only{display:flex}

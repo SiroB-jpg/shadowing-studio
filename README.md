@@ -1,4 +1,20 @@
-# Italian Shadowing Studio v1.0.3
+# Italian Shadowing Studio v1.2.0
+
+## v1.2.0 notes — Generate tab
+
+A new **Generate** tab writes fresh shadowing sentences around any word or expression you want to drill.
+
+Enter the target expression, pick the number of sentences, the tense or mood, and the register. The sentences are written into the standard corpus template — the same twelve columns as the Italian Subjunctive and Pronominal Verbs CSVs — and then read back through the ordinary CSV importer, so a generated set behaves exactly like a hand-made one.
+
+Saved sets go into the book **Generated**, one chapter per target word, in groups of ten. Generating the same word twice continues the numbering rather than overwriting. **Download CSV** saves the set as a file if you would rather edit it in a spreadsheet first.
+
+### Setup
+
+Settings → *AI sentence generation (OpenAI)*: paste an OpenAI API key, adjust the model name if needed, and set *Save locally* to keep it on this browser.
+
+The key is held in this browser only and sent directly to OpenAI. Note that a key saved into a publicly deployed copy of the app is readable by anyone who opens that copy — for a public or paid release, move the call behind a small server-side proxy instead.
+
+Generated Italian is usually sound but is not guaranteed. Read a set through before drilling it.
 
 ## v1.0.3 notes
 

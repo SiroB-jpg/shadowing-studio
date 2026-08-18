@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.1.0</title>
+<title>Italian Shadowing Studio — v1.2.0</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <link rel="manifest" href="manifest.webmanifest">
@@ -19,7 +19,7 @@
   <div class="header-inner">
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.1.0 — Screen navigation, auto-scroll, compact layout.</p>
+      <p class="header-sub">v1.2.0 — AI sentence generation from any target word.</p>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
       <input type="checkbox" id="themeToggle">
@@ -51,6 +51,7 @@
     <div class="tabs desktop-tabs">
       <button class="tab active" data-panel="study">Study</button>
       <button class="tab" data-panel="verbs">Verb drill</button>
+      <button class="tab" data-panel="generate">Generate</button>
       <button class="tab" data-panel="settings">Settings</button>
     </div>
 
@@ -97,6 +98,47 @@
       <div id="verbView"></div>
     </div>
 
+    <div id="generate" class="panel hidden">
+      <h2>Generate sentences</h2>
+      <p class="small">Enter a word or expression you want to shadow. The sentences are written into the standard corpus template — the same columns as your subjunctive and pronominal-verb CSVs — then read back through the ordinary importer, so they behave exactly like hand-made material.</p>
+      <div class="grid">
+        <div><label>Target word or expression</label><input id="genWord" placeholder="e.g. farcela, magari, riuscire a"></div>
+        <div><label>How many sentences</label><select id="genCount"><option>10</option><option selected>20</option><option>30</option><option>50</option></select></div>
+        <div><label>Tense / mood</label><select id="genTense">
+          <option value="mixed" selected>mixed — natural spread</option>
+          <option value="presente indicativo">presente indicativo</option>
+          <option value="passato prossimo">passato prossimo</option>
+          <option value="imperfetto indicativo">imperfetto indicativo</option>
+          <option value="futuro semplice">futuro semplice</option>
+          <option value="condizionale presente">condizionale presente</option>
+          <option value="condizionale passato">condizionale passato</option>
+          <option value="congiuntivo presente">congiuntivo presente</option>
+          <option value="congiuntivo passato">congiuntivo passato</option>
+          <option value="congiuntivo imperfetto">congiuntivo imperfetto</option>
+          <option value="congiuntivo trapassato">congiuntivo trapassato</option>
+          <option value="imperativo">imperativo</option>
+          <option value="infinito, gerundio or participio">infinito / gerundio / participio</option>
+        </select></div>
+        <div><label>Register</label><select id="genRegister">
+          <option value="neutral" selected>neutral everyday</option>
+          <option value="colloquial">colloquial spoken</option>
+          <option value="formal">formal / professional</option>
+          <option value="literary">written / literary</option>
+        </select></div>
+        <div><label>English translations</label><select id="genEnglish"><option value="yes" selected>include</option><option value="no">Italian only</option></select></div>
+        <div><label>Chapter name</label><input id="genChapter" placeholder="defaults to the target word"></div>
+      </div>
+      <div class="controls">
+        <button id="genBtn" class="ok">Generate</button>
+        <button id="genCancel" class="danger hidden">Cancel</button>
+        <button id="genSave">Save to library</button>
+        <button id="genDownload" class="secondary">Download CSV</button>
+      </div>
+      <div class="small">Saved sets land in the book <strong>Generated</strong>, one chapter per target word, in groups of ten. Review them before drilling — AI Italian is usually sound but not guaranteed.</div>
+      <div id="genStatus" class="status">Nothing generated yet.</div>
+      <div id="genPreview" class="preview"></div>
+    </div>
+
     <div id="settings" class="panel hidden">
       <h2>Settings</h2>
       <label>Voice</label>
@@ -114,6 +156,16 @@
         <h3>Pre-download audio</h3>
         <div class="preloadRow"><div><label>Scope</label><select id="preloadScope"><option value="group">current group</option><option value="chapter" selected>current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div><div class="preloadBtns"><button id="preloadBtn" class="ok">⬇ Pre-download audio</button><button id="preloadCancel" class="danger hidden">Cancel</button></div></div>
       </div>
+      <div class="status mt">
+        <h3>AI sentence generation (OpenAI)</h3>
+        <div class="grid">
+          <div><label>API key</label><input id="aiKey" type="password" placeholder="sk-…"></div>
+          <div><label>Model</label><input id="aiModel" value="gpt-4o-mini"></div>
+          <div><label>Save locally</label><select id="saveAi"><option value="no">do not save</option><option value="yes">save on this browser</option></select></div>
+        </div>
+        <div class="row mt"><button id="saveAiBtn" class="secondary">Save AI settings</button><button id="clearAiBtn" class="danger">Clear AI settings</button></div>
+        <p class="small">The key is held in this browser only and sent straight to OpenAI. Two cautions: do not enter it on a shared device, and remember that a key saved into a publicly deployed copy of this app is readable by anyone who opens that copy. Change the model name if your account uses a different one.</p>
+      </div>
     </div>
 
     <div id="status" class="status">Ready.</div>
@@ -124,6 +176,7 @@
   <button class="mobile-nav-btn" data-screen="library" aria-label="Library"><i class="ti ti-books" aria-hidden="true"></i><span>Library</span></button>
   <button class="mobile-nav-btn active" data-screen="study" aria-label="Study"><i class="ti ti-headphones" aria-hidden="true"></i><span>Study</span></button>
   <button class="mobile-nav-btn" data-screen="verbs" aria-label="Verb drill"><i class="ti ti-letter-case" aria-hidden="true"></i><span>Verbs</span></button>
+  <button class="mobile-nav-btn" data-screen="generate" aria-label="Generate sentences"><i class="ti ti-sparkles" aria-hidden="true"></i><span>Generate</span></button>
   <button class="mobile-nav-btn" data-screen="settings" aria-label="Settings"><i class="ti ti-settings" aria-hidden="true"></i><span>Settings</span></button>
 </nav>
 

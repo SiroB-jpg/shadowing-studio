@@ -1,5 +1,22 @@
 # Changelog
 
+## v1.2.0
+
+### Added
+- **Generate tab — AI shadowing sentences from any target word.** Enter a word or expression (`farcela`, `magari`, `riuscire a`), choose how many sentences (10 / 20 / 30 / 50), the tense or mood, the register, and whether English translations are included. The sentences are generated, previewed in a table, and saved to the library ready to play.
+- **The corpus CSV template is now internal.** `CSVTemplate` holds the canonical column set used by the Italian Subjunctive and Pronominal Verbs corpora — `ID, Book, Chapter, ChapterTitle, Group, Item, Italian, English, AudioText, TranslationStatus, SourceFile, Notes`. Generated sentences are written into that template and then read back through the ordinary CSV importer, so nothing about them is special-cased: verb drill, pre-download, export and playback all work on them unchanged.
+- **Download CSV** on the Generate tab, so a generated set can be kept, edited in a spreadsheet, or re-imported elsewhere.
+- **OpenAI settings** (API key, model, save-locally) in Settings, following the same pattern as the ElevenLabs panel. The key is stored in this browser only.
+- Generated sets are saved to the book **Generated**, one chapter per target word, in groups of ten. Generating the same word again continues the numbering instead of colliding — a second run of ten lands as Group 3.
+
+### Fixed
+- **CSV `Group` and `Item` columns were ignored on import.** The importer only looked for an `order` column, so master-corpus files fell back to the row's position in the whole file and chapter 2's groups were numbered as though they continued chapter 1. `Group` and `Item` are now read when present and resolved to a per-chapter order, giving correct group numbers. Files without those columns are unaffected.
+
+### Changed
+- Requests to OpenAI are batched at fifteen sentences per call, with earlier sentences passed back to the model to avoid repetition, and duplicates dropped locally.
+- If a model rejects `temperature` or JSON response mode, the request is retried progressively plainer rather than failing outright. Timeouts (90s), cancellation, and 401/429 responses are reported in plain language.
+- The service worker no longer intercepts OpenAI traffic or any non-GET request. Cache name updated to `v1-2-0`.
+
 ## v1.0.6
 
 ### Fixed

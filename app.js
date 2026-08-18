@@ -3,11 +3,11 @@ const $=id=>document.getElementById(id);
 const DB="ISS_V08", SS="sentences", AS="audioCache";
 const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,playbackContext:"main",cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
 
-const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order)};
+const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
 const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});}};
 
-const Library={parseCSV(text,defs){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);if(!rows.length)return[];let heads=rows[0].map(x=>x.trim().toLowerCase()),has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),data=has?rows.slice(1):rows,idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},bi=idx(["book"]),ci=idx(["chapter","lesson","unit"]),oi=idx(["order","number","no","#"]),ii=idx(["italian","sentence","text","it","italiano"]),ei=idx(["english","translation","meaning","en"]);return data.map((r,i)=>{let italian="",english="";if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}else if(r.length>=5){italian=r[3];english=r[4];}else if(r.length>=2){italian=r[0];english=r[1];}else italian=r[0];return{book:Util.clean(has&&bi>=0?r[bi]:defs.book),chapter:Util.clean(has&&ci>=0?r[ci]:defs.chapter),order:Number(Util.clean(has&&oi>=0?r[oi]:i+1))||i+1,italian:Util.clean(italian),english:Util.clean(english),bookmarked:false,difficult:false,notes:""};}).filter(x=>x.italian);},chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.renderAll();}};
+const Library={parseCSV(text,defs){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);if(!rows.length)return[];let heads=rows[0].map(x=>x.trim().toLowerCase()),has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),data=has?rows.slice(1):rows,idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},bi=idx(["book"]),ci=idx(["chapter","lesson","unit"]),oi=idx(["order","number","no","#"]),gi=idx(["group"]),ti=idx(["item"]),ii=idx(["italian","sentence","text","it","italiano"]),ei=idx(["english","translation","meaning","en"]);const ord=(r,i)=>{if(has&&gi>=0&&ti>=0){let g=Number(Util.clean(r[gi])),it=Number(Util.clean(r[ti]));if(g>0&&it>0)return(g-1)*10+it;}return Number(Util.clean(has&&oi>=0?r[oi]:i+1))||i+1;};return data.map((r,i)=>{let italian="",english="";if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}else if(r.length>=5){italian=r[3];english=r[4];}else if(r.length>=2){italian=r[0];english=r[1];}else italian=r[0];return{book:Util.clean(has&&bi>=0?r[bi]:defs.book),chapter:Util.clean(has&&ci>=0?r[ci]:defs.chapter),order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),bookmarked:false,difficult:false,notes:""};}).filter(x=>x.italian);},chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.renderAll();}};
 
 const UI={fill(sel,vals,val,label=x=>x){sel.innerHTML="";if(!vals.length){sel.innerHTML="<option>—</option>";return;}vals.forEach(v=>{let o=document.createElement("option");o.value=v;o.textContent=label(v);if(String(v)==String(val))o.selected=true;sel.appendChild(o);});},renderAll(){this.renderSelectors();this.renderTree();this.renderViewer();Verb.render();this.stats();},renderSelectors(){let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);if(!books.includes(App.cur.book)&&books[0])App.cur.book=books[0];let ch=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book).map(s=>s.chapter)).sort(Util.nat);if(!ch.includes(App.cur.chapter)&&ch[0])App.cur.chapter=ch[0];let gs=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).map(Util.gnum)).sort((a,b)=>a-b);if(!gs.includes(Number(App.cur.group))&&gs[0])App.cur.group=gs[0];this.fill($("bookSel"),books,App.cur.book);this.fill($("chapterSel"),ch,App.cur.chapter);this.fill($("groupSel"),gs.map(String),String(App.cur.group),g=>"Group "+g);},renderTree(){let t=$("tree");t.innerHTML="";if(!App.sentences.length){t.innerHTML='<p class="small">No sentences imported yet.</p>';return;}Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat).forEach(b=>{let bd=document.createElement("div");bd.className="book "+(App.cur.book==b?"active":"");bd.textContent=b;bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(bd);Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{let cd=document.createElement("div");cd.className="chapter "+(App.cur.book==b&&App.cur.chapter==c?"active":"");cd.textContent=c;cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(cd);if(App.cur.book==b&&App.cur.chapter==c)Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{let gd=document.createElement("div");gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");gd.textContent="Group "+g;gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};t.appendChild(gd);});});});},card(s,active,i){let show=$("showEnglish").value=="show",d=document.createElement("div");d.className="card "+(active?"active":"");const selectCard=()=>{if(i!==undefined)SentenceController.jumpToIndex(i);};d.onclick=selectCard;d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();selectCard();},{passive:false});d.innerHTML=`<span class="pill">${s.order}</span>${s.bookmarked?'<span class="pill">★ bookmarked</span>':""}<div class="italian">${Util.esc(s.italian)}</div>${show&&s.english?`<div class="english">${Util.esc(s.english)}</div>`:""}<div class="cardTools"><button class="mini light" data-a="play">Play</button><button class="mini light" data-a="bm">★ Bookmark</button><button class="mini light" data-a="edit">Edit</button></div>`;d.querySelector('[data-a="play"]').onclick=async e=>{e.stopPropagation();await Speech.speak(s.italian);};d.querySelector('[data-a="bm"]').onclick=async e=>{e.stopPropagation();s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();};d.querySelector('[data-a="edit"]').onclick=e=>{e.stopPropagation();Editor.open(s);};return d;},renderViewer(){let v=$("viewer");v.innerHTML="";if(!App.sentences.length){v.innerHTML='<div class="card"><h3>No sentences yet</h3><p>Import a CSV to begin.</p></div>';return;}v.innerHTML=`<h2>${Util.esc(App.cur.book)} — ${Util.esc(App.cur.chapter)} — Group ${App.cur.group}</h2>`;let g=Library.group(),q=$("search").value.trim().toLowerCase();if($("displayMode").value=="single"){let s=Library.current();if(s)v.appendChild(this.card(s,true));return;}g.filter(s=>!q||(s.italian+" "+s.english).toLowerCase().includes(q)).forEach((s,i)=>v.appendChild(this.card(s,i==App.cur.index,i)));setTimeout(()=>{let a=$("viewer").querySelector(".card.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);},stats(){let books=Util.uniq(App.sentences.map(s=>s.book)).length,ch=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter)).length,gs=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter+"|"+Util.gnum(s))).length;$("stats").innerHTML=`${App.sentences.length} sentences<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;},status(msg,cls=""){$("status").textContent=msg;$("status").className="status "+cls;}};
 
@@ -306,9 +306,248 @@ const MediaSessionMgr={
   none(){if('mediaSession' in navigator)try{navigator.mediaSession.playbackState='none';}catch(e){}}
 };
 
+/* ── Canonical corpus CSV template ───────────────────────────────────────────
+   Same column set as the Italian Subjunctive Master Corpus exports, so that
+   anything generated inside the app is written into the identical shape and
+   then read back through the ordinary CSV import path.                        */
+const CSVTemplate={
+  columns:["ID","Book","Chapter","ChapterTitle","Group","Item","Italian","English","AudioText","TranslationStatus","SourceFile","Notes"],
+  cell(v){let s=String(v??"");return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;},
+  build(rows){return this.columns.join(",")+"\n"+rows.map(r=>this.columns.map(c=>this.cell(r[c])).join(",")).join("\n")+"\n";},
+  /* list: [{italian,english}] — opts: {book,chapter,chapterTitle,idPrefix,startOrder,sourceFile,notes} */
+  rows(list,opts){
+    let start=Number(opts.startOrder)||1;
+    return list.map((s,i)=>{
+      let order=start+i,group=Math.floor((order-1)/10)+1,item=((order-1)%10)+1;
+      return{
+        ID:`${opts.idPrefix}-${Util.pad(group)}-${Util.pad(item)}`,
+        Book:opts.book,Chapter:opts.chapter,ChapterTitle:opts.chapterTitle||opts.chapter,
+        Group:group,Item:item,
+        Italian:s.italian,English:s.english||"",AudioText:s.italian,
+        TranslationStatus:s.english?"translated":"untranslated",
+        SourceFile:opts.sourceFile||"",Notes:opts.notes||""
+      };
+    });
+  }
+};
+
+const GEN_BOOK="Generated";
+
+const Generator={
+  running:false,cancelled:false,abort:null,rows:[],csv:"",meta:null,
+  key(){return ($("aiKey")?$("aiKey").value:"").trim();},
+  model(){return (($("aiModel")?$("aiModel").value:"").trim())||"gpt-4o-mini";},
+  status(msg,cls=""){let el=$("genStatus");if(el){el.textContent=msg;el.className="status "+cls;}},
+  setBusy(b){
+    ["genBtn","genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=b;});
+    let c=$("genCancel");if(c)c.classList.toggle("hidden",!b);
+    if(!b)this.setOutputButtons(this.rows.length>0);
+  },
+  setOutputButtons(on){["genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=!on;});},
+  setPreview(html){let el=$("genPreview");if(!el)return;el.innerHTML=html;el.classList.toggle("hidden",!html);},
+
+  instructions(o){
+    let tense=o.tense==="mixed"
+      ? "Spread the sentences naturally across a range of tenses and moods that a real speaker would use with this word; do not confine them to one tense."
+      : `Every sentence must place the target expression in the ${o.tense}. Where the target word itself cannot carry that tense (for example a noun or an adverb), the main verb of the sentence must be in the ${o.tense}.`;
+    let register={
+      neutral:"Use neutral, everyday contemporary Italian.",
+      formal:"Use a formal, professional register suitable for work or study contexts.",
+      colloquial:"Use relaxed, colloquial spoken Italian of the kind heard between friends.",
+      literary:"Use a careful written register of the kind found in essays and quality journalism."
+    }[o.register]||"Use neutral, everyday contemporary Italian.";
+    return [
+      "You write Italian shadowing material for an English-speaking adult learner.",
+      "",
+      `Target expression: "${o.word}".`,
+      `Write exactly ${o.batch} sentences.`,
+      "",
+      "Rules:",
+      "1. Every sentence must contain the target expression, correctly inflected for the grammar of that sentence. Pronominal and idiomatic expressions may appear in their split or conjugated forms.",
+      "2. Each sentence must be sayable in one breath: roughly 6 to 14 words.",
+      "3. Vary the grammatical person, the situation and the sentence shape across the set. Do not reuse the same opening twice.",
+      "4. The Italian must be idiomatic and natural. Never produce a translation of an English sentence.",
+      "5. " + tense,
+      "6. " + register,
+      o.english
+        ? "7. Give an idiomatic English translation of each sentence — natural English, not word-for-word glossing."
+        : "7. Leave every English field as an empty string.",
+      "8. No numbering, no bullets, no surrounding quotation marks, no commentary.",
+      o.avoid.length?`9. Do not repeat any of these sentences already produced: ${o.avoid.slice(-40).map(s=>'"'+s+'"').join("; ")}`:"",
+      "",
+      'Reply with JSON only, in this exact shape: {"sentences":[{"italian":"...","english":"..."}]}'
+    ].filter(Boolean).join("\n");
+  },
+
+  async call(body){
+    const controller=new AbortController();
+    this.abort=controller;
+    let timer=setTimeout(()=>controller.abort(),90000),r;
+    try{
+      r=await fetch("https://api.openai.com/v1/chat/completions",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":"Bearer "+this.key()},
+        body:JSON.stringify(body),
+        signal:controller.signal
+      });
+    }catch(e){
+      if(e&&e.name==="AbortError"){if(this.cancelled)return null;throw new Error("OpenAI request timed out");}
+      throw new Error("Could not reach OpenAI: "+(e&&e.message?e.message:e));
+    }finally{clearTimeout(timer);if(this.abort===controller)this.abort=null;}
+    if(r.status===401)throw new Error("OpenAI rejected the API key (401).");
+    if(r.status===429)throw new Error("OpenAI rate limit or quota reached (429).");
+    if(!r.ok){
+      let detail="";try{let j=await r.json();detail=j?.error?.message||"";}catch(e){}
+      let err=new Error("OpenAI error "+r.status+(detail?": "+detail:""));err.status=r.status;err.detail=detail;throw err;
+    }
+    return r.json();
+  },
+
+  /* Some models reject temperature or JSON mode; retry progressively plainer. */
+  async batch(o){
+    let base={model:this.model(),messages:[{role:"user",content:this.instructions(o)}]};
+    let attempts=[
+      {...base,temperature:.85,response_format:{type:"json_object"}},
+      {...base,response_format:{type:"json_object"}},
+      base
+    ];
+    let lastErr=null;
+    for(let body of attempts){
+      try{
+        let j=await this.call(body);
+        if(j===null)return[];
+        let text=j?.choices?.[0]?.message?.content||"";
+        let out=this.parse(text);
+        if(out.length)return out;
+        lastErr=new Error("OpenAI returned no usable sentences.");
+      }catch(e){
+        lastErr=e;
+        if(e.status!==400)throw e;
+      }
+    }
+    throw lastErr||new Error("Generation failed.");
+  },
+
+  parse(text){
+    let obj=null;
+    try{obj=JSON.parse(text);}
+    catch(e){let m=text.match(/\{[\s\S]*\}/);if(m){try{obj=JSON.parse(m[0]);}catch(e2){}}}
+    if(!obj)return[];
+    let list=Array.isArray(obj)?obj:(obj.sentences||obj.items||obj.data||[]);
+    if(!Array.isArray(list))return[];
+    return list.map(x=>{
+      if(typeof x==="string")return{italian:Util.clean(x),english:""};
+      return{italian:Util.clean(x.italian||x.it||x.sentence||""),english:Util.clean(x.english||x.en||x.translation||"")};
+    }).filter(x=>x.italian);
+  },
+
+  async start(){
+    if(this.running)return;
+    let word=($("genWord").value||"").trim();
+    if(!word){this.status("Enter the word or expression you want to shadow.","warntxt");return;}
+    if(!this.key()){this.status("Add your OpenAI API key in Settings first.","warntxt");return;}
+    let total=Number($("genCount").value)||20,
+        tense=$("genTense").value,
+        register=$("genRegister").value,
+        english=$("genEnglish").value!=="no",
+        chapter=($("genChapter").value||"").trim()||word;
+
+    this.running=true;this.cancelled=false;this.rows=[];this.csv="";
+    this.setBusy(true);
+    this.setPreview("");
+
+    let collected=[],seen=new Set(),rounds=0,maxRounds=Math.ceil(total/15)+2;
+    try{
+      while(collected.length<total&&rounds<maxRounds&&!this.cancelled){
+        rounds++;
+        let need=Math.min(15,total-collected.length);
+        this.status(`Generating… ${collected.length} of ${total} sentences so far.`);
+        let got=await this.batch({word,batch:need,tense,register,english,avoid:collected.map(s=>s.italian)});
+        if(this.cancelled)break;
+        for(let s of got){
+          let k=Util.norm(s.italian);
+          if(!k||seen.has(k))continue;
+          seen.add(k);collected.push(s);
+          if(collected.length>=total)break;
+        }
+      }
+    }catch(e){
+      this.running=false;this.setBusy(false);
+      this.status(e&&e.message?e.message:"Generation failed.","dangertxt");
+      return;
+    }
+
+    this.running=false;
+    if(this.cancelled&&!collected.length){this.setBusy(false);this.status("Cancelled.","warntxt");return;}
+    if(!collected.length){this.setBusy(false);this.status("No sentences were produced. Try again, or check the model name in Settings.","dangertxt");return;}
+
+    this.meta={word,chapter,tense,register,total};
+    let startOrder=this.nextOrder(chapter);
+    this.rows=CSVTemplate.rows(collected,{
+      book:GEN_BOOK,chapter,
+      chapterTitle:tense==="mixed"?`${word} — mixed tenses`:`${word} — ${tense}`,
+      idPrefix:"GEN-"+Util.slug(word).toUpperCase(),
+      startOrder,
+      sourceFile:"AI generated in app ("+this.model()+")",
+      notes:"Generated from target expression \""+word+"\"; "+(tense==="mixed"?"mixed tenses":tense)+"; "+register+" register. Not reviewed."
+    });
+    this.csv=CSVTemplate.build(this.rows);
+    this.render(collected.length,startOrder);
+    this.setBusy(false);
+  },
+
+  nextOrder(chapter){
+    let existing=App.sentences.filter(s=>s.book===GEN_BOOK&&String(s.chapter)===String(chapter));
+    if(!existing.length)return 1;
+    return Math.max(...existing.map(s=>Number(s.order)||0))+1;
+  },
+
+  render(count,startOrder){
+    let target=Util.norm(this.meta.word),
+        exact=this.rows.filter(r=>Util.norm(r.Italian).includes(target)).length,
+        groups=Util.uniq(this.rows.map(r=>r.Group)).length,
+        head=`${count} sentences ready for "${this.meta.word}" — ${groups} group(s), numbered from ${startOrder}.`,
+        detail=exact===count
+          ? " Every sentence carries the expression unchanged."
+          : ` ${exact} of ${count} carry it unchanged; the rest should be inflected or split forms, so read through before drilling.`;
+    this.status(head+detail+(this.cancelled?" Stopped early.":""),"oktxt");
+    this.setPreview(`<table><thead><tr><th>ID</th><th>Group</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${
+      this.rows.map(r=>`<tr><td>${Util.esc(r.ID)}</td><td>${r.Group}</td><td>${r.Item}</td><td>${Util.esc(r.Italian)}</td><td>${Util.esc(r.English)}</td></tr>`).join("")
+    }</tbody></table>`);
+  },
+
+  cancel(){
+    this.cancelled=true;
+    if(this.abort){try{this.abort.abort();}catch(e){}this.abort=null;}
+    this.status("Cancelling…","warntxt");
+  },
+
+  /* Round-trip through the template: the CSV built above is parsed back with the
+     same importer used for hand-made corpus files, so nothing is special-cased. */
+  async save(){
+    if(!this.csv||!this.rows.length){this.status("Generate some sentences first.","warntxt");return;}
+    let items=Library.parseCSV(this.csv,{book:GEN_BOOK,chapter:this.meta.chapter});
+    if(!items.length){this.status("The generated set could not be read back from the template.","dangertxt");return;}
+    await Storage.addMany(items);
+    let first=items[0];
+    App.cur={book:first.book,chapter:first.chapter,group:Util.gnum(first),index:0};
+    await Library.refresh();
+    this.status(`Saved ${items.length} sentences to ${GEN_BOOK} → ${this.meta.chapter}. Open Study to shadow them.`,"oktxt");
+    UI.status(`Added ${items.length} generated sentences.`,"oktxt");
+    this.rows=[];this.csv="";
+    this.setPreview("");
+    this.setOutputButtons(false);
+  },
+
+  downloadCsv(){
+    if(!this.csv){this.status("Generate some sentences first.","warntxt");return;}
+    download(`generated-${Util.slug(this.meta.word)}.csv`,this.csv,"text/csv;charset=utf-8");
+  }
+};
+
 function bind(){
   MainPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
-  function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"){if(MainPlayer.playing)MainPlayer.stop("Switched to Settings.");if(VerbPlayer.playing)VerbPlayer.stop("Switched to Settings.");}}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
+  function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);}}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
   $("openImport").onclick=()=>Importer.open();
   $("closeImport").onclick=()=>$("importModal").style.display="none";
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}Importer.preview(Library.parseCSV(await f.text(),{book:$("defaultBook").value,chapter:$("defaultChapter").value}));};
@@ -338,6 +577,15 @@ function bind(){
   $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("apiKey").value="";$("voiceId").value="";UI.status("ElevenLabs settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
+  $("saveAiBtn").onclick=()=>{if($("saveAi").value==="yes"){localStorage.setItem("v08aiKey",$("aiKey").value);localStorage.setItem("v08aiModel",$("aiModel").value);UI.status("AI settings saved on this browser.","oktxt");}else{UI.status("AI settings not saved — change 'Save locally' to save on this browser.","warntxt");}};
+  $("clearAiBtn").onclick=()=>{["v08aiKey","v08aiModel"].forEach(k=>localStorage.removeItem(k));$("aiKey").value="";$("aiModel").value="gpt-4o-mini";UI.status("AI settings cleared.","warntxt");};
+  $("genBtn").onclick=()=>Generator.start();
+  $("genCancel").onclick=()=>Generator.cancel();
+  $("genSave").onclick=()=>Generator.save();
+  $("genDownload").onclick=()=>Generator.downloadCsv();
+  $("genWord").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();Generator.start();}};
+  Generator.setOutputButtons(false);
+  Generator.setPreview("");
   $("verbScope").onchange=()=>Verb.render();
   $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
   $("verbMode").onchange=()=>Verb.restart();
@@ -350,4 +598,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("aiKey").value=localStorage.getItem("v08aiKey")||"";$("aiModel").value=localStorage.getItem("v08aiModel")||"gpt-4o-mini";if(localStorage.getItem("v08aiKey"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();

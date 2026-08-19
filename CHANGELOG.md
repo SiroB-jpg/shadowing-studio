@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.4.0
+
+### Added
+- **Shadow generated sentences without leaving the Generate tab.** The set now appears as cards with the full Study control set: repeat count, speed, pause, playback mode (current sentence / group of ten / whole set, each with a loop variant), Start-Pause, previous and next sentence, and tap-a-sentence-to-jump. No import step, no switching tabs.
+- **✕ Drop** on each card removes a sentence from the set before saving. The CSV template rows renumber immediately, so groups stay tidy.
+- Per-card **Play** for auditioning a single sentence.
+
+### Changed
+- **Save to library no longer clears the set.** Sentences stay on screen and keep playing; the button changes to "Saved ✓" and disables until you drop a sentence or generate again.
+- **A failed generation no longer discards the set you were working on.** The previous sentences remain until new ones actually arrive.
+- The Generate tab has its own repeat, speed and pause controls, independent of Study's. `PlaybackControls` now resolves by playback context, so the three engines never read each other's settings.
+- Only one of the three players can run at a time; leaving the Generate tab stops its playback, as Study and Verb drill already did for each other.
+- When no sentence contains the target expression verbatim, the wording now explains that this is expected for pronominal and idiomatic forms rather than implying a fault.
+- Cache name updated to `v1-4-0`.
+
 ## v1.3.0
 
 ### Changed

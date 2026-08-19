@@ -1,4 +1,14 @@
-# Italian Shadowing Studio v1.3.0
+# Italian Shadowing Studio v1.4.0
+
+## v1.4.0 notes — shadow straight from the Generate tab
+
+Generated sentences are now playable where they appear. The set shows as cards
+with the same controls as Study — repeat, speed, pause, playback mode with loops,
+Start/Pause, sentence navigation and tap-to-jump — so you can shadow a set the
+moment it arrives.
+
+Use **✕ Drop** to remove any sentence you do not want, then **Save to library**
+to file the rest. Saving leaves the set on screen and playing.
 
 ## v1.3.0 notes — private sentence generator
 

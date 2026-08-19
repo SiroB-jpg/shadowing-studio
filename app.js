@@ -11,7 +11,16 @@ const Library={parseCSV(text,defs){text=String(text||"").replace(/^﻿/,"");let 
 
 const UI={fill(sel,vals,val,label=x=>x){sel.innerHTML="";if(!vals.length){sel.innerHTML="<option>—</option>";return;}vals.forEach(v=>{let o=document.createElement("option");o.value=v;o.textContent=label(v);if(String(v)==String(val))o.selected=true;sel.appendChild(o);});},renderAll(){this.renderSelectors();this.renderTree();this.renderViewer();Verb.render();this.stats();},renderSelectors(){let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);if(!books.includes(App.cur.book)&&books[0])App.cur.book=books[0];let ch=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book).map(s=>s.chapter)).sort(Util.nat);if(!ch.includes(App.cur.chapter)&&ch[0])App.cur.chapter=ch[0];let gs=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).map(Util.gnum)).sort((a,b)=>a-b);if(!gs.includes(Number(App.cur.group))&&gs[0])App.cur.group=gs[0];this.fill($("bookSel"),books,App.cur.book);this.fill($("chapterSel"),ch,App.cur.chapter);this.fill($("groupSel"),gs.map(String),String(App.cur.group),g=>"Group "+g);},renderTree(){let t=$("tree");t.innerHTML="";if(!App.sentences.length){t.innerHTML='<p class="small">No sentences imported yet.</p>';return;}Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat).forEach(b=>{let bd=document.createElement("div");bd.className="book "+(App.cur.book==b?"active":"");bd.textContent=b;bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(bd);Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{let cd=document.createElement("div");cd.className="chapter "+(App.cur.book==b&&App.cur.chapter==c?"active":"");cd.textContent=c;cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(cd);if(App.cur.book==b&&App.cur.chapter==c)Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{let gd=document.createElement("div");gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");gd.textContent="Group "+g;gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};t.appendChild(gd);});});});},card(s,active,i){let show=$("showEnglish").value=="show",d=document.createElement("div");d.className="card "+(active?"active":"");const selectCard=()=>{if(i!==undefined)SentenceController.jumpToIndex(i);};d.onclick=selectCard;d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();selectCard();},{passive:false});d.innerHTML=`<span class="pill">${s.order}</span>${s.bookmarked?'<span class="pill">★ bookmarked</span>':""}<div class="italian">${Util.esc(s.italian)}</div>${show&&s.english?`<div class="english">${Util.esc(s.english)}</div>`:""}<div class="cardTools"><button class="mini light" data-a="play">Play</button><button class="mini light" data-a="bm">★ Bookmark</button><button class="mini light" data-a="edit">Edit</button></div>`;d.querySelector('[data-a="play"]').onclick=async e=>{e.stopPropagation();await Speech.speak(s.italian);};d.querySelector('[data-a="bm"]').onclick=async e=>{e.stopPropagation();s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();};d.querySelector('[data-a="edit"]').onclick=e=>{e.stopPropagation();Editor.open(s);};return d;},renderViewer(){let v=$("viewer");v.innerHTML="";if(!App.sentences.length){v.innerHTML='<div class="card"><h3>No sentences yet</h3><p>Import a CSV to begin.</p></div>';return;}v.innerHTML=`<h2>${Util.esc(App.cur.book)} — ${Util.esc(App.cur.chapter)} — Group ${App.cur.group}</h2>`;let g=Library.group(),q=$("search").value.trim().toLowerCase();if($("displayMode").value=="single"){let s=Library.current();if(s)v.appendChild(this.card(s,true));return;}g.filter(s=>!q||(s.italian+" "+s.english).toLowerCase().includes(q)).forEach((s,i)=>v.appendChild(this.card(s,i==App.cur.index,i)));setTimeout(()=>{let a=$("viewer").querySelector(".card.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);},stats(){let books=Util.uniq(App.sentences.map(s=>s.book)).length,ch=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter)).length,gs=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter+"|"+Util.gnum(s))).length;$("stats").innerHTML=`${App.sentences.length} sentences<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;},status(msg,cls=""){$("status").textContent=msg;$("status").className="status "+cls;}};
 
-const PlaybackControls={rate(){let id=App.playbackContext==="verb"&&$("verbRate")?"verbRate":"rate";return Number($(id).value)||1;},pause(){let id=App.playbackContext==="verb"&&$("verbPause")?"verbPause":"pause";return Number($(id).value)||0;},repeat(){let id=App.playbackContext==="verb"&&$("verbRepeat")?"verbRepeat":"repeat";let v=$(id).value;return v==="infinite"?"infinite":Number(v)||1;}};
+const PlaybackControls={
+  _id(base){
+    let c=App.playbackContext,pre=c==="verb"?"verb":(c==="gen"?"gen":"");
+    let id=pre?pre+base[0].toUpperCase()+base.slice(1):base;
+    return $(id)?id:base;
+  },
+  rate(){return Number($(this._id("rate")).value)||1;},
+  pause(){return Number($(this._id("pause")).value)||0;},
+  repeat(){let v=$(this._id("repeat")).value;return v==="infinite"?"infinite":Number(v)||1;}
+};
 
 const Speech={
   loadVoices(){let vs=speechSynthesis.getVoices();App.alice=vs.find(v=>v.name=="Alice")||vs.find(v=>/alice/i.test(v.name))||vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith("it"))||null;},
@@ -94,10 +103,11 @@ const Speech={
   }
 };
 
-class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
+class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
 
 const MainPlayer=new PlaybackEngine("main",null,"Sentence playback");
 const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
+const GenPlayer=new PlaybackEngine("gen",null,"Generated sentences");
 
 const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>this.provider());},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
@@ -287,7 +297,7 @@ const WakeLock={
     try{this.lock=await navigator.wakeLock.request('screen');this.lock.addEventListener('release',()=>{this.lock=null;});}catch(e){}
   },
   release(){if(this.lock){try{this.lock.release();}catch(e){}this.lock=null;}},
-  async reacquire(){if(!this.lock&&(MainPlayer.playing||VerbPlayer.playing))await this.request();}
+  async reacquire(){if(!this.lock&&(MainPlayer.playing||VerbPlayer.playing||GenPlayer.playing))await this.request();}
 };
 
 const MediaSessionMgr={
@@ -334,17 +344,22 @@ const CSVTemplate={
 const GEN_BOOK="Generated";
 
 const Generator={
-  running:false,cancelled:false,abort:null,rows:[],csv:"",meta:null,lastModel:"",
+  running:false,cancelled:false,abort:null,
+  items:[],rows:[],csv:"",meta:null,lastModel:"",index:0,saved:false,
   relayUrl(){return ($("relayUrl")?$("relayUrl").value:"").trim().replace(/\/+$/,"");},
   token(){return ($("relayToken")?$("relayToken").value:"").trim();},
   status(msg,cls=""){let el=$("genStatus");if(el){el.textContent=msg;el.className="status "+cls;}},
   setBusy(b){
     ["genBtn","genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=b;});
     let c=$("genCancel");if(c)c.classList.toggle("hidden",!b);
-    if(!b)this.setOutputButtons(this.rows.length>0);
+    if(!b)this.setOutputButtons(this.items.length>0);
   },
-  setOutputButtons(on){["genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=!on;});},
-  setPreview(html){let el=$("genPreview");if(!el)return;el.innerHTML=html;el.classList.toggle("hidden",!html);},
+  setOutputButtons(on){
+    let save=$("genSave");
+    if(save){save.disabled=!on||this.saved;save.textContent=this.saved?"Saved ✓":"Save to library";}
+    let dl=$("genDownload");if(dl)dl.disabled=!on;
+    let panel=$("genPlayback");if(panel)panel.classList.toggle("hidden",!on);
+  },
 
   /* The relay builds the prompt and holds the Google key; the app only asks. */
   async batch(o){
@@ -387,9 +402,11 @@ const Generator={
         english=$("genEnglish").value!=="no",
         chapter=($("genChapter").value||"").trim()||word;
 
-    this.running=true;this.cancelled=false;this.rows=[];this.csv="";this.lastModel="";
+    /* Keep any existing set on screen until a new one actually arrives, so a
+       failed generation does not wipe sentences you were part way through. */
+    GenPlayer.stop("Generating a new set.");
+    this.running=true;this.cancelled=false;
     this.setBusy(true);
-    this.setPreview("");
 
     let collected=[],seen=new Set(),rounds=0,maxRounds=Math.ceil(total/15)+2;
     try{
@@ -418,18 +435,29 @@ const Generator={
     if(!collected.length){this.setBusy(false);this.status("No sentences came back. Try again in a moment.","dangertxt");return;}
 
     this.meta={word,chapter,tense,register,total};
-    let startOrder=this.nextOrder(chapter);
-    this.rows=CSVTemplate.rows(collected,{
-      book:GEN_BOOK,chapter,
-      chapterTitle:tense==="mixed"?`${word} — mixed tenses`:`${word} — ${tense}`,
-      idPrefix:"GEN-"+Util.slug(word).toUpperCase(),
+    this.items=collected;
+    this.index=0;
+    this.saved=false;
+    this.rebuild();
+    this.report();
+    this.setBusy(false);
+  },
+
+  /* Rebuild the CSV template rows from the current sentence list. Called after
+     generating and after dropping a sentence, so numbering always stays tidy. */
+  rebuild(){
+    if(!this.meta||!this.items.length){this.rows=[];this.csv="";this.renderCards();return;}
+    let startOrder=this.nextOrder(this.meta.chapter);
+    this.rows=CSVTemplate.rows(this.items,{
+      book:GEN_BOOK,chapter:this.meta.chapter,
+      chapterTitle:this.meta.tense==="mixed"?`${this.meta.word} — mixed tenses`:`${this.meta.word} — ${this.meta.tense}`,
+      idPrefix:"GEN-"+Util.slug(this.meta.word).toUpperCase(),
       startOrder,
       sourceFile:"Generated in app"+(this.lastModel?" ("+this.lastModel+")":""),
-      notes:"Generated from target expression \""+word+"\"; "+(tense==="mixed"?"mixed tenses":tense)+"; "+register+" register. Not reviewed."
+      notes:"Generated from target expression \""+this.meta.word+"\"; "+(this.meta.tense==="mixed"?"mixed tenses":this.meta.tense)+"; "+this.meta.register+" register. Not reviewed."
     });
     this.csv=CSVTemplate.build(this.rows);
-    this.render(collected.length,startOrder);
-    this.setBusy(false);
+    this.renderCards();
   },
 
   nextOrder(chapter){
@@ -438,18 +466,53 @@ const Generator={
     return Math.max(...existing.map(s=>Number(s.order)||0))+1;
   },
 
-  render(count,startOrder){
-    let target=Util.norm(this.meta.word),
-        exact=this.rows.filter(r=>Util.norm(r.Italian).includes(target)).length,
-        groups=Util.uniq(this.rows.map(r=>r.Group)).length,
-        head=`${count} sentences ready for "${this.meta.word}" — ${groups} group(s), numbered from ${startOrder}.`,
+  report(){
+    let count=this.items.length,
+        target=Util.norm(this.meta.word),
+        exact=this.items.filter(s=>Util.norm(s.italian).includes(target)).length,
+        head=`${count} sentence${count===1?"":"s"} ready for "${this.meta.word}".`,
         detail=exact===count
-          ? " Every sentence carries the expression unchanged."
-          : ` ${exact} of ${count} carry it unchanged; the rest should be inflected or split forms, so read through before drilling.`;
-    this.status(head+detail+(this.cancelled?" Stopped early.":""),"oktxt");
-    this.setPreview(`<table><thead><tr><th>ID</th><th>Group</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${
-      this.rows.map(r=>`<tr><td>${Util.esc(r.ID)}</td><td>${r.Group}</td><td>${r.Item}</td><td>${Util.esc(r.Italian)}</td><td>${Util.esc(r.English)}</td></tr>`).join("")
-    }</tbody></table>`);
+          ? " Every one carries the expression unchanged."
+          : exact===0
+            ? " None carry it unchanged — expected for pronominal and idiomatic expressions, which split or conjugate."
+            : ` ${exact} of ${count} carry it unchanged; the rest should be inflected or split forms.`,
+        tail=this.saved?" Saved to your library." : " Shadow them below, then save the ones worth keeping.";
+    this.status(head+detail+tail+(this.cancelled?" Stopped early.":""),"oktxt");
+    UI.status("Ready.");
+  },
+
+  renderCards(){
+    let host=$("genCards");
+    if(!host)return;
+    if(!this.items.length){host.innerHTML="";this.setOutputButtons(false);return;}
+    let showEnglish=$("genEnglish")?$("genEnglish").value!=="no":true;
+    host.innerHTML="";
+    this.items.forEach((s,i)=>{
+      let d=document.createElement("div");
+      d.className="card "+(i===this.index?"active":"");
+      const select=()=>GenController.jump(i);
+      d.onclick=select;
+      d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();select();},{passive:false});
+      d.innerHTML=`<span class="pill">${i+1}</span><div class="italian">${Util.esc(s.italian)}</div>`+
+        (showEnglish&&s.english?`<div class="english">${Util.esc(s.english)}</div>`:"")+
+        `<div class="cardTools"><button class="mini light" data-a="play">Play</button><button class="mini light" data-a="drop">✕ Drop</button></div>`;
+      d.querySelector('[data-a="play"]').onclick=async e=>{e.stopPropagation();this.index=i;this.renderCards();await Speech.speak(s.italian);};
+      d.querySelector('[data-a="drop"]').onclick=e=>{e.stopPropagation();this.drop(i);};
+      host.appendChild(d);
+    });
+    setTimeout(()=>{let a=host.querySelector(".card.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
+    this.setOutputButtons(true);
+  },
+
+  drop(i){
+    if(i<0||i>=this.items.length)return;
+    this.items.splice(i,1);
+    if(this.index>=this.items.length)this.index=Math.max(0,this.items.length-1);
+    this.saved=false;
+    this.rebuild();
+    if(!this.items.length){GenPlayer.stop("Set is empty.");this.status("All sentences dropped. Generate another set.","warntxt");return;}
+    this.report();
+    GenController.restart();
   },
 
   cancel(){
@@ -459,20 +522,19 @@ const Generator={
   },
 
   /* Round-trip through the template: the CSV built above is parsed back with the
-     same importer used for hand-made corpus files, so nothing is special-cased. */
+     same importer used for hand-made corpus files, so nothing is special-cased.
+     The set stays on screen and keeps playing after saving. */
   async save(){
     if(!this.csv||!this.rows.length){this.status("Generate some sentences first.","warntxt");return;}
+    if(this.saved){this.status("This set is already saved.","warntxt");return;}
     let items=Library.parseCSV(this.csv,{book:GEN_BOOK,chapter:this.meta.chapter});
     if(!items.length){this.status("The generated set could not be read back from the template.","dangertxt");return;}
     await Storage.addMany(items);
-    let first=items[0];
-    App.cur={book:first.book,chapter:first.chapter,group:Util.gnum(first),index:0};
     await Library.refresh();
-    this.status(`Saved ${items.length} sentences to ${GEN_BOOK} → ${this.meta.chapter}. Open Study to shadow them.`,"oktxt");
+    this.saved=true;
+    this.setOutputButtons(true);
+    this.status(`Saved ${items.length} sentences to ${GEN_BOOK} → ${this.meta.chapter}. They stay here for shadowing, and are in your library for next time.`,"oktxt");
     UI.status(`Added ${items.length} generated sentences.`,"oktxt");
-    this.rows=[];this.csv="";
-    this.setPreview("");
-    this.setOutputButtons(false);
   },
 
   downloadCsv(){
@@ -481,9 +543,49 @@ const Generator={
   }
 };
 
+/* Playback over the freshly generated set, mirroring the Study tab. */
+const GenController={
+  items(){return Generator.items||[];},
+  scope(mode){
+    let all=this.items();
+    if(mode.indexOf("group")>=0){let g=Math.floor(Generator.index/10);return{list:all.slice(g*10,g*10+10),offset:g*10};}
+    return{list:all,offset:0};
+  },
+  provider(){
+    let mode=$("genPlayMode")?$("genPlayMode").value:"set";
+    if(mode==="current"||mode==="loop-current"){
+      let loop=mode==="loop-current",done=false;
+      return{next:()=>{
+        let s=this.items()[Generator.index];
+        if(!s)return null;
+        if(done&&!loop)return null;
+        done=true;
+        return{text:s.italian,repeat:PlaybackControls.repeat(),
+          label:(loop?"Looping sentence ":"Sentence ")+(Generator.index+1),
+          onBefore:()=>Generator.renderCards()};
+      }};
+    }
+    let loop=mode.indexOf("loop-")===0,{list,offset}=this.scope(mode),i=Math.max(0,Generator.index-offset);
+    if(i>=list.length)i=0;
+    return{next:()=>{
+      if(!list.length)return null;
+      if(i>=list.length){if(!loop)return null;i=0;}
+      let s=list[i],idx=offset+i;i++;
+      return{text:s.italian,repeat:PlaybackControls.repeat(),
+        label:"Sentence "+(idx+1)+" of "+this.items().length,
+        onBefore:()=>{Generator.index=idx;Generator.renderCards();}};
+    }};
+  },
+  toggle(){if(!this.items().length){Generator.status("Generate a set first.","warntxt");return;}GenPlayer.toggle(()=>this.provider());},
+  restart(){if(GenPlayer.playing)GenPlayer.restart(()=>this.provider());},
+  jump(i){Generator.index=i;Generator.renderCards();this.restart();},
+  next(){let n=this.items().length;if(n)Generator.index=(Generator.index+1)%n;Generator.renderCards();this.restart();},
+  prev(){let n=this.items().length;if(n)Generator.index=(Generator.index-1+n)%n;Generator.renderCards();this.restart();}
+};
+
 function bind(){
   MainPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
-  function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);}}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
+  function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
   $("openImport").onclick=()=>Importer.open();
   $("closeImport").onclick=()=>$("importModal").style.display="none";
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}Importer.preview(Library.parseCSV(await f.text(),{book:$("defaultBook").value,chapter:$("defaultChapter").value}));};
@@ -520,8 +622,15 @@ function bind(){
   $("genSave").onclick=()=>Generator.save();
   $("genDownload").onclick=()=>Generator.downloadCsv();
   $("genWord").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();Generator.start();}};
+  GenPlayer.button=$("genToggle");
+  $("genToggle").onclick=()=>GenController.toggle();
+  $("genPrev").onclick=()=>GenController.prev();
+  $("genNext").onclick=()=>GenController.next();
+  $("genStopAudio").onclick=()=>GenPlayer.stop("Audio reset.");
+  $("genPlayMode").onchange=()=>GenController.restart();
+  ["genRepeat","genRate","genPause"].forEach(id=>{if($(id))$(id).onchange=()=>GenController.restart();});
+  $("genEnglish").onchange=()=>Generator.renderCards();
   Generator.setOutputButtons(false);
-  Generator.setPreview("");
   $("verbScope").onchange=()=>Verb.render();
   $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
   $("verbMode").onchange=()=>Verb.restart();
@@ -534,4 +643,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();GenPlayer.setButton();})();

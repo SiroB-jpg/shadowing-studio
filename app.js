@@ -7,9 +7,239 @@ const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",
 
 const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});}};
 
-const Library={parseCSV(text,defs){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);if(!rows.length)return[];let heads=rows[0].map(x=>x.trim().toLowerCase()),has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),data=has?rows.slice(1):rows,idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},bi=idx(["book"]),ci=idx(["chapter","lesson","unit"]),oi=idx(["order","number","no","#"]),gi=idx(["group"]),ti=idx(["item"]),ii=idx(["italian","sentence","text","it","italiano"]),ei=idx(["english","translation","meaning","en"]);const ord=(r,i)=>{if(has&&gi>=0&&ti>=0){let g=Number(Util.clean(r[gi])),it=Number(Util.clean(r[ti]));if(g>0&&it>0)return(g-1)*10+it;}return Number(Util.clean(has&&oi>=0?r[oi]:i+1))||i+1;};return data.map((r,i)=>{let italian="",english="";if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}else if(r.length>=5){italian=r[3];english=r[4];}else if(r.length>=2){italian=r[0];english=r[1];}else italian=r[0];return{book:Util.clean(has&&bi>=0?r[bi]:defs.book),chapter:Util.clean(has&&ci>=0?r[ci]:defs.chapter),order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),bookmarked:false,difficult:false,notes:""};}).filter(x=>x.italian);},chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.renderAll();}};
 
-const UI={fill(sel,vals,val,label=x=>x){sel.innerHTML="";if(!vals.length){sel.innerHTML="<option>—</option>";return;}vals.forEach(v=>{let o=document.createElement("option");o.value=v;o.textContent=label(v);if(String(v)==String(val))o.selected=true;sel.appendChild(o);});},renderAll(){this.renderSelectors();this.renderTree();this.renderViewer();Verb.render();this.stats();},renderSelectors(){let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);if(!books.includes(App.cur.book)&&books[0])App.cur.book=books[0];let ch=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book).map(s=>s.chapter)).sort(Util.nat);if(!ch.includes(App.cur.chapter)&&ch[0])App.cur.chapter=ch[0];let gs=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).map(Util.gnum)).sort((a,b)=>a-b);if(!gs.includes(Number(App.cur.group))&&gs[0])App.cur.group=gs[0];this.fill($("bookSel"),books,App.cur.book);this.fill($("chapterSel"),ch,App.cur.chapter);this.fill($("groupSel"),gs.map(String),String(App.cur.group),g=>"Group "+g);},renderTree(){let t=$("tree");t.innerHTML="";if(!App.sentences.length){t.innerHTML='<p class="small">No sentences imported yet.</p>';return;}Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat).forEach(b=>{let bd=document.createElement("div");bd.className="book "+(App.cur.book==b?"active":"");bd.textContent=b;bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(bd);Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{let cd=document.createElement("div");cd.className="chapter "+(App.cur.book==b&&App.cur.chapter==c?"active":"");cd.textContent=c;cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};t.appendChild(cd);if(App.cur.book==b&&App.cur.chapter==c)Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{let gd=document.createElement("div");gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");gd.textContent="Group "+g;gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};t.appendChild(gd);});});});},card(s,active,i){let show=$("showEnglish").value=="show",d=document.createElement("div");d.className="card "+(active?"active":"");const selectCard=()=>{if(i!==undefined)SentenceController.jumpToIndex(i);};d.onclick=selectCard;d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();selectCard();},{passive:false});d.innerHTML=`<span class="pill">${s.order}</span>${s.bookmarked?'<span class="pill">★ bookmarked</span>':""}<div class="italian">${Util.esc(s.italian)}</div>${show&&s.english?`<div class="english">${Util.esc(s.english)}</div>`:""}<div class="cardTools"><button class="mini light" data-a="play">Play</button><button class="mini light" data-a="bm">★ Bookmark</button><button class="mini light" data-a="edit">Edit</button></div>`;d.querySelector('[data-a="play"]').onclick=async e=>{e.stopPropagation();await Speech.speak(s.italian);};d.querySelector('[data-a="bm"]').onclick=async e=>{e.stopPropagation();s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();};d.querySelector('[data-a="edit"]').onclick=e=>{e.stopPropagation();Editor.open(s);};return d;},renderViewer(){let v=$("viewer");v.innerHTML="";if(!App.sentences.length){v.innerHTML='<div class="card"><h3>No sentences yet</h3><p>Import a CSV to begin.</p></div>';return;}v.innerHTML=`<h2>${Util.esc(App.cur.book)} — ${Util.esc(App.cur.chapter)} — Group ${App.cur.group}</h2>`;let g=Library.group(),q=$("search").value.trim().toLowerCase();if($("displayMode").value=="single"){let s=Library.current();if(s)v.appendChild(this.card(s,true));return;}g.filter(s=>!q||(s.italian+" "+s.english).toLowerCase().includes(q)).forEach((s,i)=>v.appendChild(this.card(s,i==App.cur.index,i)));setTimeout(()=>{let a=$("viewer").querySelector(".card.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);},stats(){let books=Util.uniq(App.sentences.map(s=>s.book)).length,ch=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter)).length,gs=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter+"|"+Util.gnum(s))).length;$("stats").innerHTML=`${App.sentences.length} sentences<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;},status(msg,cls=""){$("status").textContent=msg;$("status").className="status "+cls;}};
+/* Book and chapter titles. Chapter titles come from the corpus CSV's
+   ChapterTitle column, which the importer used to discard. Book titles have no
+   column anywhere, so they are named by hand under Manage library. Both are
+   held here rather than on every sentence, since they describe a level of the
+   hierarchy, not a row. */
+const Titles={
+  books:{},chapters:{},
+  load(){
+    try{this.books=JSON.parse(localStorage.getItem("v08bookTitles")||"{}");}catch(e){this.books={};}
+    try{this.chapters=JSON.parse(localStorage.getItem("v08chapterTitles")||"{}");}catch(e){this.chapters={};}
+  },
+  save(){
+    localStorage.setItem("v08bookTitles",JSON.stringify(this.books));
+    localStorage.setItem("v08chapterTitles",JSON.stringify(this.chapters));
+  },
+  key(book,chapter){return String(book)+"|"+String(chapter);},
+  book(b){return (this.books[String(b)]||"").trim();},
+  chapter(b,c){return (this.chapters[this.key(b,c)]||"").trim();},
+  setBook(b,t){let v=String(t||"").trim();if(v)this.books[String(b)]=v;else delete this.books[String(b)];this.save();},
+  setChapter(b,c,t){let v=String(t||"").trim();if(v)this.chapters[this.key(b,c)]=v;else delete this.chapters[this.key(b,c)];this.save();},
+  /* Pull BookTitle / ChapterTitle out of raw CSV text without touching the
+     sentence records. Returns how many chapter titles were learned. */
+  harvest(text,defs){
+    let rows=Library.rows(text);
+    if(rows.length<2)return 0;
+    let heads=rows[0].map(x=>x.trim().toLowerCase()),
+        idx=n=>heads.indexOf(n),
+        bi=idx("book"),ci=idx("chapter"),bt=idx("booktitle"),ct=idx("chaptertitle");
+    if(ct<0&&bt<0)return 0;
+    let learned=0;
+    rows.slice(1).forEach(r=>{
+      let b=Util.clean(bi>=0?r[bi]:(defs&&defs.book)||""),c=Util.clean(ci>=0?r[ci]:(defs&&defs.chapter)||"");
+      if(bt>=0&&b){let t=Util.clean(r[bt]);if(t&&this.books[b]!==t){this.books[b]=t;learned++;}}
+      if(ct>=0&&b&&c){let t=Util.clean(r[ct]);if(t&&this.chapters[this.key(b,c)]!==t){this.chapters[this.key(b,c)]=t;learned++;}}
+    });
+    if(learned)this.save();
+    return learned;
+  },
+  /* "Book 1 · Present Subjunctive › Chapter 4 · Opinions … › Group 16" */
+  crumb(book,chapter,group){
+    let parts=[];
+    if(book!==""&&book!=null){
+      let bt=this.book(book);
+      parts.push({label:/^\d+$/.test(String(book))?"Book "+book:String(book),title:bt});
+    }
+    if(chapter!==""&&chapter!=null){
+      let ct=this.chapter(book,chapter);
+      parts.push({label:/^\d+$/.test(String(chapter))?"Chapter "+chapter:String(chapter),title:ct});
+    }
+    if(group!=null)parts.push({label:"Group "+group,title:""});
+    return parts;
+  }
+};
+
+const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){let rows=this.rows(text);if(!rows.length)return[];let heads=rows[0].map(x=>x.trim().toLowerCase()),has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),data=has?rows.slice(1):rows,idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},bi=idx(["book"]),ci=idx(["chapter","lesson","unit"]),oi=idx(["order","number","no","#"]),gi=idx(["group"]),ti=idx(["item"]),ii=idx(["italian","sentence","text","it","italiano"]),ei=idx(["english","translation","meaning","en"]);const ord=(r,i)=>{if(has&&gi>=0&&ti>=0){let g=Number(Util.clean(r[gi])),it=Number(Util.clean(r[ti]));if(g>0&&it>0)return(g-1)*10+it;}return Number(Util.clean(has&&oi>=0?r[oi]:i+1))||i+1;};return data.map((r,i)=>{let italian="",english="";if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}else if(r.length>=5){italian=r[3];english=r[4];}else if(r.length>=2){italian=r[0];english=r[1];}else italian=r[0];return{book:Util.clean(has&&bi>=0?r[bi]:defs.book),chapter:Util.clean(has&&ci>=0?r[ci]:defs.chapter),order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),bookmarked:false,difficult:false,notes:""};}).filter(x=>x.italian);},chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
+
+/* One sentence row, shared by Study and Generate. */
+/* One sentence row, shared by Study and Generate.
+   Icons are inline SVG rather than a web font: the app is meant to work
+   offline, and an icon-only button with no glyph is an unusable blank. */
+const SVG={
+  play:'<path d="M8 5.2v13.6L19 12z"/>|solid',
+  bm:'<path d="M6.5 4h11v16.2l-5.5-3.9-5.5 3.9z"/>',
+  bmOn:'<path d="M6.5 4h11v16.2l-5.5-3.9-5.5 3.9z"/>|solid',
+  edit:'<path d="M4.2 19.8h4L18.6 9.4a2 2 0 000-2.8l-1.2-1.2a2 2 0 00-2.8 0L4.2 15.8z"/><path d="M13.6 6.6l3.8 3.8"/>',
+  drop:'<path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>',
+  volume:'<path d="M5 9.5h3l4-3.2v11.4l-4-3.2H5z"/><path d="M15.8 9.6a3.4 3.4 0 010 4.8"/>'
+};
+function icon(name,size){
+  let raw=SVG[name]||"",solid=raw.endsWith("|solid"),d=solid?raw.slice(0,-6):raw;
+  return `<svg class="ic" viewBox="0 0 24 24" width="${size||18}" height="${size||18}" fill="${solid?"currentColor":"none"}" `+
+         `stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+}
+
+const SentenceRow={
+  LABEL:{play:"Play this sentence",bm:"Bookmark",edit:"Edit",drop:"Remove from the set"},
+  /* o = {number, italian, english, showEnglish, active, playing, bookmarked,
+          context, actions:[...], on:{select,play,bm,edit,drop}} */
+  build(o){
+    let d=document.createElement("div");
+    d.className="srow"+(o.active?" active":"")+(o.playing?" playing":"");
+    if(o.active)d.setAttribute("aria-current","true");
+    let acts=(o.actions||[]).map(k=>{
+      let on=k==="bm"&&o.bookmarked;
+      return `<button class="rowbtn${on?" on":""}" data-a="${k}" title="${SentenceRow.LABEL[k]}" aria-label="${SentenceRow.LABEL[k]}"`+
+             (k==="bm"?` aria-pressed="${on?"true":"false"}"`:"")+`>`+
+             icon(on?"bmOn":k)+`</button>`;
+    }).join("");
+    d.innerHTML=
+      `<span class="srow-num">${Util.esc(String(o.number))}</span>`+
+      `<div class="srow-text">`+
+        (o.context?`<div class="srow-context">${Util.esc(o.context)}</div>`:"")+
+        `<div class="italian">${Util.esc(o.italian)}</div>`+
+        (o.showEnglish&&o.english?`<div class="english">${Util.esc(o.english)}</div>`:"")+
+      `</div>`+
+      `<div class="srow-actions">${acts}</div>`+
+      (o.playing?`<span class="srow-playing" aria-label="Playing">${icon("volume",14)}</span>`:"");
+    const select=()=>{if(o.on&&o.on.select)o.on.select();};
+    d.onclick=select;
+    d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();select();},{passive:false});
+    (o.actions||[]).forEach(k=>{
+      let btn=d.querySelector(`[data-a="${k}"]`);
+      if(btn&&o.on&&o.on[k])btn.onclick=e=>{e.stopPropagation();o.on[k]();};
+    });
+    return d;
+  }
+};
+
+const UI={
+  fill(sel,vals,val,label=x=>x){sel.innerHTML="";if(!vals.length){sel.innerHTML="<option>—</option>";return;}vals.forEach(v=>{let o=document.createElement("option");o.value=v;o.textContent=label(v);if(String(v)==String(val))o.selected=true;sel.appendChild(o);});},
+  renderAll(){this.renderCrumb();this.renderTree();this.renderViewer();Verb.render();this.stats();},
+
+  /* Book 1 · Present Subjunctive › Chapter 4 · Opinions… › Group 16 */
+  renderCrumb(){
+    let el=$("crumb");if(!el)return;
+    if(!App.sentences.length){el.innerHTML='<span class="crumb-empty">Nothing imported yet</span>';return;}
+    let parts=Titles.crumb(App.cur.book,App.cur.chapter,App.cur.group);
+    el.innerHTML=parts.map((p,i)=>
+      `<span class="crumb-part${i===parts.length-1?" here":""}">`+
+        `<span class="crumb-label">${Util.esc(p.label)}</span>`+
+        (p.title?`<span class="crumb-title">${Util.esc(p.title)}</span>`:"")+
+      `</span>`).join('<span class="crumb-sep" aria-hidden="true">›</span>');
+  },
+
+  renderTree(){
+    let t=$("tree");t.innerHTML="";
+    if(!App.sentences.length){t.innerHTML='<p class="small">No sentences imported yet.</p>';return;}
+    Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat).forEach(b=>{
+      let bd=document.createElement("div");
+      bd.className="book "+(App.cur.book==b?"active":"");
+      let bt=Titles.book(b);
+      bd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(b))?"Book "+b:String(b))}</span>`+(bt?`<span class="tree-title">${Util.esc(bt)}</span>`:"");
+      bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.normalise();UI.renderAll();};
+      t.appendChild(bd);
+      Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{
+        let cd=document.createElement("div");
+        cd.className="chapter "+(App.cur.book==b&&App.cur.chapter==c?"active":"");
+        let ct=Titles.chapter(b,c);
+        cd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(c))?"Chapter "+c:String(c))}</span>`+(ct?`<span class="tree-title">${Util.esc(ct)}</span>`:"");
+        cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};
+        t.appendChild(cd);
+        if(App.cur.book==b&&App.cur.chapter==c)
+          Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{
+            let gd=document.createElement("div");
+            gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");
+            gd.textContent="Group "+g;
+            gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};
+            t.appendChild(gd);
+          });
+      });
+    });
+  },
+
+  /* Keep App.cur pointing at something that exists. */
+  normalise(){
+    let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);
+    if(!books.includes(App.cur.book)&&books[0])App.cur.book=books[0];
+    let ch=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book).map(s=>s.chapter)).sort(Util.nat);
+    if(!ch.includes(App.cur.chapter)&&ch[0])App.cur.chapter=ch[0];
+    let gs=Util.uniq(App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).map(Util.gnum)).sort((a,b)=>a-b);
+    if(!gs.includes(Number(App.cur.group))&&gs[0])App.cur.group=gs[0];
+  },
+
+  rowFor(s,i,list){
+    return SentenceRow.build({
+      number:s.order,italian:s.italian,english:s.english,
+      showEnglish:$("showEnglish").value=="show",
+      active:i===App.cur.index,
+      playing:MainPlayer.playing&&i===App.cur.index,
+      bookmarked:!!s.bookmarked,
+      actions:["play","bm","edit"],
+      on:{
+        select:()=>SentenceController.jumpToIndex(i),
+        play:async()=>{await Speech.speak(s.italian);},
+        bm:async()=>{s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();},
+        edit:()=>Editor.open(s)
+      }
+    });
+  },
+
+  /* A search term looks across the whole library; otherwise the current group. */
+  searchResults(q){
+    let n=Util.norm(q);
+    return App.sentences.filter(s=>Util.norm(s.italian+" "+s.english).includes(n)).slice(0,60);
+  },
+
+  renderViewer(){
+    let v=$("viewer");v.innerHTML="";
+    if(!App.sentences.length){
+      v.innerHTML='<div class="empty"><h3>No sentences yet</h3><p>Open <strong>Manage library</strong> to import a CSV, or use the <strong>Generate</strong> tab.</p></div>';
+      return;
+    }
+    let q=($("search")?$("search").value:"").trim();
+    if(q){
+      let hits=this.searchResults(q);
+      if(!hits.length){v.innerHTML=`<div class="empty"><h3>Nothing found</h3><p>No sentence contains “${Util.esc(q)}”.</p></div>`;return;}
+      let head=document.createElement("div");
+      head.className="listnote";
+      head.textContent=`${hits.length} match${hits.length===1?"":"es"} across the library${hits.length===60?" (showing the first 60)":""}. Tap one to open its group.`;
+      v.appendChild(head);
+      hits.forEach(s=>v.appendChild(SentenceRow.build({
+        number:s.order,italian:s.italian,english:s.english,
+        showEnglish:$("showEnglish").value=="show",
+        bookmarked:!!s.bookmarked,
+        context:Titles.crumb(s.book,s.chapter,Util.gnum(s)).map(p=>p.label).join(" · "),
+        actions:["play","bm"],
+        on:{
+          select:()=>{$("search").value="";App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:Math.max(0,Library.groupOf(s).findIndex(x=>x.id===s.id))};UI.renderAll();},
+          play:async()=>{await Speech.speak(s.italian);},
+          bm:async()=>{s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();}
+        }
+      })));
+      return;
+    }
+    let g=Library.group();
+    if($("displayMode").value=="single"){
+      let s=Library.current();
+      if(s)v.appendChild(this.rowFor(s,App.cur.index,g));
+      return;
+    }
+    g.forEach((s,i)=>v.appendChild(this.rowFor(s,i,g)));
+    setTimeout(()=>{let a=$("viewer").querySelector(".srow.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
+  },
+
+  stats(){
+    let books=Util.uniq(App.sentences.map(s=>s.book)).length,
+        ch=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter)).length,
+        gs=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter+"|"+Util.gnum(s))).length;
+    $("stats").innerHTML=`${App.sentences.length} sentences<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;
+  },
+  status(msg,cls=""){$("status").textContent=msg;$("status").className="status "+cls;}
+};
 
 const PlaybackControls={
   _id(base){
@@ -217,7 +447,64 @@ const Verb={
 
 const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.italian||"";$("editEnglish").value=s.english||"";$("editModal").style.display="flex";setTimeout(()=>$("editItalian").focus(),50);},close(){$("editModal").style.display="none";this.sentence=null;},async save(){let s=this.sentence;if(!s)return;let it=$("editItalian").value.trim(),en=$("editEnglish").value.trim();if(!it){alert("Italian sentence cannot be empty.");return;}s.italian=it;s.english=en;await Storage.put(SS,s);this.close();await Library.refresh();UI.status("Sentence updated.","oktxt");}};
 
-const Importer={open(){App.analysed=[];$("importSummary").textContent="No CSV analysed yet.";$("importPreview").innerHTML="";$("importModal").style.display="flex";},preview(items){App.analysed=items;$("importSummary").textContent=items.length?`Detected ${items.length} sentences.`:"No sentences detected.";$("importSummary").className="status "+(items.length?"oktxt":"dangertxt");let sm=items.slice(0,12);$("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";},async import(){if(!App.analysed.length){alert("Analyse first.");return;}await Storage.addMany(App.analysed);let s=App.analysed[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};App.analysed=[];$("importModal").style.display="none";await Library.refresh();UI.status("Imported successfully.","oktxt");}};
+const Importer={
+  text:"",
+  open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importPreview").innerHTML="";$("importModal").style.display="flex";},
+  defs(){return{book:$("defaultBook").value,chapter:$("defaultChapter").value};},
+  async fileText(){let f=$("csvFile").files[0];return f?await f.text():"";},
+  preview(items,text){
+    App.analysed=items;this.text=text||"";
+    $("importSummary").textContent=items.length?`Detected ${items.length} sentences.`:"No sentences detected.";
+    $("importSummary").className="status "+(items.length?"oktxt":"dangertxt");
+    let sm=items.slice(0,12);
+    $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
+  },
+  async import(){
+    if(!App.analysed.length){alert("Analyse first.");return;}
+    let learned=this.text?Titles.harvest(this.text,this.defs()):0;
+    await Storage.addMany(App.analysed);
+    let s=App.analysed[0];
+    App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};
+    App.analysed=[];this.text="";
+    $("importModal").style.display="none";
+    await Library.refresh();
+    UI.status("Imported successfully."+(learned?` ${learned} book and chapter name(s) picked up.`:""),"oktxt");
+  },
+  /* Read only BookTitle / ChapterTitle and apply them to sentences already held. */
+  async titlesOnly(){
+    let text=this.text||await this.fileText()||$("pasteCsv").value;
+    if(!String(text).trim()){UI.status("Choose a CSV file or paste one first.","warntxt");
+      $("importSummary").textContent="Choose a CSV file or paste one first.";$("importSummary").className="status warntxt";return;}
+    let learned=Titles.harvest(text,this.defs());
+    $("importSummary").textContent=learned
+      ? `Picked up ${learned} book and chapter name(s). Nothing was added or duplicated.`
+      : "No BookTitle or ChapterTitle columns found in that file.";
+    $("importSummary").className="status "+(learned?"oktxt":"warntxt");
+    if(learned){$("importModal").style.display="none";UI.renderAll();UI.status(`Updated ${learned} name(s).`,"oktxt");}
+  }
+};
+
+/* Manage library — import, export, naming and the destructive action. */
+const Manage={
+  render(){
+    let host=$("bookTitles");if(!host)return;
+    let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);
+    if(!books.length){host.innerHTML='<p class="small">No books yet.</p>';return;}
+    host.innerHTML="";
+    books.forEach(b=>{
+      let chapters=Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).length;
+      let named=Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).filter(c=>Titles.chapter(b,c)).length;
+      let wrap=document.createElement("div");
+      wrap.className="bookrow";
+      wrap.innerHTML=`<label>${Util.esc(/^\d+$/.test(String(b))?"Book "+b:String(b))}</label>`+
+        `<input type="text" value="${Util.esc(Titles.book(b))}" placeholder="e.g. Present Subjunctive" data-book="${Util.esc(b)}">`+
+        `<span class="small">${named} of ${chapters} chapter name(s) known</span>`;
+      let input=wrap.querySelector("input");
+      input.onchange=()=>{Titles.setBook(b,input.value);UI.renderAll();};
+      host.appendChild(wrap);
+    });
+  }
+};
 
 const Nav={nextGroup(render=true){let gs=Util.uniq(Library.chapter().map(Util.gnum)).sort((a,b)=>a-b),i=gs.indexOf(Number(App.cur.group));if(i>=0&&i<gs.length-1){App.cur.group=gs[i+1];App.cur.index=0;if(render)UI.renderAll();if(MainPlayer.playing)SentenceController.restart();return true;}return false;},prevGroup(last=false){let gs=Util.uniq(Library.chapter().map(Util.gnum)).sort((a,b)=>a-b),i=gs.indexOf(Number(App.cur.group));if(i>0){App.cur.group=gs[i-1];App.cur.index=last?Library.group().length-1:0;UI.renderAll();if(MainPlayer.playing)SentenceController.restart();return true;}return false;}};
 
@@ -487,20 +774,18 @@ const Generator={
     if(!this.items.length){host.innerHTML="";this.setOutputButtons(false);return;}
     let showEnglish=$("genEnglish")?$("genEnglish").value!=="no":true;
     host.innerHTML="";
-    this.items.forEach((s,i)=>{
-      let d=document.createElement("div");
-      d.className="card "+(i===this.index?"active":"");
-      const select=()=>GenController.jump(i);
-      d.onclick=select;
-      d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();select();},{passive:false});
-      d.innerHTML=`<span class="pill">${i+1}</span><div class="italian">${Util.esc(s.italian)}</div>`+
-        (showEnglish&&s.english?`<div class="english">${Util.esc(s.english)}</div>`:"")+
-        `<div class="cardTools"><button class="mini light" data-a="play">Play</button><button class="mini light" data-a="drop">✕ Drop</button></div>`;
-      d.querySelector('[data-a="play"]').onclick=async e=>{e.stopPropagation();this.index=i;this.renderCards();await Speech.speak(s.italian);};
-      d.querySelector('[data-a="drop"]').onclick=e=>{e.stopPropagation();this.drop(i);};
-      host.appendChild(d);
-    });
-    setTimeout(()=>{let a=host.querySelector(".card.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
+    this.items.forEach((s,i)=>host.appendChild(SentenceRow.build({
+      number:i+1,italian:s.italian,english:s.english,showEnglish,
+      active:i===this.index,
+      playing:GenPlayer.playing&&i===this.index,
+      actions:["play","drop"],
+      on:{
+        select:()=>GenController.jump(i),
+        play:async()=>{this.index=i;this.renderCards();await Speech.speak(s.italian);},
+        drop:()=>this.drop(i)
+      }
+    })));
+    setTimeout(()=>{let a=host.querySelector(".srow.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
     this.setOutputButtons(true);
   },
 
@@ -586,25 +871,50 @@ const GenController={
 function bind(){
   MainPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
   function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
-  $("openImport").onclick=()=>Importer.open();
+  /* Library management now lives in its own screen. */
+  const openManage=()=>{Manage.render();$("manageModal").style.display="flex";};
+  $("openManage").onclick=openManage;
+  $("closeManage").onclick=()=>$("manageModal").style.display="none";
+  $("manageModal").onclick=e=>{if(e.target===$("manageModal"))$("manageModal").style.display="none";};
+  $("openImport").onclick=()=>{$("manageModal").style.display="none";Importer.open();};
+  $("titlesOnly").onclick=()=>Importer.titlesOnly();
+
+  /* Collapsing the library gives the sentences the full width. */
+  const setLib=collapsed=>{
+    document.body.classList.toggle("lib-collapsed",collapsed);
+    $("libShow").classList.toggle("hidden",!collapsed);
+    localStorage.setItem("v08libCollapsed",collapsed?"1":"0");
+  };
+  $("libCollapse").onclick=()=>setLib(true);
+  $("libShow").onclick=()=>setLib(false);
+
+  /* The overflow menu holds the settings that are rarely touched. */
+  const moreMenu=$("studyMoreMenu"),moreBtn=$("studyMore");
+  const closeMore=()=>{moreMenu.classList.add("hidden");moreBtn.setAttribute("aria-expanded","false");};
+  moreBtn.onclick=e=>{
+    e.stopPropagation();
+    let open=moreMenu.classList.toggle("hidden");
+    moreBtn.setAttribute("aria-expanded",open?"false":"true");
+  };
+  document.addEventListener("click",e=>{if(!moreMenu.contains(e.target)&&e.target!==moreBtn&&!moreBtn.contains(e.target))closeMore();});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMore();});
+
   $("closeImport").onclick=()=>$("importModal").style.display="none";
-  $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}Importer.preview(Library.parseCSV(await f.text(),{book:$("defaultBook").value,chapter:$("defaultChapter").value}));};
-  $("analysePaste").onclick=()=>Importer.preview(Library.parseCSV($("pasteCsv").value,{book:$("defaultBook").value,chapter:$("defaultChapter").value}));
+  $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}let t=await f.text();Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
+  $("analysePaste").onclick=()=>{let t=$("pasteCsv").value;Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
   $("importPreviewed").onclick=()=>Importer.import();
   $("exportCsv").onclick=()=>download("italian-shadowing-library-v103.csv",toCSV(),"text/csv;charset=utf-8");
   $("clearAll").onclick=async()=>{if(confirm("Delete whole local library and audio cache?")){await Storage.clear(SS);await Storage.clear(AS);App.sentences=[];App.cur={book:"",chapter:"",group:1,index:0};UI.renderAll();}};
-  $("bookSel").onchange=e=>{App.cur.book=e.target.value;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.renderAll();};
-  $("chapterSel").onchange=e=>{App.cur.chapter=e.target.value;App.cur.group=1;App.cur.index=0;UI.renderAll();};
-  $("groupSel").onchange=e=>{App.cur.group=Number(e.target.value);App.cur.index=0;UI.renderAll();};
   $("prevGroup").onclick=()=>Nav.prevGroup();
   $("nextGroup").onclick=()=>Nav.nextGroup();
   $("prevSentence").onclick=()=>SentenceController.prev();
   $("nextSentence").onclick=()=>SentenceController.next();
   $("mainToggle").onclick=()=>SentenceController.toggle();
-  $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");};
+  $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");GenPlayer.stop("Audio reset.");closeMore();};
   ["displayMode","showEnglish"].forEach(id=>$(id).onchange=()=>UI.renderViewer());
   $("playMode").onchange=()=>SentenceController.restart();
   $("search").oninput=()=>UI.renderViewer();
+  $("search").onsearch=()=>UI.renderViewer();
   $("closeEdit").onclick=()=>Editor.close();
   $("closeEditBottom").onclick=()=>Editor.close();
   $("saveEdit").onclick=()=>Editor.save();
@@ -643,4 +953,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();GenPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();MainPlayer.setButton();VerbPlayer.setButton();GenPlayer.setButton();})();

@@ -64,7 +64,12 @@ await page.click('.desktop-tabs [data-panel="study"]');
 
 // ── Library and import ─────────────────────────────────────────────────────
 group('Library and import');
-await page.click('#openImport');
+await page.click('#openManage'); await page.waitForTimeout(150);
+check('Manage library opens', await page.isVisible('#manageModal'));
+check('Import, export and clear all live inside it', await page.evaluate(()=>{
+  const m=document.getElementById('manageModal');
+  return m.contains(document.getElementById('openImport'))&&m.contains(document.getElementById('exportCsv'))&&m.contains(document.getElementById('clearAll'));}));
+await page.click('#openImport'); await page.waitForTimeout(150);
 check('Import modal opens', await page.isVisible('#importModal'));
 await page.fill('#pasteCsv', CSV);
 await page.click('#analysePaste'); await page.waitForTimeout(200);
@@ -90,30 +95,98 @@ check('Tree lists both books', tree.includes('1')&&tree.includes('2'));
 check('Tree lists groups of the active chapter',
   (await page.$$eval('#tree .groupItem',e=>e.map(x=>x.textContent)))
     .join('|')==='Group 1|Group 2|Group 3');
-check('Selectors are populated', await page.evaluate(()=>
-  document.getElementById('bookSel').options.length===2 &&
-  document.getElementById('chapterSel').options.length===2 &&
-  document.getElementById('groupSel').options.length===3));
+check('The duplicated Book/Chapter/Group dropdown stack is gone', await page.evaluate(()=>
+  !document.getElementById('bookSel') && !document.getElementById('chapterSel') && !document.getElementById('groupSel')));
+check('Search moved into the library panel', await page.evaluate(()=>
+  document.getElementById('libraryPanel').contains(document.getElementById('search'))));
+
+// ── Breadcrumb, titles and the new chrome ──────────────────────────────────
+group('Headings, titles and chrome');
+check('Chapter titles are harvested from the CSV on import',
+  await page.evaluate(()=>Titles.chapter('1','1')==='Opinions and Judgements'&&Titles.chapter('1','2')==='Impersonal Expressions'));
+check('Chapter titles survive a reload', await page.evaluate(()=>{
+  const raw=JSON.parse(localStorage.getItem('v08chapterTitles')||'{}'); return raw['1|1']==='Opinions and Judgements';}));
+let crumb=(await page.textContent('#crumb')).replace(/\s+/g,' ').trim();
+check('Heading reads as words, not bare numbers', /Book 1.*Opinions and Judgements.*Group 1/.test(crumb), crumb);
+check('Heading no longer reads "1 — 1 — Group 1"', !/^\s*1\s*—/.test(crumb));
+
+await page.click('#openManage'); await page.waitForTimeout(200);
+check('Manage library offers a name for every book', (await page.$$eval('#bookTitles input',i=>i.length))===2);
+await page.fill('#bookTitles input[data-book="1"]','Present Subjunctive');
+await page.$eval('#bookTitles input[data-book="1"]',i=>i.dispatchEvent(new Event('change')));
+await page.waitForTimeout(250);
+await page.click('#closeManage'); await page.waitForTimeout(150);
+crumb=(await page.textContent('#crumb')).replace(/\s+/g,' ').trim();
+check('A named book appears in the heading', /Book 1.*Present Subjunctive/.test(crumb), crumb);
+check('A named book appears in the library tree', (await page.textContent('#tree')).includes('Present Subjunctive'));
+check('Book names persist', await page.evaluate(()=>JSON.parse(localStorage.getItem('v08bookTitles')||'{}')['1']==='Present Subjunctive'));
+
+check('Titles-only import adds nothing', await page.evaluate(async(csv)=>{
+  const before=App.sentences.length;
+  Titles.chapters={}; Titles.save();
+  Importer.text=csv;
+  await Importer.titlesOnly();
+  return App.sentences.length===before && Titles.chapter('1','1')==='Opinions and Judgements';
+}, CSV));
+
+await page.click('#studyMore'); await page.waitForTimeout(150);
+check('The overflow menu opens', await page.isVisible('#studyMoreMenu'));
+check('Reset audio lives in the overflow menu, not the main row', await page.evaluate(()=>
+  document.getElementById('studyMoreMenu').contains(document.getElementById('hardReset'))));
+await page.keyboard.press('Escape'); await page.waitForTimeout(150);
+check('The overflow menu closes on Escape', !(await page.isVisible('#studyMoreMenu')));
+
+check('Playback settings sit in one persistent bar', await page.evaluate(()=>{
+  const bar=document.querySelector('.playbar');
+  return ['mainToggle','repeat','rate','pause','playMode'].every(id=>bar.contains(document.getElementById(id)));}));
+
+await page.click('#libCollapse'); await page.waitForTimeout(200);
+check('The library collapses', await page.evaluate(()=>document.body.classList.contains('lib-collapsed')));
+check('A control to bring it back appears', await page.isVisible('#libShow'));
+check('The collapsed state is remembered', await page.evaluate(()=>localStorage.getItem('v08libCollapsed')==='1'));
+await page.click('#libShow'); await page.waitForTimeout(200);
+check('The library comes back', await page.evaluate(()=>!document.body.classList.contains('lib-collapsed')));
+
+check('Sentence actions are compact icon buttons', await page.evaluate(()=>{
+  const r=document.querySelector('#viewer .srow');
+  const btns=[...r.querySelectorAll('.srow-actions button')];
+  return btns.length===3 && btns.every(b=>b.getAttribute('aria-label')) && !r.querySelector('.cardTools');}));
+check('Every row action meets the 44px touch target', await page.evaluate(()=>
+  [...document.querySelectorAll('#viewer .srow-actions button')].every(b=>{
+    const r=b.getBoundingClientRect(); return r.height>=38&&r.width>=38;})));
+check('Icons are inline and need no external font', await page.evaluate(()=>
+  !document.querySelector('link[href*="tabler"]') &&
+  document.querySelectorAll('#viewer .srow-actions svg').length>0));
+check('Every icon-only control still announces itself', await page.evaluate(()=>
+  [...document.querySelectorAll('button.icon, .rowbtn')].every(b=>
+    (b.getAttribute('aria-label')||'').trim().length>0)));
+check('The active row is marked by more than colour', await page.evaluate(()=>{
+  const r=document.querySelector('#viewer .srow.active');
+  return r.getAttribute('aria-current')==='true';}));
 
 // ── Study view rendering ───────────────────────────────────────────────────
 group('Study view');
-check('Group display shows ten cards', (await page.$$eval('#viewer .card',c=>c.length))===10);
-await page.selectOption('#groupSel','3'); await page.waitForTimeout(150);
-check('Final partial group shows five cards', (await page.$$eval('#viewer .card',c=>c.length))===5);
-await page.selectOption('#groupSel','1'); await page.waitForTimeout(150);
-await page.selectOption('#displayMode','single'); await page.waitForTimeout(150);
-check('Single display shows one card', (await page.$$eval('#viewer .card',c=>c.length))===1);
+check('Group display shows ten cards', (await page.$$eval('#viewer .srow',c=>c.length))===10);
+await page.evaluate(()=>{App.cur.group=3;App.cur.index=0;UI.renderAll();}); await page.waitForTimeout(150);
+check('Final partial group shows five cards', (await page.$$eval('#viewer .srow',c=>c.length))===5);
+await page.evaluate(()=>{App.cur.group=1;App.cur.index=0;UI.renderAll();}); await page.waitForTimeout(150);
+await page.click('#studyMore'); await page.selectOption('#displayMode','single'); await page.waitForTimeout(150);
+check('Single display shows one card', (await page.$$eval('#viewer .srow',c=>c.length))===1);
 await page.selectOption('#displayMode','group'); await page.waitForTimeout(150);
 check('English shown by default', (await page.$$eval('#viewer .english',e=>e.length))===10);
 await page.selectOption('#showEnglish','hide'); await page.waitForTimeout(150);
 check('English can be hidden', (await page.$$eval('#viewer .english',e=>e.length))===0);
 await page.selectOption('#showEnglish','show'); await page.waitForTimeout(150);
-check('First card is active on entry', await page.evaluate(()=>document.querySelectorAll('#viewer .card')[0].classList.contains('active')));
-check('Cards carry an order pill', /^1$/.test((await page.$$eval('#viewer .pill',p=>p.map(x=>x.textContent)))[0]));
-await page.$$eval('#viewer .card',c=>c[3].click()); await page.waitForTimeout(150);
+await page.keyboard.press('Escape'); await page.waitForTimeout(120);
+check('First card is active on entry', await page.evaluate(()=>document.querySelectorAll('#viewer .srow')[0].classList.contains('active')));
+check('Cards carry an order pill', /^1$/.test((await page.$$eval('#viewer .srow-num',p=>p.map(x=>x.textContent)))[0]));
+await page.$$eval('#viewer .srow',c=>c[3].click()); await page.waitForTimeout(150);
 check('Tapping a card selects it', await page.evaluate(()=>App.cur.index===3));
-await page.fill('#search','A7'); await page.waitForTimeout(200);
-check('Search filters the group', (await page.$$eval('#viewer .card',c=>c.length))===1);
+await page.fill('#search','A7'); await page.waitForTimeout(250);
+check('Search looks across the whole library', (await page.$$eval('#viewer .srow',c=>c.length))===1);
+check('Search results carry their location', (await page.textContent('#viewer')).includes('Book 1'));
+await page.fill('#search','zzzznothing'); await page.waitForTimeout(200);
+check('Search reports when nothing matches', (await page.textContent('#viewer')).includes('Nothing found'));
 await page.fill('#search',''); await page.waitForTimeout(150);
 
 // ── Sentence and group navigation ──────────────────────────────────────────
@@ -134,9 +207,9 @@ check('Group forward stops at the last group', await page.evaluate(()=>Nav.nextG
 await page.click('#prevGroup'); await page.click('#prevGroup'); await page.waitForTimeout(200);
 check('Group back returns to the first', await page.evaluate(()=>Number(App.cur.group)===1));
 check('Group back stops at the first group', await page.evaluate(()=>Nav.prevGroup()===false));
-await page.selectOption('#bookSel','2'); await page.waitForTimeout(200);
-check('Switching book resets chapter and group', await page.evaluate(()=>App.cur.book==='2'&&Number(App.cur.group)===1&&App.cur.index===0));
-await page.selectOption('#bookSel','1'); await page.waitForTimeout(200);
+await page.$$eval('#tree .book',e=>e[1].click()); await page.waitForTimeout(250);
+check('Switching book in the tree resets chapter and group', await page.evaluate(()=>App.cur.book==='2'&&Number(App.cur.group)===1&&App.cur.index===0));
+await page.$$eval('#tree .book',e=>e[0].click()); await page.waitForTimeout(250);
 
 // ── Playback scope providers (semantics a refactor would break) ────────────
 group('Playback providers');
@@ -246,19 +319,22 @@ check('Switching to Study stops the verb player', await page.evaluate(()=>VerbPl
 // ── Bookmarks and editing ──────────────────────────────────────────────────
 group('Bookmarks and editing');
 await page.evaluate(()=>{App.cur={book:'1',chapter:'1',group:1,index:0};UI.renderAll();});
-await page.$$eval('#viewer .card',c=>c[0].querySelector('[data-a="bm"]').click());
+await page.$$eval('#viewer .srow',c=>c[0].querySelector('[data-a="bm"]').click());
 await page.waitForTimeout(300);
 check('Bookmark toggles on', await page.evaluate(()=>App.sentences.filter(s=>s.bookmarked).length===1));
-check('Bookmark shows on the card', (await page.textContent('#viewer')).includes('bookmarked'));
+check('Bookmark state is shown on the row, and not by colour alone', await page.evaluate(()=>{
+  const b=document.querySelectorAll('#viewer .srow')[0].querySelector('[data-a="bm"]');
+  return b.getAttribute('aria-pressed')==='true' && b.classList.contains('on')
+      && b.querySelector('svg').getAttribute('fill')==='currentColor';}));
 await page.click('#showBookmarks'); await page.waitForTimeout(150);
 check('Bookmarked list shows the sentence', (await page.$$eval('#reviewView .card',c=>c.length))===1);
 await page.click('#showAll'); await page.waitForTimeout(200);
 check('All-sentences list shows everything', (await page.$$eval('#reviewView .card',c=>c.length))===47);
-await page.$$eval('#viewer .card',c=>c[0].querySelector('[data-a="bm"]').click());
+await page.$$eval('#viewer .srow',c=>c[0].querySelector('[data-a="bm"]').click());
 await page.waitForTimeout(300);
 check('Bookmark toggles off', await page.evaluate(()=>App.sentences.filter(s=>s.bookmarked).length===0));
 
-await page.$$eval('#viewer .card',c=>c[1].querySelector('[data-a="edit"]').click());
+await page.$$eval('#viewer .srow',c=>c[1].querySelector('[data-a="edit"]').click());
 await page.waitForTimeout(200);
 check('Editor opens', await page.isVisible('#editModal'));
 check('Editor is pre-filled', (await page.inputValue('#editItalian')).length>0);
@@ -270,7 +346,7 @@ check('Edit persists to storage', await page.evaluate(async()=>{
 check('Editor closes after saving', !(await page.isVisible('#editModal')));
 check('Edited sentence appears in the viewer', (await page.textContent('#viewer')).includes('Frase modificata dal test.'));
 const before=dialogs.length;
-await page.$$eval('#viewer .card',c=>c[1].querySelector('[data-a="edit"]').click());
+await page.$$eval('#viewer .srow',c=>c[1].querySelector('[data-a="edit"]').click());
 await page.waitForTimeout(150);
 await page.fill('#editItalian','   ');
 await page.click('#saveEdit'); await page.waitForTimeout(250);
@@ -306,7 +382,8 @@ check('Theme returns to sage', await page.evaluate(()=>localStorage.getItem('v08
 // ── Destructive action ─────────────────────────────────────────────────────
 group('Clear all');
 const dlgBefore=dialogs.length;
-await page.click('#clearAll'); await page.waitForTimeout(600);
+await page.click('#openManage'); await page.waitForTimeout(150);
+await page.click('#clearAll'); await page.waitForTimeout(700);
 check('Clear all asks for confirmation', dialogs.length>dlgBefore && dialogs[dialogs.length-1].type==='confirm');
 check('Clear all empties the library', await page.evaluate(()=>App.sentences.length===0));
 check('Empty library shows guidance', (await page.textContent('#viewer')).includes('No sentences yet'));

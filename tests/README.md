@@ -22,14 +22,14 @@ ElevenLabs is never called because the tests run on the system voice.
 
 ## What each suite covers
 
-**test-study.mjs — 98 checks.** The pre-redesign behaviour of the library,
+**test-study.mjs — 125 checks.** The pre-redesign behaviour of the library,
 Study and Verb drill. CSV import including the Group/Item columns, the tree
 and selectors, group and single display modes, search, sentence and group
 navigation with its wrapping rules, all six playback scopes and their exact
 item counts, the playback engine's start/pause/resume, mutual exclusion
 between players, verb detection and conjugation building, all five verb drill
 modes, bookmarks, the sentence editor, export, settings persistence, theme,
-and Clear all.
+and Clear all. From v1.5.0 it also covers the breadcrumb and its book and chapter titles, the titles-only import, the collapsible library, the overflow menu, the persistent playback bar, and the accessibility of the icon-only controls.
 
 **test-generate.mjs — 59 checks.** The Generate tab: the relay contract, the
 CSV template round-trip, saving to the library, in-tab playback, dropping a

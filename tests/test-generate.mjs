@@ -82,23 +82,23 @@ const lib=await page.evaluate(()=>({total:App.sentences.length,book:App.sentence
   chapter:App.sentences[0].chapter,orders:App.sentences.map(s=>s.order),
   groups:[...new Set(App.sentences.map(s=>Util.gnum(s)))]}));
 check('Saved to library', lib.total===20&&lib.book==='Generated'&&lib.chapter==='farcela', JSON.stringify(lib).slice(0,80));
-check('Set stays on screen after saving', (await page.$$eval('#genCards .card',c=>c.length))===20);
+check('Set stays on screen after saving', (await page.$$eval('#genCards .srow',c=>c.length))===20);
 check('Save button reports saved and disables', await page.evaluate(()=>{const b=document.getElementById('genSave');return b.disabled&&/Saved/.test(b.textContent);}));
 check('Order 1..20 after round-trip', JSON.stringify(lib.orders)===JSON.stringify(Array.from({length:20},(_,i)=>i+1)));
 check('Groups derived correctly', JSON.stringify(lib.groups)==='[1,2]');
 
 await page.click('.desktop-tabs [data-panel="settings"]'); await page.selectOption('#voiceMode','system');
 await page.click('.desktop-tabs [data-panel="study"]'); await page.waitForTimeout(300);
-check('Study renders the group', (await page.$$eval('#viewer .card',c=>c.length))===10);
+check('Study renders the group', (await page.$$eval('#viewer .srow',c=>c.length))===10);
 await page.click('#mainToggle'); await page.waitForTimeout(700);
 check('Playback runs on generated sentences', await page.evaluate(()=>MainPlayer.playing===true));
-await page.click('#hardReset');
+await page.click('#studyMore'); await page.click('#hardReset'); await page.keyboard.press('Escape');
 
 // ── in-tab playback ─────────────────────────────────────────────────────────
 await page.click('.desktop-tabs [data-panel="generate"]'); await page.waitForTimeout(200);
 check('Playback controls appear once a set exists', await page.isVisible('#genPlayback'));
-check('Cards rendered for every sentence', (await page.$$eval('#genCards .card',c=>c.length))===20);
-check('First card starts active', await page.evaluate(()=>document.querySelectorAll('#genCards .card')[0].classList.contains('active')));
+check('Cards rendered for every sentence', (await page.$$eval('#genCards .srow',c=>c.length))===20);
+check('First card starts active', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[0].classList.contains('active')));
 
 // Headless Chromium has no speech voices, so utterances resolve instantly.
 // A long pause and high repeat keep the engine alive long enough to observe.
@@ -128,9 +128,9 @@ await page.click('#genNext'); await page.waitForTimeout(150);
 check('Next sentence advances', await page.evaluate(()=>Generator.index===1));
 await page.click('#genPrev'); await page.click('#genPrev'); await page.waitForTimeout(150);
 check('Previous wraps to the end', await page.evaluate(()=>Generator.index===19));
-await page.$$eval('#genCards .card',c=>c[4].click()); await page.waitForTimeout(150);
+await page.$$eval('#genCards .srow',c=>c[4].click()); await page.waitForTimeout(150);
 check('Tapping a card jumps to it', await page.evaluate(()=>Generator.index===4));
-check('Active highlight follows the jump', await page.evaluate(()=>document.querySelectorAll('#genCards .card')[4].classList.contains('active')));
+check('Active highlight follows the jump', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[4].classList.contains('active')));
 
 // loop mode keeps going past the end
 await page.selectOption('#genPlayMode','loop-set');
@@ -161,10 +161,10 @@ await page.selectOption('#genPlayMode','set');
 // dropping a sentence
 await page.evaluate(()=>{Generator.index=0;});
 const before=await page.evaluate(()=>Generator.items[3].italian);
-await page.$$eval('#genCards .card',c=>c[3].querySelector('[data-a="drop"]').click());
+await page.$$eval('#genCards .srow',c=>c[3].querySelector('[data-a="drop"]').click());
 await page.waitForTimeout(200);
 check('Drop removes the sentence', await page.evaluate(b=>Generator.items.length===19&&Generator.items[3].italian!==b, before));
-check('Cards re-render after a drop', (await page.$$eval('#genCards .card',c=>c.length))===19);
+check('Cards re-render after a drop', (await page.$$eval('#genCards .srow',c=>c.length))===19);
 check('Template rows renumber after a drop', await page.evaluate(()=>Generator.rows.length===19&&Generator.rows[18].Item===9));
 check('Dropping re-enables saving', await page.evaluate(()=>document.getElementById('genSave').disabled===false));
 

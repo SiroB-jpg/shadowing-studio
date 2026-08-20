@@ -1,5 +1,34 @@
 # Changelog
 
+## v1.5.0
+
+Release 1 of the interface redesign. The study screen is quieter, the heading finally says what you are studying, and the library gets out of the way.
+
+### Added
+- **A readable heading.** "1 — 4 — Group 16" is now "Book 1 · Present Subjunctive › Chapter 4 · Impersonal expressions › Group 16". Chapter names come from the `ChapterTitle` column your corpus files already carry; book names are yours to set under Manage library.
+- **Titles are kept, at the level they belong to.** New `Titles` module holding book and chapter names outside the sentence records, since a chapter name describes a chapter and not 2,460 rows.
+- **Update chapter names only** in the import screen. Reads `BookTitle` and `ChapterTitle` from a CSV and applies them to sentences you already have — no additions, no duplicates, bookmarks untouched.
+- **Manage library**, a screen of its own for importing, exporting, naming books and clearing everything.
+- **A collapsible library.** Hide the sidebar to give the sentences the full width; the choice is remembered.
+- **A shared `SentenceRow`** used by both Study and Generate, so the two lists can no longer drift apart.
+
+### Changed
+- **Playback settings collapsed into one persistent bar** at the foot of the study screen, which stays put while the sentence list scrolls.
+- **Reset audio demoted** out of the main control row into an overflow menu, along with display mode and translation visibility.
+- **Per-sentence actions are now compact icons** — play, bookmark, edit — instead of three full-width buttons in every card. A dedicated edit icon is used rather than burying it behind a second menu, since a menu holding one item is only an extra tap.
+- **Fewer boxes.** Sentences are rows separated by dividers rather than cards inside cards.
+- **The active sentence is unmistakable**: a green left rule, a pale background, heavier text, `aria-current`, and a speaker mark while it is playing. Never colour alone.
+- **The duplicated Book / Chapter / Group dropdown stack is gone.** The tree and the breadcrumb do that job.
+- **Search moved into the library panel** and now looks across the whole library rather than the current group, showing each match with its location. Selecting one opens its group.
+- Cache name updated to `v1-5-0`.
+
+### Fixed
+- **Icon-only buttons were invisible offline.** The interface icons came from a CDN stylesheet the service worker does not cache, so with no connection every icon-only control rendered as a blank square. This did not matter while the buttons carried text; it would have mattered a great deal now that they do not. All icons are inline SVG, the external font is gone, and the app no longer makes any third-party request.
+- Mobile-only controls leaked onto the desktop layout because a later, more specific rule overrode `.mobile-only`.
+
+### Playback
+Untouched, as required. The engine, the scopes, the iOS audio handling, the wake lock and the media session are all unchanged — the 209 automated checks confirm the scopes still yield exactly the same sentences in the same order.
+
 ## v1.4.1
 
 ### Fixed

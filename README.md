@@ -1,4 +1,22 @@
-# Italian Shadowing Studio v1.4.0
+# Italian Shadowing Studio v1.5.0
+
+## v1.5.0 notes — a calmer study screen
+
+The heading now reads "Book 1 · Present Subjunctive › Chapter 4 · Impersonal
+expressions › Group 16" instead of bare numbers. Chapter names come from the
+`ChapterTitle` column in your corpus CSVs; book names you set yourself under
+**Manage library**.
+
+If your sentences are already imported, open **Manage library → Import CSV**,
+choose your corpus file and press **Update chapter names only**. It reads the
+titles and applies them without adding or duplicating anything.
+
+Playback settings now live in one bar at the foot of the screen, per-sentence
+actions are compact icons, Import/Export/Clear all have moved into Manage
+library, and the library sidebar can be collapsed.
+
+Icons are now drawn inline rather than fetched from a CDN, so the app makes no
+third-party requests and works fully offline.
 
 ## v1.4.0 notes — shadow straight from the Generate tab
 

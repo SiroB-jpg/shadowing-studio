@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.4.1
+
+### Fixed
+- **A refused sentence edit corrupted the sentence in memory.** `Editor.save()` wrote the form's contents onto the sentence object *before* checking that the Italian was non-empty, so clearing the Italian and pressing Save left the in-memory sentence blank even though the save was rejected and nothing reached storage. Bookmarking that sentence afterwards would then have written the empty text to the database permanently. Validation now happens before anything is assigned. Found by the new regression suite.
+
+### Added
+- **`tests/` — a regression net covering the app as it behaves today.** 182 automated checks across three suites, run against a real browser: 98 for the library, Study and Verb drill, 59 for Generate and the relay client, 25 for the relay worker. `node tests/run-all.mjs` runs the lot and gives one verdict. This is Release 0 of the UI redesign plan: nothing user-visible changes, but every later release now has something to fail against.
+
+### Changed
+- Cache name updated to `v1-4-1`.
+
 ## v1.4.0
 
 ### Added

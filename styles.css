@@ -212,9 +212,22 @@ body.lib-collapsed #libraryPanel{display:none}
 @media(max-width:480px){
   button.mobile-only{display:inline-flex}
   span.mobile-only{display:inline}
-  .playbar{position:sticky;bottom:0;border-radius:10px}
-  .playbar-fields{width:100%}
-  .field{min-width:calc(50% - .25rem)}
+  /* At phone width the bar cannot hold transport and four settings on one
+     line — the fields collapsed to a chevron and the labels overlapped.
+     Transport on the first row, settings in a two-column grid beneath. */
+  .playbar{
+    position:sticky;bottom:0;border-radius:10px;
+    display:grid;grid-template-columns:1fr auto auto auto;
+    grid-template-areas:"start prev next more" "fields fields fields fields";
+    gap:.5rem;align-items:center;
+  }
+  .playbar>#mainToggle{grid-area:start;min-width:0}
+  .playbar>#prevSentence{grid-area:prev}
+  .playbar>#nextSentence{grid-area:next}
+  .playbar>#studyMore{grid-area:more}
+  .playbar-fields{grid-area:fields;display:grid;grid-template-columns:1fr 1fr;gap:.5rem;width:100%}
+  .field{min-width:0}
+  .field select{width:100%}
   .menu{right:.4rem;left:.4rem;width:auto}
   .bookrow{grid-template-columns:1fr}
   .srow{grid-template-columns:auto 1fr;gap:.6rem;padding:.7rem .5rem}

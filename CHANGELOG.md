@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.5.2
+
+### Fixed
+- **The playback bar was unusable on a phone.** At 390px the Start button, two transport buttons, four settings and the overflow button were all competing for one flex line, so the four selects collapsed to about 30px each — no value visible, and the "Repeat"/"Speed" and "Pause"/"Mode" labels printed on top of one another. The bar is now a grid at phone width: transport across the top, settings in two columns beneath. Fields go from roughly 30px to 168px. iPad and desktop are unaffected — measured at 1024px, the fields were already 107px and are unchanged.
+
 ## v1.5.1
 
 ### Fixed

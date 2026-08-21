@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.5.1
+
+### Fixed
+- **`riuscire` was never detected by the verb drill.** It was simply absent from the conjugation table, so a chapter built around *riuscire a* would list every verb in the sentences except the one being studied. Added, with the correct present and imperfect subjunctive, `essere` as its auxiliary and plural participle agreement.
+- **`sapere` was declared twice in the verb table.** Harmless in effect, since the second entry was identical and silently replaced the first, but it meant the table reported one fewer verb than it held.
+- Also added `rimanere`, `tenere`, `sembrare` and `piacere`, which the corpus uses and the table did not hold. The table now covers 46 verbs.
+
+### Changed
+- **The verb drill now says when a verb in view is outside its table.** The detected line reads "Detected verbs (10 of 46 in the table)", and where an infinitive appears that cannot be conjugated it is named: "Possibly also here, but not in the 46-verb conjugation table: *viaggiare*." Previously such verbs were dropped in silence, which is how `riuscire` went unnoticed.
+- Cache name updated to `v1-5-1`.
+
 ## v1.5.0
 
 Release 1 of the interface redesign. The study screen is quieter, the heading finally says what you are studying, and the library gets out of the way.

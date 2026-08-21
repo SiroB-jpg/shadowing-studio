@@ -266,11 +266,30 @@ check('Switching to Verb drill stops the sentence player', await page.evaluate((
 group('Verb drill');
 check('Verb panel visible', await page.isVisible('#verbs'));
 const detected=await page.textContent('#detected');
-check('Verbs detected from the corpus', /Detected verbs \(\d+\)/.test(detected), detected.slice(0,90));
+check('Verbs detected from the corpus', /Detected verbs \(\d+ of \d+ in the table\)/.test(detected), detected.slice(0,90));
 check('Detected label is positive when verbs are found', (await page.$eval('#detected',e=>e.className)).includes('oktxt'));
 check('Verb selector populated from detection', await page.evaluate(()=>document.getElementById('verbSel').options.length>0));
 check('Detection finds essere via its subjunctive forms', await page.evaluate(()=>Verb.detect(['Credo che tu sia pronto.']).includes('essere')));
 check('Detection finds a verb by past participle', await page.evaluate(()=>Verb.detect(['Ha gia fatto tutto.']).includes('fare')));
+check('riuscire is in the conjugation table', await page.evaluate(()=>!!Verb.V.riuscire));
+check('riuscire is detected from its subjunctive forms', await page.evaluate(()=>
+  Verb.detect(['Spero che tu riesca a finire in tempo.']).includes('riuscire')));
+check('riuscire is detected from its infinitive', await page.evaluate(()=>
+  Verb.detect(['Vorrei riuscire a parlare meglio.']).includes('riuscire')));
+check('riuscire is detected from its participle', await page.evaluate(()=>
+  Verb.detect(['Alla fine sono riuscito a finire.']).includes('riuscire')));
+check('riuscire conjugates correctly in the present subjunctive', await page.evaluate(()=>
+  Verb.line('riuscire','presente')==='riesca, riesca, riesca, riusciamo, riusciate, riescano'));
+check('riuscire takes essere and agrees in the plural', await page.evaluate(()=>
+  Verb.forms('riuscire','passato')[0]==='sia riuscito' && Verb.forms('riuscire','passato')[3]==='siamo riusciti'));
+check('uscire is not mistaken for riuscire', await page.evaluate(()=>
+  !Verb.detect(['Vorrei riuscire a parlare meglio.']).includes('uscire')));
+check('The verb table has no duplicated entries', await page.evaluate(()=>{
+  const n=Object.keys(Verb.V); return new Set(n).size===n.length && n.length>=46;}));
+check('A verb outside the table is named rather than silently dropped', await page.evaluate(()=>
+  Verb.unknown(['Spero di poter viaggiare presto.'],[]).includes('viaggiare')));
+check('Verbs already in the table are not listed as missing', await page.evaluate(()=>
+  Verb.unknown(['Vorrei riuscire a parlare meglio.'],['riuscire','parlare']).length===0));
 check('Four tense cards rendered', (await page.$$eval('#verbView .tenseCard',c=>c.length))===4);
 check('Simple tense line built from the table', await page.evaluate(()=>Verb.line('essere','presente')==='sia, sia, sia, siamo, siate, siano'));
 check('Compound tense built from auxiliary plus participle', await page.evaluate(()=>Verb.forms('andare','passato')[0]==='sia andato'));

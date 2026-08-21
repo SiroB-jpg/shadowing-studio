@@ -353,6 +353,11 @@ const Verb={
     volere:{en:"to want",presente:["voglia","voglia","voglia","vogliamo","vogliate","vogliano"],imperfetto:["volessi","volessi","volesse","volessimo","voleste","volessero"],aux:"avere",part:"voluto"},
     dovere:{en:"to have to",presente:["debba","debba","debba","dobbiamo","dobbiate","debbano"],imperfetto:["dovessi","dovessi","dovesse","dovessimo","doveste","dovessero"],aux:"avere",part:"dovuto"},
     sapere:{en:"to know",presente:["sappia","sappia","sappia","sappiamo","sappiate","sappiano"],imperfetto:["sapessi","sapessi","sapesse","sapessimo","sapeste","sapessero"],aux:"avere",part:"saputo"},
+    riuscire:{en:"to manage, to succeed",presente:["riesca","riesca","riesca","riusciamo","riusciate","riescano"],imperfetto:["riuscissi","riuscissi","riuscisse","riuscissimo","riusciste","riuscissero"],aux:"essere",part:"riuscito"},
+    rimanere:{en:"to remain",presente:["rimanga","rimanga","rimanga","rimaniamo","rimaniate","rimangano"],imperfetto:["rimanessi","rimanessi","rimanesse","rimanessimo","rimaneste","rimanessero"],aux:"essere",part:"rimasto"},
+    tenere:{en:"to hold, to keep",presente:["tenga","tenga","tenga","teniamo","teniate","tengano"],imperfetto:["tenessi","tenessi","tenesse","tenessimo","teneste","tenessero"],aux:"avere",part:"tenuto"},
+    sembrare:{en:"to seem",presente:["sembri","sembri","sembri","sembriamo","sembriate","sembrino"],imperfetto:["sembrassi","sembrassi","sembrasse","sembrassimo","sembraste","sembrassero"],aux:"essere",part:"sembrato"},
+    piacere:{en:"to be pleasing, to like",presente:["piaccia","piaccia","piaccia","piacciamo","piacciate","piacciano"],imperfetto:["piacessi","piacessi","piacesse","piacessimo","piaceste","piacessero"],aux:"essere",part:"piaciuto"},
     /* — motion — */
     andare:{en:"to go",presente:["vada","vada","vada","andiamo","andiate","vadano"],imperfetto:["andassi","andassi","andasse","andassimo","andaste","andassero"],aux:"essere",part:"andato"},
     venire:{en:"to come",presente:["venga","venga","venga","veniamo","veniate","vengano"],imperfetto:["venissi","venissi","venisse","venissimo","veniste","venissero"],aux:"essere",part:"venuto"},
@@ -368,7 +373,6 @@ const Verb={
     pensare:{en:"to think",presente:["pensi","pensi","pensi","pensiamo","pensiate","pensino"],imperfetto:["pensassi","pensassi","pensasse","pensassimo","pensaste","pensassero"],aux:"avere",part:"pensato"},
     credere:{en:"to believe",presente:["creda","creda","creda","crediamo","crediate","credano"],imperfetto:["credessi","credessi","credesse","credessimo","credeste","credessero"],aux:"avere",part:"creduto"},
     sperare:{en:"to hope",presente:["speri","speri","speri","speriamo","speriate","sperino"],imperfetto:["sperassi","sperassi","sperasse","sperassimo","speraste","sperassero"],aux:"avere",part:"sperato"},
-    sapere:{en:"to know",presente:["sappia","sappia","sappia","sappiamo","sappiate","sappiano"],imperfetto:["sapessi","sapessi","sapesse","sapessimo","sapeste","sapessero"],aux:"avere",part:"saputo"},
     conoscere:{en:"to know (person/place)",presente:["conosca","conosca","conosca","conosciamo","conosciate","conoscano"],imperfetto:["conoscessi","conoscessi","conoscesse","conoscessimo","conosceste","conoscessero"],aux:"avere",part:"conosciuto"},
     /* — action — */
     fare:{en:"to do / make",presente:["faccia","faccia","faccia","facciamo","facciate","facciano"],imperfetto:["facessi","facessi","facesse","facessimo","faceste","facessero"],aux:"avere",part:"fatto"},
@@ -397,7 +401,8 @@ const Verb={
   part(part,i){
     const plural={
       stato:"stati",andato:"andati",venuto:"venuti",partito:"partiti",
-      arrivato:"arrivati",uscito:"usciti",vissuto:"vissuti"
+      arrivato:"arrivati",uscito:"usciti",vissuto:"vissuti",
+      riuscito:"riusciti",rimasto:"rimasti",sembrato:"sembrati",piaciuto:"piaciuti"
     };
     return i>=3?(plural[part]||part):part;
   },
@@ -421,16 +426,37 @@ const Verb={
     return[...found].sort(Util.nat);
   },
   selectedTense(){return this.tenseOrder[App.verbTenseIndex]||this.tenseOrder[0];},
+  /* Infinitive-shaped words in view that the table cannot conjugate. A rough
+     heuristic, so it is reported as "possibly", never as fact. */
+  STOP:new Set(["carattere","genere","mestiere","bicchiere","cameriere","celebre","sincere"]),
+  unknown(texts,detected){
+    let all=" "+texts.join(" ").toLowerCase()+" ",known=new Set(Object.keys(this.V)),seen=new Set(detected),out=[];
+    let re=/[a-zà-ùéìòù]{5,}(?:are|ere|ire)/g,m;
+    while((m=re.exec(all))){
+      let w=m[0];
+      if(known.has(w)||seen.has(w)||this.STOP.has(w)||out.includes(w))continue;
+      out.push(w);
+      if(out.length>=6)break;
+    }
+    return out;
+  },
   render(){
     if(!$("verbSel"))return;
     let old=$("verbSel").value,detected=this.detect(this.scope().map(s=>s.italian));
     let verbs=detected.length?detected:Object.keys(this.V).sort(Util.nat);
     UI.fill($("verbSel"),verbs,verbs.includes(old)?old:verbs[0]);
+    let texts=this.scope().map(x=>x.italian),
+        missing=this.unknown(texts,detected),
+        total=Object.keys(this.V).length,
+        note=missing.length
+          ? `<div class="small mt">Possibly also here, but not in the ${total}-verb conjugation table: `+
+            missing.map(v=>`<em>${Util.esc(v)}</em>`).join(", ")+`. The drill can only conjugate verbs it holds tables for.</div>`
+          : "";
     if(detected.length){
-      $("detected").innerHTML=`Detected verbs (${detected.length}): `+detected.map(v=>`<span class="pill">${v}</span>`).join(" ");
+      $("detected").innerHTML=`Detected verbs (${detected.length} of ${total} in the table): `+detected.map(v=>`<span class="pill">${v}</span>`).join(" ")+note;
       $("detected").className="status oktxt";
     }else{
-      $("detected").innerHTML=`No verbs detected in this scope — showing all ${verbs.length} available.`;
+      $("detected").innerHTML=`No verbs detected in this scope — showing all ${verbs.length} available.`+note;
       $("detected").className="status warntxt";
     }
     this.renderView();

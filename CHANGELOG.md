@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.8.4
+
+### Fixed
+- **A collapsed library could only be reopened from Study.** The Show library button lived inside the Study panel, so putting the library away and then switching to Verb drill, Generate or Settings left no way back — you had to work out for yourself that returning to Study was the route. It now sits in the tab row, which is on screen whichever panel is open. Reported by Siro; it had been there since v1.5.0.
+
+### Changed
+- **The illustration follows the library.** With the library open it stays where it was, above the tree. Collapse the library and it moves into the top-left corner of Study, Verb drill and Settings — the corner Generate already uses — rather than disappearing. Open the library again and it hands the picture back. Generate keeps the arcade throughout.
+- All nine combinations of panel and library state are now tested, and every one of them shows exactly one illustration.
+
+### Notes
+381 checks pass, 17 of them new.
+
+## v1.8.3
+
+Rolled into v1.8.4 before delivery. Listed for continuity only.
+
 ## v1.8.2
 
 ### Changed — the artwork is now Siro's, not mine

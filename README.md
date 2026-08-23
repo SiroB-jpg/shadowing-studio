@@ -1,4 +1,20 @@
-# Italian Shadowing Studio v1.8.6
+# Italian Shadowing Studio v1.9.0
+
+## v1.9.0 notes — the verb drill, made calm
+
+The verb drill had the same problem Study had before the redesign: eight large
+control fields stacked above the thing you actually came to read. They are now
+one compact bar at the foot, the same bar Study uses.
+
+The heading tells you what you are drilling — *Verb drill › avere — to have ›
+congiuntivo presente* — and follows you through the tenses. The detected-verbs
+line now says which sentences it searched, so "9 of 112" no longer leaves you
+guessing whether that was the chapter or the whole library.
+
+Pre-downloading the verb audio has moved into the **⋯** menu on the bar, since
+it is something you do rarely.
+
+This completes the redesign plan.
 
 ## v1.8.6 notes — the villa, this time actually visible
 

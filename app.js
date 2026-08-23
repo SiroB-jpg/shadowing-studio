@@ -716,16 +716,43 @@ const Verb={
             missing.map(v=>`<em>${Util.esc(v)}</em>`).join(", ")+`. The drill can only conjugate verbs it holds tables for.</div>`
           : "";
     if(detected.length){
-      $("detected").innerHTML=`Detected verbs (${detected.length} of ${total} in the table): `+detected.map(v=>`<span class="pill">${v}</span>`).join(" ")+note;
+      $("detected").innerHTML=`Detected in ${this.scopeName()} — ${detected.length} of the ${total} verbs the table holds: `
+        +detected.map(v=>`<span class="pill">${v}</span>`).join(" ")+note;
       $("detected").className="status oktxt";
     }else{
-      $("detected").innerHTML=`No verbs detected in this scope — showing all ${verbs.length} available.`+note;
+      $("detected").innerHTML=`No verbs detected in ${this.scopeName()} — showing all ${verbs.length} available.`+note;
       $("detected").className="status warntxt";
     }
+    this.renderCrumb();
     this.renderView();
   },
-  renderView(){let v=$("verbSel").value,d=this.V[v];if(!d){$("verbView").innerHTML="";return;}$("verbView").innerHTML=`<div class="verbRef"><strong>${v}</strong> = ${Util.esc(d.en)} · reference: <strong>${Util.esc(this.forms(v,"presente")[0])}</strong></div><div class="tenseGrid">${this.tenseOrder.map(t=>`<div class="tenseCard" id="tense_${t}"><h3>${this.names[t]}</h3><div class="formsLine">${Util.esc(this.line(v,t))}</div></div>`).join("")}</div>`;this.highlight();},
-  highlight(){document.querySelectorAll(".tenseCard").forEach(x=>x.classList.remove("active"));let c=$("tense_"+this.selectedTense());if(c)c.classList.add("active");},
+  /* Which sentences the detection looked at, in words rather than a code. */
+  scopeName(){
+    let sc=$("verbScope")?$("verbScope").value:"chapter",
+        parts=Titles.crumb(App.cur.book,App.cur.chapter,App.cur.group),
+        name=p=>p.title?p.label+" · "+p.title:p.label;
+    if(sc==="all")return "the whole library";
+    if(sc==="book")return parts[0]?name(parts[0]):"this book";
+    if(sc==="chapter")return parts[1]?name(parts[1]):"this chapter";
+    return parts[2]?name(parts[2]):"this group";
+  },
+
+  /* "Verb drill" told you nothing. This says what you are actually drilling. */
+  renderCrumb(){
+    let el=$("verbCrumb");if(!el)return;
+    let v=$("verbSel")?$("verbSel").value:"",d=this.V[v];
+    if(!d){el.innerHTML='<span class="crumb-empty">Nothing to drill yet</span>';return;}
+    el.innerHTML=
+      `<span class="crumb-part"><span class="crumb-label">Verb drill</span></span>`+
+      `<span class="crumb-sep" aria-hidden="true">›</span>`+
+      `<span class="crumb-part here"><span class="crumb-label">${Util.esc(v)}</span>`+
+      `<span class="crumb-title">${Util.esc(d.en)}</span></span>`+
+      `<span class="crumb-sep" aria-hidden="true">›</span>`+
+      `<span class="crumb-part"><span class="crumb-label">${Util.esc(this.names[this.selectedTense()])}</span></span>`;
+  },
+
+  renderView(){let v=$("verbSel").value,d=this.V[v];if(!d){$("verbView").innerHTML="";return;}$("verbView").innerHTML=`<p class="verb-ref">Reference form <strong>${Util.esc(this.forms(v,"presente")[0])}</strong></p><div class="tenseGrid">${this.tenseOrder.map(t=>`<div class="tenseCard" id="tense_${t}"><h3>${this.names[t]}</h3><div class="formsLine">${Util.esc(this.line(v,t))}</div></div>`).join("")}</div>`;this.highlight();},
+  highlight(){document.querySelectorAll(".tenseCard").forEach(x=>x.classList.remove("active"));let c=$("tense_"+this.selectedTense());if(c)c.classList.add("active");this.renderCrumb();},
   provider(){let mode=$("verbMode").value,verbs=[...$("verbSel").options].map(o=>o.value),vi=$("verbSel").selectedIndex<0?0:$("verbSel").selectedIndex,ti=App.verbTenseIndex;if(mode==="once")return this.tenseProvider(verbs,vi,ti,false);if(mode==="looptense")return this.tenseProvider(verbs,vi,ti,true);if(mode==="loopverb")return this.verbProvider(verbs,vi,ti,true,false);if(mode==="nextverb")return this.verbProvider(verbs,vi,ti,false,false);if(mode==="loopverbs")return this.verbProvider(verbs,vi,ti,false,true);return this.tenseProvider(verbs,vi,ti,false);},
   tenseProvider(verbs,vi,ti,loop){let done=false;return{next:()=>{if(done&&!loop)return null;done=true;let v=verbs[vi],t=this.tenseOrder[ti];return{text:this.spoken(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=vi;App.verbTenseIndex=ti;this.renderView();}};}};},
   verbProvider(verbs,vi,ti,loopVerb,loopVerbs){let curV=vi,curT=ti;return{next:()=>{if(curV>=verbs.length){if(loopVerbs)curV=0;else return null;}let v=verbs[curV],t=this.tenseOrder[curT];let snapV=curV,snapT=curT;let item={text:this.spoken(v,t),repeat:PlaybackControls.repeat(),label:`${v} — ${this.names[t]}`,onBefore:()=>{$("verbSel").selectedIndex=snapV;App.verbTenseIndex=snapT;this.renderView();}};curT++;if(curT>=this.tenseOrder.length){curT=0;if(!loopVerb)curV++;}return item;}};},
@@ -1313,15 +1340,23 @@ function bind(){
   $("libShow").onclick=()=>setLib(false);
 
   /* The overflow menu holds the settings that are rarely touched. */
-  const moreMenu=$("studyMoreMenu"),moreBtn=$("studyMore");
-  const closeMore=()=>{moreMenu.classList.add("hidden");moreBtn.setAttribute("aria-expanded","false");};
-  moreBtn.onclick=e=>{
-    e.stopPropagation();
-    let open=moreMenu.classList.toggle("hidden");
-    moreBtn.setAttribute("aria-expanded",open?"false":"true");
-  };
-  document.addEventListener("click",e=>{if(!moreMenu.contains(e.target)&&e.target!==moreBtn&&!moreBtn.contains(e.target))closeMore();});
-  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMore();});
+  /* One behaviour, used by both overflow menus, rather than a second copy. */
+  const menus=[["studyMoreMenu","studyMore"],["verbMoreMenu","verbMore"]]
+    .map(([m,b])=>[$(m),$(b)]).filter(([m,b])=>m&&b);
+  const closeAllMenus=()=>menus.forEach(([m,b])=>{m.classList.add("hidden");b.setAttribute("aria-expanded","false");});
+  menus.forEach(([menu,btn])=>{
+    btn.onclick=e=>{
+      e.stopPropagation();
+      let wasOpen=!menu.classList.contains("hidden");
+      closeAllMenus();
+      if(!wasOpen){menu.classList.remove("hidden");btn.setAttribute("aria-expanded","true");}
+    };
+    document.addEventListener("click",e=>{
+      if(!menu.contains(e.target)&&e.target!==btn&&!btn.contains(e.target)){
+        menu.classList.add("hidden");btn.setAttribute("aria-expanded","false");}
+    });
+  });
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAllMenus();});
 
   $("closeImport").onclick=()=>$("importModal").style.display="none";
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}let t=await f.text();Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
@@ -1335,7 +1370,7 @@ function bind(){
   $("prevSentence").onclick=()=>Playbar.prev();
   $("nextSentence").onclick=()=>Playbar.next();
   $("mainToggle").onclick=()=>Playbar.toggle();
-  $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");GenPlayer.stop("Audio reset.");closeMore();};
+  $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");GenPlayer.stop("Audio reset.");closeAllMenus();};
   $("displayMode").onchange=()=>UI.renderViewer();
   $("showEnglish").onchange=()=>{UI.renderViewer();if(Generator.items.length)Generator.renderCards();};
   $("playMode").onchange=()=>Playbar.restart();
@@ -1361,6 +1396,7 @@ function bind(){
   $("genEnglish").onchange=()=>Generator.renderCards();
   Generator.setOutputButtons(false);
   $("verbScope").onchange=()=>Verb.render();
+  $("verbPreloadBtn").addEventListener("click",()=>closeAllMenus());
   $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
   $("verbMode").onchange=()=>Verb.restart();
   $("verbToggle").onclick=()=>Verb.toggle();

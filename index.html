@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.8.6</title>
+<title>Italian Shadowing Studio — v1.9.0</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1e2b20">
@@ -20,7 +20,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.8.6 — the villa, actually visible.</p>
+      <p class="header-sub">v1.9.0 — the verb drill, made calm.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -68,17 +68,17 @@
       <div id="viewer" class="sentences"></div>
 
       <div id="playbar" class="playbar" role="group" aria-label="Playback">
-        <button id="mainToggle" class="primary">Start</button>
-        <button id="openFocus" class="icon light" title="Focus mode" aria-label="Focus mode"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 9V5.5A1.5 1.5 0 015.5 4H9"/><path d="M15 4h3.5A1.5 1.5 0 0120 5.5V9"/><path d="M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15"/><path d="M9 20H5.5A1.5 1.5 0 014 18.5V15"/><circle cx="12" cy="12" r="2.4"/></svg></button>
-        <button id="prevSentence" class="icon light" title="Previous sentence" aria-label="Previous sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
-        <button id="nextSentence" class="icon light" title="Next sentence" aria-label="Next sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
+        <button id="mainToggle" class="primary pb-start">Start</button>
+        <button id="openFocus" class="icon light pb-alt" title="Focus mode" aria-label="Focus mode"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 9V5.5A1.5 1.5 0 015.5 4H9"/><path d="M15 4h3.5A1.5 1.5 0 0120 5.5V9"/><path d="M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15"/><path d="M9 20H5.5A1.5 1.5 0 014 18.5V15"/><circle cx="12" cy="12" r="2.4"/></svg></button>
+        <button id="prevSentence" class="icon light pb-prev" title="Previous sentence" aria-label="Previous sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
+        <button id="nextSentence" class="icon light pb-next" title="Next sentence" aria-label="Next sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
         <span class="playbar-fields">
           <label class="field"><span>Repeat</span><select id="repeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
           <label class="field"><span>Speed</span><select id="rate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1.0×</option></select></label>
           <label class="field"><span>Pause</span><select id="pause"><option value="0">none</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></label>
           <label class="field"><span>Mode</span><select id="playMode"><option value="current">this sentence</option><option value="group" selected>this group</option><option value="chapter">this chapter</option><option value="loop-current">loop sentence</option><option value="loop-group">loop group</option><option value="loop-chapter">loop chapter</option></select></label>
         </span>
-        <button id="studyMore" class="icon light" title="More options" aria-label="More options" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
+        <button id="studyMore" class="icon light pb-more" title="More options" aria-label="More options" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
         <div id="studyMoreMenu" class="menu hidden" role="menu">
           <label class="field" id="displayModeField"><span>Display</span><select id="displayMode"><option value="group">group of ten</option><option value="single">one sentence</option></select></label>
           <label class="field"><span>Translation</span><select id="showEnglish"><option value="show">show English</option><option value="hide">hide English</option></select></label>
@@ -91,23 +91,35 @@
       <div class="pane-head">
         <div class="panel-art"></div>
         <div class="pane-head-text">
-          <h2>Verb drill</h2>
-          <p class="small">Verbs are detected automatically from the sentences in the chosen scope.</p>
+          <nav id="verbCrumb" class="crumb" aria-label="What you are drilling"></nav>
         </div>
       </div>
-      <div class="grid">
-        <div><label>Verb source</label><select id="verbScope"><option value="group">current group</option><option value="chapter" selected>current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div>
-        <div><label>Verb</label><select id="verbSel"></select></div>
-        <div><label>Mode</label><select id="verbMode"><option value="once">play current tense once</option><option value="looptense">loop current tense</option><option value="loopverb">loop whole verb</option><option value="nextverb">continue to next verb</option><option value="loopverbs">loop through verbs</option></select></div>
-        <div><label>Repeat each tense</label><select id="verbRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option value="infinite">∞ loop</option></select></div>
-        <div><label>Speed</label><select id="verbRate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1.0×</option></select></div>
-        <div><label>Pause</label><select id="verbPause"><option value="0">no pause</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></div>
-        <div><label>Playback</label><button id="verbToggle">Start</button></div>
-        <div><label>Move tense</label><div class="row"><button id="prevTense" class="light">← Tense</button><button id="nextTense" class="light">Tense →</button></div></div>
+
+      <div class="verb-pick">
+        <label class="field"><span>Verbs from</span><select id="verbScope"><option value="group">the current group</option><option value="chapter" selected>the current chapter</option><option value="book">the current book</option><option value="all">the whole library</option></select></label>
+        <label class="field"><span>Verb</span><select id="verbSel"></select></label>
       </div>
-      <div id="detected" class="status"></div>
-      <div class="preloadRow mt"><div><span class="small">Pre-download verb conjugation audio from ElevenLabs</span></div><div class="preloadBtns"><button id="verbPreloadBtn" class="ok">⬇ Pre-download verb audio</button><button id="verbPreloadCancel" class="danger hidden">Cancel</button></div></div>
+
       <div id="verbView"></div>
+      <div id="detected" class="status"></div>
+
+      <div id="verbBar" class="playbar" role="group" aria-label="Verb drill playback">
+        <button id="verbToggle" class="primary pb-start">Start</button>
+        <button id="prevTense" class="icon light pb-prev" title="Previous tense" aria-label="Previous tense"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
+        <button id="nextTense" class="icon light pb-next" title="Next tense" aria-label="Next tense"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
+        <span class="playbar-fields">
+          <label class="field"><span>Repeat</span><select id="verbRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option value="infinite">∞ loop</option></select></label>
+          <label class="field"><span>Speed</span><select id="verbRate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1.0×</option></select></label>
+          <label class="field"><span>Pause</span><select id="verbPause"><option value="0">none</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></label>
+          <label class="field"><span>Mode</span><select id="verbMode"><option value="once">this tense</option><option value="looptense">loop this tense</option><option value="loopverb">this whole verb</option><option value="nextverb">on through the verbs</option><option value="loopverbs">loop the verbs</option></select></label>
+        </span>
+        <button id="verbMore" class="icon light pb-more" title="More options" aria-label="More options" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
+        <div id="verbMoreMenu" class="menu hidden" role="menu">
+          <p class="small nomargin">Download the conjugation audio for every detected verb, so the drill runs without the network.</p>
+          <button id="verbPreloadBtn" class="ok wide mt">Pre-download verb audio</button>
+          <button id="verbPreloadCancel" class="danger wide mt hidden">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div id="generate" class="panel hidden">

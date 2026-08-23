@@ -1,4 +1,21 @@
-# Italian Shadowing Studio v1.9.1
+# Italian Shadowing Studio v1.9.2
+
+## v1.9.2 notes — why nothing would update
+
+Two faults, and between them they explain it.
+
+**The service worker had stopped announcing new versions.** Its cache name has to
+change every release; it had been stuck on the v1.8.6 name since that release, so
+your devices believed they already had the newest files and kept serving the old
+ones.
+
+**The site had files from two different versions on it** — index.html from
+v1.9.1 and app.js from v1.8.2. Markup and code from different releases do not fit
+together.
+
+From this version the app checks its own files when it starts. If they do not
+match, a red band across the top says which file is wrong and what to do. You
+should never again have to guess why an update did not take.
 
 ## v1.9.1 notes
 

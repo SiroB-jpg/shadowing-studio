@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.9.2
+
+### Fixed — the service worker never invalidated, so no device could get a new version
+`sw.js` carries a cache name that must change every release; changing it is what tells a device its stored copy is out of date. It is edited by hand, and **it sat at `v1-8-6` through the v1.9.0 and v1.9.1 releases**. Both of those shipped a service worker announcing itself as v1.8.6, so every device kept serving the files it already had and quietly ignored the new ones.
+
+No browser test could see this. The test suite serves the files directly and never registers a service worker, so the suite passed while the thing that delivers the app to a real device was broken. There is now a check that reads the four files straight from disk and requires app.js, index.html, styles.css, sw.js and the visible title to name the same version. That check fails loudly if any of them drifts again.
+
+### Fixed — a mismatched set of files now says so
+The live site was serving `index.html` and `styles.css` from v1.9.1 alongside `app.js` from v1.8.2. Markup and code from different versions do not fit together, and nothing on screen explained why the app misbehaved.
+
+Every file now carries its version, and the app compares them the moment it starts. If they disagree it puts a red band across the top naming the offending file and its version: *"These files are from different versions. app.js is v1.9.2, but index.html is v1.8.2. Upload all six files again from the same folder."* A service worker a single patch version behind is normal for a moment after an update and is not reported.
+
+### On the cause
+Every release put a new folder of six identically-named files into the same Downloads folder. By this release there were 78 of them, sorted so that v1.8.2, v1.8.6 and v1.9.1 sat side by side. Dragging the wrong `app.js` was not carelessness — it was close to inevitable, and the delivery method made it so. The old folders have been moved into `_shadowing-studio-old-versions/`; nothing was deleted.
+
+### Notes
+437 checks pass, 15 of them new.
+
 ## v1.9.1
 
 ### Fixed — the Tense buttons

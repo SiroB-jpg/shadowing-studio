@@ -9,6 +9,7 @@
   --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
+  --css-version:"1.9.2";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#968f85;
@@ -467,3 +468,14 @@ body.lib-collapsed .panel-art{display:block}
   .verb-pick .field{flex:1 1 100%}
   .tenseGrid{grid-template-columns:1fr}
 }
+
+/* ── v1.9.2 — mismatched-file warning ─────────────────────────────────────────
+   The six files are uploaded by hand, one folder among many with the same six
+   names. Upload app.js from the wrong folder and the app half-works or does not
+   start at all, with nothing on screen to say why. Each file now carries its
+   version and the app checks they agree. */
+.version-warning{background:var(--danger);color:#fff;padding:.85rem 1rem;
+  font-size:.95rem;line-height:1.45;text-align:center}
+.version-warning strong{font-weight:800}
+.version-warning code{background:rgba(255,255,255,.18);border-radius:5px;
+  padding:.05rem .35rem;font-size:.92em}

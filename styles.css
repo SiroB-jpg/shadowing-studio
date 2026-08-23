@@ -1,22 +1,24 @@
 :root{
-  --bg:#eef1ed;--panel:#f5f7f4;--ink:#1e2b20;--muted:#748a74;
+  --bg:#eef1ed;--panel:#f5f7f4;--ink:#1e2b20;--muted:#546953;
   --accent:#2a5c44;--soft:#d4dbd3;--active:#fefce8;--active-border:#bca84a;
   --border:#d4dbd3;--danger:#b83030;--ok:#1e7340;
   --header-bg:#1e2b20;--header-sub:#8faa8f;
   --status-bg:#e4ebe4;--card-bg:#f5f7f4;
   --tree-hover:#dde8dc;--tree-active-bg:#cce0cc;
   --terracotta:#c25a44;
+  --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
 }
 :root[data-theme="dark"]{
-  --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#6b6660;
+  --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#968f85;
   --accent:#c8900a;--soft:#2e2a22;--active:#2a2415;--active-border:#8a6520;
   --border:#333028;--danger:#b53030;--ok:#3d7a50;
   --header-bg:#111110;--header-sub:#a09890;
   --status-bg:#252420;--card-bg:#252220;
   --tree-hover:#252420;--tree-active-bg:#2e2a22;
   --terracotta:#c9805f;
+  --glass-0:rgba(32,31,28,.22);--glass-1:rgba(32,31,28,.88);
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
@@ -360,4 +362,44 @@ body.lib-collapsed .panel-art{display:block}
 @media(max-width:480px){
   .gen-art,.panel-art{display:none}
   body.lib-collapsed .panel-art{display:none}
+}
+
+/* ── v1.8.5 — the phone backdrop ──────────────────────────────────────────────
+   A phone has no room for the illustration beside the text, so it goes behind
+   it — but not behind the sentences. The panel surface is nearly clear at the
+   top of the screen, where only the heading sits, and is solid again by the
+   time the first sentence arrives. So the villa reads plainly where there is
+   nothing to read, and fades to paper where there is.
+
+   This relaxes the handover's "never behind text" rule at Siro's request, and
+   only for the heading. What the rule protects is contrast, so contrast is now
+   measured rather than assumed: the tests hide the text, photograph the ground
+   underneath it, and check the worst point behind every heading, Italian and
+   English line still clears WCAG AA. Raise these numbers too far and the suite
+   fails. */
+@media(max-width:480px){
+  body::before{
+    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background-image:var(--backdrop,none);background-size:cover;
+    background-position:center 26%;background-repeat:no-repeat;
+    opacity:.85;filter:saturate(.85);
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 22%,rgba(0,0,0,.25) 46%,transparent 62%);
+    mask-image:linear-gradient(180deg,#000 0%,#000 22%,rgba(0,0,0,.25) 46%,transparent 62%);
+  }
+  :root[data-theme="dark"] body::before{opacity:.70;filter:saturate(.7) brightness(.55)}
+
+  /* Clear at the top, paper by the time the list starts. */
+  aside,section{
+    background:linear-gradient(180deg,
+      var(--glass-0) 0px, var(--glass-0) 60px, var(--glass-1) 215px, var(--panel) 300px);
+  }
+  /* The heading sits on the picture, so it stops being quiet grey and becomes
+     ink. Strengthening the text is what buys the picture its visibility —
+     without this the wash has to stay so faint it is not worth having. */
+  #crumb .crumb-label{color:var(--ink);font-weight:650}
+  #crumb .crumb-title{color:var(--ink)}
+  #crumb .crumb-sep{opacity:.5}
+  /* The playback bar stays opaque. It is sticky, so anything translucent there
+     shows the list sliding underneath it — a rendering fault, not a wash. */
+  .playbar{background:var(--panel)}
 }

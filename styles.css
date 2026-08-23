@@ -176,6 +176,10 @@ button.primary{background:var(--accent);color:#fff;min-width:112px}
 .crumb-sep{color:var(--border);font-size:1rem}
 .crumb-empty{color:var(--muted);font-size:.9rem}
 .voice-chip{font-size:.8rem;color:var(--muted)}
+/* It is a chip, so give it a chip's ground. That is also what lets it stay
+   readable where it now sits — over the illustration, on a phone. */
+.voice-chip{background:var(--panel);color:var(--ink);border:1px solid var(--border);
+  border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
 
 /* Sentence rows: dividers and whitespace rather than cards inside cards */
 .sentences{border-top:1px solid var(--border)}
@@ -378,15 +382,22 @@ body.lib-collapsed .panel-art{display:block}
    English line still clears WCAG AA. Raise these numbers too far and the suite
    fails. */
 @media(max-width:480px){
+  /* Geometry matters more than opacity here. The picture is square and the
+     screen is tall: sized to cover the whole viewport it scales up until only
+     a narrow vertical strip of sky shows through the one band that is
+     translucent — which is why v1.8.5 looked like nothing at all. It is now a
+     band across the top, positioned so the villa and the cypresses land in the
+     part of the screen you can actually see through.
+     No mask: the panel gradient below does the fading, and one less exotic
+     property is one less thing to behave differently on iOS. */
   body::before{
-    content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background-image:var(--backdrop,none);background-size:cover;
-    background-position:center 26%;background-repeat:no-repeat;
-    opacity:.85;filter:saturate(.85);
-    -webkit-mask-image:linear-gradient(180deg,#000 0%,#000 22%,rgba(0,0,0,.25) 46%,transparent 62%);
-    mask-image:linear-gradient(180deg,#000 0%,#000 22%,rgba(0,0,0,.25) 46%,transparent 62%);
+    content:"";position:fixed;top:0;left:0;right:0;height:300px;
+    z-index:-1;pointer-events:none;
+    background-image:var(--backdrop,none);background-repeat:no-repeat;
+    background-size:100% auto;background-position:center 62%;
+    opacity:.55;filter:saturate(.9);
   }
-  :root[data-theme="dark"] body::before{opacity:.70;filter:saturate(.7) brightness(.55)}
+  :root[data-theme="dark"] body::before{opacity:.85;filter:saturate(.75) brightness(.55)}
 
   /* Clear at the top, paper by the time the list starts. */
   aside,section{

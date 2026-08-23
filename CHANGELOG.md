@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.8.6
+
+### Fixed — the phone backdrop was invisible, and Siro was right about why
+v1.8.5 put the villa behind the phone heading, passed every check I had written, and showed nothing on the actual phone. The cause was geometry, not opacity.
+
+The picture is square. Sized to cover a tall phone screen it scales until only a narrow vertical strip shows — and the one band where the panel is translucent sits at the top of that strip, which is **sky**. Pale cream sky, over a pale cream panel, is nothing. The villa and the cypresses were there the whole time, behind the opaque part of the panel, a couple of hundred pixels further down.
+
+It is now a band across the top of the screen rather than a full-screen cover, positioned so the villa and the cypresses fall where you can see through. Measured against the previous build, the heading band now differs by 27 of 255 per channel in the light theme and 30 in the dark. Before, it was under 2.
+
+### Added — a test for whether you can see it
+Every check in v1.8.5 passed on a screen showing nothing. Contrast tests cannot catch an invisible image; they are happiest when there is no image at all. So the suite now takes two screenshots — one with the backdrop, one without — and requires a minimum measurable difference across the heading band, in both themes. That is the check that would have caught this, and it is the one I should have written first.
+
+### Changed
+- The voice chip on the phone now has the ground a chip ought to have. It sits over the illustration, and at 2.87:1 it was the least readable thing on the screen; as a pill with a solid background it clears AA comfortably.
+- No mask on the backdrop any more. The panel gradient does the fading on its own, and one fewer exotic CSS property is one fewer thing to behave differently in Safari.
+
+### Notes
+- Worst contrast behind text: **5.24:1 light, 4.82:1 dark**, both above the 4.5:1 bar.
+- 391 checks pass, 2 of them new.
+
 ## v1.8.5
 
 ### Added — the villa behind the phone screen

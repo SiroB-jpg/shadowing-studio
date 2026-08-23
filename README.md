@@ -1,4 +1,15 @@
-# Italian Shadowing Studio v1.8.5
+# Italian Shadowing Studio v1.8.6
+
+## v1.8.6 notes — the villa, this time actually visible
+
+The picture is square and a phone screen is tall, so sizing it to cover the
+screen blew it up until only a strip of empty sky showed in the one place you
+could see through. The villa was there all along, hidden behind the solid part
+of the page. It is now a band across the top, placed so the house and the
+cypresses land where you can see them.
+
+The voice chip has been given a proper pill background, since it now sits over
+the picture.
 
 ## v1.8.5 notes — the villa behind the phone screen
 

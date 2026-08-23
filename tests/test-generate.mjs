@@ -94,58 +94,121 @@ await page.click('#mainToggle'); await page.waitForTimeout(700);
 check('Playback runs on generated sentences', await page.evaluate(()=>MainPlayer.playing===true));
 await page.click('#studyMore'); await page.click('#hardReset'); await page.keyboard.press('Escape');
 
-// ── in-tab playback ─────────────────────────────────────────────────────────
+// ── in-tab playback, on the bar Study and Generate now share ───────────────
 await page.click('.desktop-tabs [data-panel="generate"]'); await page.waitForTimeout(200);
-check('Playback controls appear once a set exists', await page.isVisible('#genPlayback'));
+check('Playback guidance appears once a set exists', await page.isVisible('#genPlayback'));
 check('Cards rendered for every sentence', (await page.$$eval('#genCards .srow',c=>c.length))===20);
 check('First card starts active', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[0].classList.contains('active')));
 
+// One bar, built once, moved to whichever panel is on screen.
+check('There is exactly one playback bar in the document',
+  (await page.$$eval('.playbar',b=>b.length))===1);
+check('The bar moves into the Generate panel', await page.evaluate(()=>
+  document.getElementById('generate').contains(document.getElementById('playbar'))));
+check('Generate carries no duplicate control set any more', await page.evaluate(()=>
+  ['genRepeat','genRate','genPause','genPlayMode','genToggle','genPrev','genNext','genStopAudio']
+    .every(id=>document.getElementById(id)===null)));
+check('One repeat, one speed, one pause and one mode exist in all',
+  await page.evaluate(()=>['repeat','rate','pause','playMode']
+    .every(id=>document.querySelectorAll('select#'+id).length===1)));
+check('The scope named for the whole set on a generated set', await page.evaluate(()=>
+  document.querySelector('#playMode option[value="chapter"]').textContent==='this whole set' &&
+  document.querySelector('#playMode option[value="loop-chapter"]').textContent==='loop whole set'));
+check('Group / single display is Study-only and stays out of the way',
+  await page.evaluate(()=>document.getElementById('displayModeField').classList.contains('hidden')));
+
+// ── one set of settings, wherever the learner is ───────────────────────────
+await page.click('.desktop-tabs [data-panel="study"]'); await page.waitForTimeout(200);
+await page.selectOption('#rate','0.6'); await page.selectOption('#repeat','3'); await page.selectOption('#pause','1800');
+check('The bar goes back to the Study panel', await page.evaluate(()=>
+  document.getElementById('study').contains(document.getElementById('playbar'))));
+check('"this chapter" is named for a chapter again on Study', await page.evaluate(()=>
+  document.querySelector('#playMode option[value="chapter"]').textContent==='this chapter'));
+await page.click('.desktop-tabs [data-panel="generate"]'); await page.waitForTimeout(200);
+check('The speed set on Study is the speed Generate shows',
+  (await page.$eval('#rate',e=>e.value))==='0.6');
+check('The speed set on Study is the speed Generate plays at', await page.evaluate(()=>{
+  App.playbackContext='gen';
+  return PlaybackControls.rate()===0.6&&PlaybackControls.repeat()===3&&PlaybackControls.pause()===1800;}));
+check('Study reads those very same settings', await page.evaluate(()=>{
+  App.playbackContext='main';
+  return PlaybackControls.rate()===0.6&&PlaybackControls.repeat()===3&&PlaybackControls.pause()===1800;}));
+check('The verb drill keeps a set of its own', await page.evaluate(()=>{
+  App.playbackContext='verb'; const r=PlaybackControls.rate(); App.playbackContext='main'; return r===1;}));
+
+// Translation visibility is a display choice, so it is shared as well.
+check('English shown on the generated cards by default',
+  (await page.$$eval('#genCards .english',e=>e.length))===20);
+await page.click('#studyMore'); await page.selectOption('#showEnglish','hide');
+await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+check('Hiding translations on the shared bar hides them on Generate too',
+  (await page.$$eval('#genCards .english',e=>e.length))===0);
+await page.click('#studyMore'); await page.selectOption('#showEnglish','show');
+await page.keyboard.press('Escape'); await page.waitForTimeout(200);
+check('Showing them again brings them back',
+  (await page.$$eval('#genCards .english',e=>e.length))===20);
+
 // Headless Chromium has no speech voices, so utterances resolve instantly.
 // A long pause and high repeat keep the engine alive long enough to observe.
-await page.selectOption('#genRepeat','5');
-await page.selectOption('#genRate','0.8');
-await page.selectOption('#genPause','5000');
-await page.selectOption('#genPlayMode','set');
+await page.selectOption('#repeat','5');
+await page.selectOption('#rate','0.8');
+await page.selectOption('#pause','5000');
+await page.selectOption('#playMode','chapter');
 await page.evaluate(()=>{Generator.index=0;});
-await page.click('#genToggle');
+await page.click('#mainToggle');
 await page.waitForTimeout(600);
-check('Generate tab plays its own set', await page.evaluate(()=>GenPlayer.playing===true));
+check('The shared Start button plays the generated set', await page.evaluate(()=>GenPlayer.playing===true));
+check('Study is not started by it', await page.evaluate(()=>MainPlayer.playing===false));
 check('Playback context switches to gen', await page.evaluate(()=>App.playbackContext==='gen'));
-check('Gen speed control is the one in use', await page.evaluate(()=>{App.playbackContext='gen';return PlaybackControls.rate()===0.8&&PlaybackControls.repeat()===5;}));
-check('Study controls untouched by the gen set', await page.evaluate(()=>{App.playbackContext='main';return PlaybackControls.rate()===1;}));
+check('Gen plays at the shared settings', await page.evaluate(()=>{App.playbackContext='gen';return PlaybackControls.rate()===0.8&&PlaybackControls.repeat()===5;}));
 await page.evaluate(()=>{App.playbackContext='gen';});
-check('Start button becomes Pause while playing', /Pause/.test(await page.textContent('#genToggle')));
-await page.click('#genToggle'); await page.waitForTimeout(200);
+check('Start button becomes Pause while playing', /Pause/.test(await page.textContent('#mainToggle')));
+await page.click('#mainToggle'); await page.waitForTimeout(200);
 check('Pause works', await page.evaluate(()=>GenPlayer.paused===true));
-await page.click('#genToggle'); await page.waitForTimeout(200);
+await page.click('#mainToggle'); await page.waitForTimeout(200);
 check('Resume works', await page.evaluate(()=>GenPlayer.paused===false));
-await page.click('#genStopAudio'); await page.waitForTimeout(200);
-check('Reset audio stops the gen player', await page.evaluate(()=>GenPlayer.playing===false));
+await page.click('#studyMore'); await page.click('#hardReset'); await page.keyboard.press('Escape');
+await page.waitForTimeout(200);
+check('Reset audio in the shared menu stops the gen player', await page.evaluate(()=>GenPlayer.playing===false));
 
 // navigation
 await page.evaluate(()=>{Generator.index=0;Generator.renderCards();});
-await page.click('#genNext'); await page.waitForTimeout(150);
+await page.click('#nextSentence'); await page.waitForTimeout(150);
 check('Next sentence advances', await page.evaluate(()=>Generator.index===1));
-await page.click('#genPrev'); await page.click('#genPrev'); await page.waitForTimeout(150);
+check('Next sentence left the Study position alone', await page.evaluate(()=>App.cur.index===0));
+await page.click('#prevSentence'); await page.click('#prevSentence'); await page.waitForTimeout(150);
 check('Previous wraps to the end', await page.evaluate(()=>Generator.index===19));
 await page.$$eval('#genCards .srow',c=>c[4].click()); await page.waitForTimeout(150);
 check('Tapping a card jumps to it', await page.evaluate(()=>Generator.index===4));
 check('Active highlight follows the jump', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[4].classList.contains('active')));
 
 // loop mode keeps going past the end
-await page.selectOption('#genPlayMode','loop-set');
+await page.selectOption('#playMode','loop-chapter');
 check('Loop mode provider never runs out', await page.evaluate(()=>{
   const p=GenController.provider(); let n=0;
   for(let i=0;i<45;i++){ if(!p.next()) return false; n++; }
   return n===45;
 }));
-await page.selectOption('#genPlayMode','set');
-check('Non-loop mode stops at the end', await page.evaluate(()=>{
+await page.selectOption('#playMode','chapter');
+check('Non-loop whole-set mode stops at the end', await page.evaluate(()=>{
   Generator.index=0; const p=GenController.provider(); let n=0;
   while(p.next()) { n++; if(n>60) break; }
   return n===20;
 }));
-await page.selectOption('#genPlayMode','group');
+check('The chapter scope is the whole generated set', await page.evaluate(()=>GenController.mode()==='set'));
+await page.selectOption('#playMode','current');
+check('Current sentence mode yields one item', await page.evaluate(()=>{
+  Generator.index=3; const p=GenController.provider(); let n=0;
+  while(p.next()) { n++; if(n>10) break; }
+  return n===1;
+}));
+await page.selectOption('#playMode','loop-current');
+check('Loop current sentence never runs out', await page.evaluate(()=>{
+  Generator.index=3; const p=GenController.provider(); let n=0;
+  for(let i=0;i<30;i++){ if(!p.next()) return false; n++; }
+  return n===30;
+}));
+await page.selectOption('#playMode','group');
 check('Group mode covers the second ten', await page.evaluate(()=>{
   Generator.index=10; const p=GenController.provider(); let n=0;
   while(p.next()){ n++; if(n>30) break; }
@@ -156,7 +219,7 @@ check('Group mode resumes from the current sentence, as Study does', await page.
   while(p.next()){ n++; if(n>30) break; }
   return n===8;
 }));
-await page.selectOption('#genPlayMode','set');
+await page.selectOption('#playMode','chapter');
 
 // dropping a sentence
 await page.evaluate(()=>{Generator.index=0;});
@@ -168,10 +231,18 @@ check('Cards re-render after a drop', (await page.$$eval('#genCards .srow',c=>c.
 check('Template rows renumber after a drop', await page.evaluate(()=>Generator.rows.length===19&&Generator.rows[18].Item===9));
 check('Dropping re-enables saving', await page.evaluate(()=>document.getElementById('genSave').disabled===false));
 
-// leaving the tab stops playback
-await page.click('#genToggle'); await page.waitForTimeout(400);
+// leaving the tab stops playback and takes the bar with it
+await page.click('#mainToggle'); await page.waitForTimeout(400);
+check('The shared button started the gen player again', await page.evaluate(()=>GenPlayer.playing===true));
 await page.click('.desktop-tabs [data-panel="study"]'); await page.waitForTimeout(300);
 check('Leaving Generate stops its playback', await page.evaluate(()=>GenPlayer.playing===false));
+check('The bar goes back to Study with the tab', await page.evaluate(()=>
+  document.getElementById('study').contains(document.getElementById('playbar'))));
+await page.selectOption('#playMode','group');
+await page.click('#mainToggle'); await page.waitForTimeout(500);
+check('The same button drives Study once the bar is back', await page.evaluate(()=>MainPlayer.playing===true&&GenPlayer.playing===false));
+await page.click('#studyMore'); await page.click('#hardReset'); await page.keyboard.press('Escape');
+await page.waitForTimeout(150);
 await page.click('.desktop-tabs [data-panel="generate"]'); await page.waitForTimeout(200);
 
 // append

@@ -22,7 +22,7 @@ ElevenLabs is never called because the tests run on the system voice.
 
 ## What each suite covers
 
-**test-study.mjs — 125 checks.** The pre-redesign behaviour of the library,
+**test-study.mjs — 135 checks.** The pre-redesign behaviour of the library,
 Study and Verb drill. CSV import including the Group/Item columns, the tree
 and selectors, group and single display modes, search, sentence and group
 navigation with its wrapping rules, all six playback scopes and their exact
@@ -31,9 +31,13 @@ between players, verb detection and conjugation building, all five verb drill
 modes, bookmarks, the sentence editor, export, settings persistence, theme,
 and Clear all. From v1.5.0 it also covers the breadcrumb and its book and chapter titles, the titles-only import, the collapsible library, the overflow menu, the persistent playback bar, and the accessibility of the icon-only controls.
 
-**test-generate.mjs — 59 checks.** The Generate tab: the relay contract, the
+**test-generate.mjs — 81 checks.** The Generate tab: the relay contract, the
 CSV template round-trip, saving to the library, in-tab playback, dropping a
-sentence, and every failure message the relay can produce.
+sentence, and every failure message the relay can produce. From v1.6.0 it also
+covers the playback bar shared with Study — that there is only one of it, that
+it follows the tab, that its Start/previous/next drive the generated set, that
+Generate carries no control of its own any more, and that a speed, repeat,
+pause or translation choice made on one tab is the one the other uses.
 
 **test-worker.mjs — 25 checks.** The Cloudflare relay itself, with Google
 stubbed: passphrase and origin checks, request validation, count clamping,

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.5.2</title>
+<title>Italian Shadowing Studio — v1.6.0</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1e2b20">
@@ -18,7 +18,7 @@
   <div class="header-inner">
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.5.2 — Calmer study screen, readable headings, collapsible library.</p>
+      <p class="header-sub">v1.6.0 — One playback bar for Study and Generate, with one set of settings.</p>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
       <input type="checkbox" id="themeToggle">
@@ -62,7 +62,7 @@
 
       <div id="viewer" class="sentences"></div>
 
-      <div class="playbar" role="group" aria-label="Playback">
+      <div id="playbar" class="playbar" role="group" aria-label="Playback">
         <button id="mainToggle" class="primary">Start</button>
         <button id="prevSentence" class="icon light" title="Previous sentence" aria-label="Previous sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
         <button id="nextSentence" class="icon light" title="Next sentence" aria-label="Next sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
@@ -74,7 +74,7 @@
         </span>
         <button id="studyMore" class="icon light" title="More options" aria-label="More options" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
         <div id="studyMoreMenu" class="menu hidden" role="menu">
-          <label class="field"><span>Display</span><select id="displayMode"><option value="group">group of ten</option><option value="single">one sentence</option></select></label>
+          <label class="field" id="displayModeField"><span>Display</span><select id="displayMode"><option value="group">group of ten</option><option value="single">one sentence</option></select></label>
           <label class="field"><span>Translation</span><select id="showEnglish"><option value="show">show English</option><option value="hide">hide English</option></select></label>
           <button id="hardReset" class="danger wide mt">Reset audio</button>
         </div>
@@ -140,26 +140,7 @@
 
       <div id="genPlayback" class="hidden">
         <hr>
-        <div class="grid">
-          <div><label>Repeat each sentence</label><select id="genRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option value="infinite">∞ loop</option></select></div>
-          <div><label>Speed</label><select id="genRate"><option value="0.4">0.4×</option><option value="0.6">0.6×</option><option value="0.8">0.8×</option><option value="1" selected>1.0×</option></select></div>
-          <div><label>Pause</label><select id="genPause"><option value="0">no pause</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></div>
-          <div><label>Playback mode</label><select id="genPlayMode">
-            <option value="current">current sentence only</option>
-            <option value="group">current group of ten</option>
-            <option value="set" selected>whole set</option>
-            <option value="loop-current">loop current sentence</option>
-            <option value="loop-group">loop current group</option>
-            <option value="loop-set">loop whole set</option>
-          </select></div>
-        </div>
-        <div class="controls">
-          <button id="genToggle">Start</button>
-          <button id="genPrev" class="light">← Sentence</button>
-          <button id="genNext" class="light">Sentence →</button>
-          <button id="genStopAudio" class="danger">Reset audio</button>
-        </div>
-        <div class="small">Tap a sentence to jump to it. ✕ Drop removes one from the set before saving.</div>
+        <div class="small">Playback uses the same bar as Study, at the foot of this panel — one repeat count, one speed, one pause, wherever you are. A generated set is one flat set rather than a book of chapters, so <strong>this group</strong> plays the current ten and <strong>this whole set</strong> plays them all. Tap a sentence to jump to it. ✕ Drop removes one from the set before saving.</div>
       </div>
       <div id="genCards"></div>
     </div>

@@ -83,7 +83,6 @@ td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertic
 .tenseCard{border:1px solid var(--border);border-radius:12px;padding:.75rem;background:var(--card-bg)}
 .tenseCard.active{background:var(--active);border-color:var(--active-border)}
 .formsLine{font-size:1.2rem;line-height:1.45}
-.verbRef{background:var(--status-bg);border-radius:10px;padding:.65rem;margin:.65rem 0}
 .review{margin-top:.75rem}
 .preloadRow{display:grid;grid-template-columns:1fr auto;gap:.65rem;align-items:flex-end;margin-top:.5rem}
 .preloadBtns{display:flex;gap:.5rem}
@@ -146,7 +145,6 @@ td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertic
   button{min-height:44px}.mini{min-height:40px}
   .modal{padding:.75rem;border-radius:12px}
   .formsLine{font-size:1.05rem}
-  .verbRef{font-size:.9rem}
   h2{font-size:1.1rem}h3{font-size:1rem}
 }
 
@@ -236,12 +234,14 @@ body.lib-collapsed #libraryPanel{display:none}
   }
   /* Every child needs a named area. An unplaced one is auto-placed into an
      implicit third row below the settings, where it is off the foot of the
-     screen — which is what happened to the Focus button in v1.7.0. */
-  .playbar>#mainToggle{grid-area:start;min-width:0}
-  .playbar>#openFocus{grid-area:focus}
-  .playbar>#prevSentence{grid-area:prev}
-  .playbar>#nextSentence{grid-area:next}
-  .playbar>#studyMore{grid-area:more}
+     screen — which is what happened to the Focus button in v1.7.0. Slots are
+     named by class rather than by id so a second bar (the verb drill's) cannot
+     reintroduce that bug simply by using different ids. */
+  .playbar>.pb-start{grid-area:start;min-width:0}
+  .playbar>.pb-alt{grid-area:focus}
+  .playbar>.pb-prev{grid-area:prev}
+  .playbar>.pb-next{grid-area:next}
+  .playbar>.pb-more{grid-area:more}
   .playbar-fields{grid-area:fields;display:grid;grid-template-columns:1fr 1fr;gap:.5rem;width:100%}
   .field{min-width:0}
   .field select{width:100%}
@@ -401,16 +401,62 @@ body.lib-collapsed .panel-art{display:block}
 
   /* Clear at the top, paper by the time the list starts. */
   aside,section{
+    /* The clear zone is as deep as that screen's heading and no deeper. Study
+       has a heading and then sentences, so it can afford a generous one. The
+       verb drill packs a heading, two selectors and a reference line into the
+       same space, and a deep zone put all of it on the picture where it could
+       not hold contrast. One gradient, one number changed per screen. */
     background:linear-gradient(180deg,
-      var(--glass-0) 0px, var(--glass-0) 60px, var(--glass-1) 215px, var(--panel) 300px);
+      var(--glass-0) 0px, var(--glass-0) 42px,
+      var(--glass-1) var(--glass-mid,215px), var(--panel) var(--glass-end,300px));
   }
   /* The heading sits on the picture, so it stops being quiet grey and becomes
      ink. Strengthening the text is what buys the picture its visibility —
      without this the wash has to stay so faint it is not worth having. */
-  #crumb .crumb-label{color:var(--ink);font-weight:650}
-  #crumb .crumb-title{color:var(--ink)}
-  #crumb .crumb-sep{opacity:.5}
+  /* Every heading that sits on the wash, not just Study's — the verb drill has
+     one too since v1.9.0, and it inherited none of this by being a different id. */
+  .crumb .crumb-label{color:var(--ink);font-weight:650}
+  /* Including the current step, which is accent-coloured elsewhere and outranks
+     the rule above. Amber on a pale watercolour is 2.27:1 — on the wash the
+     current step is marked by weight instead of by colour. */
+  .crumb .crumb-part.here .crumb-label{color:var(--ink);font-weight:800}
+  .crumb .crumb-title{color:var(--ink)}
+  .crumb .crumb-sep{opacity:.5}
+  .verb-pick .field>span,.verb-ref{color:var(--ink)}
+  body[data-screen="verbs"] section{--glass-mid:105px;--glass-end:160px}
   /* The playback bar stays opaque. It is sticky, so anything translucent there
      shows the list sliding underneath it — a rendering fault, not a wash. */
   .playbar{background:var(--panel)}
+}
+
+/* ── v1.9.0 — the verb drill ──────────────────────────────────────────────────
+   Release 5. The same treatment Study had in Releases 1 and 2: the eight-field
+   control grid becomes one compact bar at the foot, the pre-download moves into
+   an overflow menu because it is an exceptional action, and the heading says
+   what you are drilling instead of the word "Verb drill".
+
+   The bar reuses the .playbar class rather than a copy of its rules, so the two
+   cannot drift apart visually. It keeps its own values, because "repeat each
+   tense" and "repeat each sentence" are not the same setting — that separation
+   was deliberate in v1.6.0 and is still tested. */
+#verbCrumb{margin-bottom:.15rem}
+.verb-pick{display:flex;gap:.6rem;flex-wrap:wrap;margin:.9rem 0 1rem}
+/* One box fewer: the name and the gloss are in the heading now, so the
+   reference form is a line of small print rather than a panel of its own. */
+.verb-ref{margin:0 0 .7rem;color:var(--muted);font-size:.86rem}
+.verb-ref strong{color:var(--ink);font-family:var(--serif);font-size:1.05rem}
+.verb-pick .field{flex:1 1 220px;min-width:0}
+#verbBar{margin-top:.9rem}
+#verbMoreMenu{width:290px}
+#verbMoreMenu .small{color:var(--muted)}
+
+/* The active tense, made unmistakable the way the active sentence is. */
+.tenseCard{border-left:4px solid transparent}
+.tenseCard.active{border-left-color:var(--accent)}
+
+.verb-gloss{color:var(--muted);font-size:.95rem}
+@media(max-width:480px){
+  .verb-pick{gap:.5rem}
+  .verb-pick .field{flex:1 1 100%}
+  .tenseGrid{grid-template-columns:1fr}
 }

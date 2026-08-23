@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.9.0
+
+Release 5 — the verb drill. The last release in the handover's plan, and the one it marked optional.
+
+### Changed — the verb drill screen
+- **Eight standalone fields become one compact bar.** Verb source, verb, mode, repeat, speed, pause, Start and the two tense buttons filled two rows of large controls above the conjugations. Start, the tense buttons and the four settings now sit in a bar at the foot, built from the same rules as Study's rather than a copy of them, so the two cannot drift apart. The verb and its source stay at the top, because choosing what to drill is not a playback setting.
+- **The heading says what you are drilling.** It read "Verb drill" and a line of explanation. It now reads *Verb drill › avere — to have › congiuntivo presente*, and follows as you move through the tenses.
+- **The detected line names the scope it searched.** It said "Detected verbs (81 of 112 in the table)" without saying where it had looked, so the same number could mean a book or the whole library. It now reads *Detected in Chapter 4 · Impersonal expressions — 9 of the 112 verbs the table holds*. Siro asked for this some time ago and it was deferred; this was the release for it.
+- **Pre-download moved into the overflow menu**, as an exceptional action. It was a full-width green button sitting on the screen at all times. The two overflow menus now share one behaviour rather than two copies, and opening either closes the other.
+- **One box fewer.** The reference form was a shaded panel repeating the verb name and its gloss, both of which are now in the heading. It is a line of small print.
+- **The active tense card carries a green left rule**, the same mark the active sentence carries, rather than a background tint alone.
+- On a phone the conjugation cards stack one per row instead of squeezing into two columns.
+
+### Fixed
+- **Grid slots in the playback bar are named by class, not by id.** v1.7.0 shipped a control with no slot, which put it in an invisible third row. A second bar with different ids would have walked into the same trap; it now cannot, and the test checks every bar in the document rather than only Study's.
+- **The phone heading rule missed the verb drill.** It was written for `#crumb` and the new heading is `#verbCrumb`, so the verb heading sat on the illustration at 2.16:1. Now written for any heading. The current step is marked by weight rather than colour there — amber on a pale watercolour measured 2.27:1.
+- **The clear zone at the top of the phone screen is now as deep as that screen's heading and no deeper.** The verb drill packs a heading, two selectors and a reference line into the space Study gives to a heading alone, and the deeper zone put all of it on the picture. Study keeps the depth Siro approved.
+
+### Notes
+- The verb drill keeps its own repeat, speed and pause. "Repeat each tense" is not "repeat each sentence"; that separation was deliberate in v1.6.0 and is still tested.
+- The contrast measurement now covers the verb drill as well: worst case **5.42:1 light, 4.94:1 dark**.
+- 412 checks pass, 22 of them new.
+- This completes the release plan in the Rev 2 handover.
+
 ## v1.8.6
 
 ### Fixed — the phone backdrop was invisible, and Siro was right about why

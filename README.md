@@ -1,4 +1,21 @@
-# Italian Shadowing Studio v1.6.0
+# Italian Shadowing Studio v1.7.0
+
+## v1.7.0 notes — Focus mode
+
+There is now a **Focus** button on the playback bar. It gives you the whole
+screen for one sentence: large Italian, the English underneath if you want it,
+and nothing else. Use it when you are actually shadowing rather than browsing.
+
+Underneath the sentence it counts the repetitions — *Repetition 2 of 5*, with a
+dot for each one — so you always know where you are in the five. Speed, pause,
+repeat and translation sit along the bottom and are the same settings as on the
+main bar, not a second copy.
+
+It works the same from Study and from a set you have just generated. Space plays
+and pauses, the arrow keys move between sentences, and Escape leaves.
+
+The Italian is now set in a serif face throughout, not just in Focus mode.
+
 
 ## v1.6.0 notes — one playback bar, and a verb table that covers the corpus
 

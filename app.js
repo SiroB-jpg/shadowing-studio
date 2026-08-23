@@ -74,7 +74,8 @@ const SVG={
   bmOn:'<path d="M6.5 4h11v16.2l-5.5-3.9-5.5 3.9z"/>|solid',
   edit:'<path d="M4.2 19.8h4L18.6 9.4a2 2 0 000-2.8l-1.2-1.2a2 2 0 00-2.8 0L4.2 15.8z"/><path d="M13.6 6.6l3.8 3.8"/>',
   drop:'<path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/>',
-  volume:'<path d="M5 9.5h3l4-3.2v11.4l-4-3.2H5z"/><path d="M15.8 9.6a3.4 3.4 0 010 4.8"/>'
+  volume:'<path d="M5 9.5h3l4-3.2v11.4l-4-3.2H5z"/><path d="M15.8 9.6a3.4 3.4 0 010 4.8"/>',
+  pause:'<rect x="7" y="5" width="3.4" height="14" rx="1"/><rect x="13.6" y="5" width="3.4" height="14" rx="1"/>|solid'
 };
 function icon(name,size){
   let raw=SVG[name]||"",solid=raw.endsWith("|solid"),d=solid?raw.slice(0,-6):raw;
@@ -114,6 +115,101 @@ const SentenceRow={
     });
     return d;
   }
+};
+
+
+/* Focus mode — the same playback, shown as one sentence and nothing else.
+   It drives whichever controller is already in charge (Study or Generate), so
+   there is no second playback path to keep in step. */
+const Focus={
+  open:false, origin:null, scrollY:0,
+  el(id){return $(id);},
+  isOpen(){return this.open;},
+  player(){return this.origin==="generate"?GenPlayer:MainPlayer;},
+  controller(){return this.origin==="generate"?GenController:SentenceController;},
+
+  enter(origin){
+    if(this.open)return;
+    this.origin=origin||(document.querySelector(".desktop-tabs [data-panel='generate']")&&!$("generate").classList.contains("hidden")?"generate":"study");
+    if(this.origin==="generate"&&!Generator.items.length){Generator.status("Generate a set first.","warntxt");return;}
+    if(this.origin==="study"&&!App.sentences.length){UI.status("Import some sentences first.","warntxt");return;}
+    this.scrollY=window.scrollY;
+    this.open=true;
+    /* Inherit the settings from the screen that launched it. */
+    $("focusRate").value=$("rate").value;
+    $("focusPause").value=$("pause").value;
+    $("focusRepeat").value=$("repeat").value;
+    $("focusEnglishMode").value=$("showEnglish").value;
+    $("focus").classList.remove("hidden");
+    document.body.classList.add("focus-open");
+    this.sync();
+    setTimeout(()=>$("focusToggle").focus(),40);
+  },
+
+  leave(){
+    if(!this.open)return;
+    this.player().stop("Left focus mode.");
+    this.open=false;
+    $("focus").classList.add("hidden");
+    document.body.classList.remove("focus-open");
+    window.scrollTo(0,this.scrollY);
+    if(this.origin==="generate")Generator.renderCards(); else UI.renderAll();
+    let back=this.origin==="generate"?$("genBtn"):$("mainToggle");
+    if(back)back.focus();
+  },
+
+  current(){
+    if(this.origin==="generate"){
+      let it=Generator.items[Generator.index];
+      return it?{italian:it.italian,english:it.english,
+        number:Generator.index+1,of:Generator.items.length,
+        parts:Generator.meta?["Generated",Generator.meta.word]:["Generated"]}:null;
+    }
+    let s=Library.current(); if(!s)return null;
+    let g=Library.group();
+    return {italian:s.italian,english:s.english,
+      number:App.cur.index+1,of:g.length,
+      parts:Titles.crumb(App.cur.book,App.cur.chapter,App.cur.group)
+        .map(p=>p.title?p.label+" · "+p.title:p.label)};
+  },
+
+  sync(){
+    if(!this.open)return;
+    let c=this.current();
+    if(!c){this.leave();return;}
+    /* Each step is its own element so a narrow screen can drop the outer ones
+       and keep the part that actually locates you — the chapter and group. */
+    $("focusCrumb").innerHTML=(c.parts||[]).map(t=>`<span class="cpart">${Util.esc(t)}</span>`).join('<span class="csep">›</span>');
+    $("focusPos").textContent=`${c.number} of ${c.of}`;
+    $("focusNum").textContent="";
+    $("focusItalian").textContent=c.italian;
+    let showEn=$("focusEnglishMode").value==="show";
+    $("focusEnglish").textContent=showEn&&c.english?c.english:"";
+    $("focusEnglish").classList.toggle("hidden",!(showEn&&c.english));
+    let playing=this.player().playing&&!this.player().paused;
+    $("focusToggle").setAttribute("aria-label",playing?"Pause":"Play");
+    $("focusToggle").innerHTML=playing
+      ? icon("pause",40)
+      : icon("play",40);
+    if(!this.player().playing)this.repeat(0,Number($("focusRepeat").value)||1);
+  },
+
+  /* Called once per repetition by the playback engine. */
+  repeat(n,total){
+    if(!this.open)return;
+    let t=total==="infinite"?0:Number(total)||1,
+        label=total==="infinite"?(n?`Repetition ${n}`:"Looping")
+             :(n?`Repetition ${n} of ${t}`:`${t} repetition${t===1?"":"s"} each`);
+    $("focusRepLabel").textContent=label;
+    let dots="";
+    if(t){for(let i=1;i<=t;i++)dots+=`<span class="dot${i<n?" done":i===n?" now":""}"></span>`;}
+    else dots='<span class="dot now"></span>';
+    $("focusDots").innerHTML=dots;
+  },
+
+  toggle(){this.controller().toggle();setTimeout(()=>this.sync(),60);},
+  next(){this.controller().next();this.sync();},
+  prev(){this.controller().prev();this.sync();}
 };
 
 const UI={
@@ -229,6 +325,7 @@ const UI={
       return;
     }
     g.forEach((s,i)=>v.appendChild(this.rowFor(s,i,g)));
+    Focus.sync();
     setTimeout(()=>{let a=$("viewer").querySelector(".srow.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
   },
 
@@ -335,13 +432,25 @@ const Speech={
   }
 };
 
-class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
+class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
 
 const MainPlayer=new PlaybackEngine("main",null,"Sentence playback");
 const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
 const GenPlayer=new PlaybackEngine("gen",null,"Generated sentences");
 
-const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>this.provider());},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
+function withProgress(p){
+  return {next:()=>{
+    let item=p.next();
+    if(item){
+      let before=item.onBefore;
+      item.onBefore=()=>{if(before)before();Focus.sync();};
+      item.onRepeat=(n,total)=>Focus.repeat(n,total);
+    }
+    return item;
+  }};
+}
+
+const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
 const Verb={
   tenseOrder:["presente","passato","imperfetto","trapassato"],
@@ -902,6 +1011,7 @@ const Generator={
       }
     })));
     setTimeout(()=>{let a=host.querySelector(".srow.active");if(a)a.scrollIntoView({behavior:"smooth",block:"nearest"});},80);
+    Focus.sync();
     this.setOutputButtons(true);
   },
 
@@ -990,8 +1100,8 @@ const GenController={
         onBefore:()=>{Generator.index=idx;Generator.renderCards();}};
     }};
   },
-  toggle(){if(!this.items().length){Generator.status("Generate a set first.","warntxt");return;}GenPlayer.toggle(()=>this.provider());},
-  restart(){if(GenPlayer.playing)GenPlayer.restart(()=>this.provider());},
+  toggle(){if(!this.items().length){Generator.status("Generate a set first.","warntxt");return;}GenPlayer.toggle(()=>withProgress(this.provider()));},
+  restart(){if(GenPlayer.playing)GenPlayer.restart(()=>withProgress(this.provider()));},
   jump(i){Generator.index=i;Generator.renderCards();this.restart();},
   next(){let n=this.items().length;if(n)Generator.index=(Generator.index+1)%n;Generator.renderCards();this.restart();},
   prev(){let n=this.items().length;if(n)Generator.index=(Generator.index-1+n)%n;Generator.renderCards();this.restart();}
@@ -1035,7 +1145,7 @@ function bind(){
   /* One bar, so one Start/Pause button. Only one player may run at a time,
      which is what makes a single button honest. */
   MainPlayer.button=$("mainToggle");GenPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
-  function activatePanel(p){document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");Playbar.attach(p);}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
+  function activatePanel(p){if(Focus.isOpen())Focus.leave();document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");Playbar.attach(p);}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
   /* Library management now lives in its own screen. */
   const openManage=()=>{Manage.render();$("manageModal").style.display="flex";};
   $("openManage").onclick=openManage;
@@ -1050,6 +1160,24 @@ function bind(){
     $("libShow").classList.toggle("hidden",!collapsed);
     localStorage.setItem("v08libCollapsed",collapsed?"1":"0");
   };
+  /* Focus mode */
+  $("openFocus").onclick=()=>Focus.enter($("generate").classList.contains("hidden")?"study":"generate");
+  $("closeFocus").onclick=()=>Focus.leave();
+  $("focusToggle").onclick=()=>Focus.toggle();
+  $("focusNext").onclick=()=>Focus.next();
+  $("focusPrev").onclick=()=>Focus.prev();
+  $("focusRate").onchange=()=>{$("rate").value=$("focusRate").value;Focus.controller().restart();};
+  $("focusPause").onchange=()=>{$("pause").value=$("focusPause").value;Focus.controller().restart();};
+  $("focusRepeat").onchange=()=>{$("repeat").value=$("focusRepeat").value;Focus.repeat(0,Number($("focusRepeat").value)||1);Focus.controller().restart();};
+  $("focusEnglishMode").onchange=()=>{$("showEnglish").value=$("focusEnglishMode").value;Focus.sync();};
+  document.addEventListener("keydown",e=>{
+    if(!Focus.isOpen())return;
+    if(e.key==="Escape"){e.preventDefault();Focus.leave();}
+    else if(e.key===" "){e.preventDefault();Focus.toggle();}
+    else if(e.key==="ArrowRight"){e.preventDefault();Focus.next();}
+    else if(e.key==="ArrowLeft"){e.preventDefault();Focus.prev();}
+  });
+
   $("libCollapse").onclick=()=>setLib(true);
   $("libShow").onclick=()=>setLib(false);
 

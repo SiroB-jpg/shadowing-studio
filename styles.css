@@ -52,7 +52,11 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .small{font-size:.86rem;color:var(--muted)}
 .status{background:var(--status-bg);border-radius:10px;padding:.65rem;color:var(--muted);margin-top:.65rem}
 .oktxt{color:var(--ok)}.warntxt{color:#9b6b1f}.dangertxt{color:var(--danger)}
-.tabs{display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap}
+.tabs{display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap;align-items:center}
+/* Show library sits in the tab row, not inside Study. Put away the library from
+   Study, switch to Verb drill, and the only way back used to be switching back
+   to Study first — which is not a way back anybody would find. */
+.tabs #libShow{margin-right:.35rem}
 .tab{background:var(--soft);color:var(--ink)}.tab.active{background:var(--accent);color:white}
 .hidden{display:none!important}
 .tree{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:.4rem;background:var(--card-bg)}
@@ -333,15 +337,27 @@ body.focus-open{overflow:hidden}
 /* Generate wears the arcade rather than the villa, so the tab that invents new
    material reads differently from the library. The library's image steps aside
    while this tab is open — still one illustration on screen at a time. */
-.gen-head{display:flex;gap:1.1rem;align-items:flex-start;margin-bottom:.4rem}
-.gen-head-text{min-width:0;flex:1}
-.gen-head h2{margin-top:0}
+.pane-head{display:flex;gap:1.1rem;align-items:flex-start;margin-bottom:.4rem}
+.pane-head-text{min-width:0;flex:1}
+.pane-head h2{margin-top:0}
 .gen-art{flex:0 0 118px;max-width:118px}
 .gen-art .art-img{border-radius:10px}
+
+/* When the library is put away it takes its picture with it, so the picture
+   comes back here — the same corner Generate uses — on Study, Verb drill and
+   Settings. Open the library again and this one steps aside: one at a time,
+   wherever it happens to be. */
+.panel-art{flex:0 0 104px;max-width:104px;display:none;align-self:center}
+body.lib-collapsed .panel-art{display:block}
+.panel-art .art-img{border-radius:10px}
+#study .panel-head{align-items:center}
+
 @media(max-width:700px){
-  .gen-head{gap:.8rem}
+  .pane-head{gap:.8rem}
   .gen-art{flex-basis:82px;max-width:82px}
+  .panel-art{flex-basis:82px;max-width:82px}
 }
 @media(max-width:480px){
-  .gen-art{display:none}
+  .gen-art,.panel-art{display:none}
+  body.lib-collapsed .panel-art{display:none}
 }

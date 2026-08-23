@@ -1,4 +1,15 @@
-# Italian Shadowing Studio v1.8.2
+# Italian Shadowing Studio v1.8.4
+
+## v1.8.4 notes — the illustration follows the library
+
+Collapsing the library used to take the picture with it. Now the picture moves
+into the top-left of Study, Verb drill and Settings — the same corner Generate
+uses — and moves back to the library when you open it again. You never see two
+at once.
+
+**Also fixed: a collapsed library could only be reopened from the Study tab.**
+The Show library button now sits in the tab row, so it is there whichever tab
+you are on.
 
 ## v1.8.2 notes — your own artwork
 

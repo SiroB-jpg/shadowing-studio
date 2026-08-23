@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.9.1
+
+### Fixed — the Tense buttons
+v1.9.0 replaced the two buttons reading "← Tense" and "Tense →" with bare skip icons, identical to the ones Study uses to move between sentences. Nothing on the screen said what they moved. Siro reported them as having disappeared, and that is the right description: a control you cannot identify is not there.
+
+They read **‹ Tense** and **Tense ›** again. Study's arrows can be wordless because they move between sentences you can see on the same screen; nothing on the verb drill tells you a bare arrow changes the tense.
+
+This was my error in scope. The handover's section 05 asks for icons in place of the three full-width buttons repeated in every sentence row — a list of repeated controls, where the words are noise. It does not ask for the transport to lose its labels.
+
+### Fixed — the same sentence filed under two group numbers
+On Siro's iPhone, every chapter listed its groups twice: once numbered 1–5 and again numbered 11–15. The cause is two imports whose `Group` columns are numbered differently — one running on across the book, one restarting at 1 in each chapter — so each sentence is stored twice at different positions.
+
+The tidy-up could not see it. It keyed on book, chapter, **position** and text, and position is precisely what differs. It now also catches the same words in the same chapter at a different position, names that case in the confirmation rather than lumping it in, keeps the copy in the earlier position, and carries across any bookmark, difficulty mark or note from the copy being removed rather than losing it.
+
+**Manage library → Remove duplicated sentences** will clear it.
+
+### Checked and found innocent
+Exporting and re-importing was the obvious suspect and is not the cause: the round trip preserves group numbers exactly. Recorded here so it is not suspected again.
+
+### Notes
+422 checks pass, 10 of them new — including one that requires the tense controls to carry the word "Tense" on the button, which is the check that would have caught this.
+
 ## v1.9.0
 
 Release 5 — the verb drill. The last release in the handover's plan, and the one it marked optional.

@@ -281,21 +281,53 @@ check('riuscire is detected from its participle', await page.evaluate(()=>
 check('riuscire conjugates correctly in the present subjunctive', await page.evaluate(()=>
   Verb.line('riuscire','presente')==='riesca, riesca, riesca, riusciamo, riusciate, riescano'));
 check('riuscire takes essere and agrees in the plural', await page.evaluate(()=>
-  Verb.forms('riuscire','passato')[0]==='sia riuscito' && Verb.forms('riuscire','passato')[3]==='siamo riusciti'));
+  Verb.forms('riuscire','passato')[0]==='sia riuscito/a' && Verb.forms('riuscire','passato')[3]==='siamo riusciti/e'));
 check('uscire is not mistaken for riuscire', await page.evaluate(()=>
   !Verb.detect(['Vorrei riuscire a parlare meglio.']).includes('uscire')));
 check('The verb table has no duplicated entries', await page.evaluate(()=>{
-  const n=Object.keys(Verb.V); return new Set(n).size===n.length && n.length>=46;}));
+  const n=Object.keys(Verb.V); return new Set(n).size===n.length && n.length>=112;}));
+
+// ── the generated table: agreement, dual auxiliaries, reflexives ──────────
+check('The table now covers the corpus, not a fraction of it', await page.evaluate(()=>Object.keys(Verb.V).length===112));
+check('Corpus verbs the table used to lack are present', await page.evaluate(()=>
+  ['restare','decidere','cominciare','scegliere','ascoltare','cambiare','imparare','provare'].every(v=>!!Verb.V[v])));
+check('avere leaves the participle invariable', await page.evaluate(()=>
+  Verb.forms('fare','passato')[0]==='abbia fatto' && Verb.forms('fare','passato')[3]==='abbiamo fatto'));
+check('A verb taking both auxiliaries shows both', await page.evaluate(()=>
+  Verb.forms('cominciare','passato')[0]==='abbia cominciato / sia cominciato/a'));
+check('finire and vivere are no longer avere-only', await page.evaluate(()=>
+  Array.isArray(Verb.V.finire.aux) && Array.isArray(Verb.V.vivere.aux)));
+check('A reflexive puts its clitic before the auxiliary and agrees', await page.evaluate(()=>
+  Verb.forms('fermarsi','passato')[3]==='ci siamo fermati/e'));
+check('Reflexive simple tenses carry their clitic', await page.evaluate(()=>
+  Verb.V.fermarsi.presente[0]==='mi fermi'));
+check('Spoken forms carry no slashes — one gender, one auxiliary', await page.evaluate(()=>{
+  const bad=[];
+  for(const v of Object.keys(Verb.V))
+    for(const t of Verb.tenseOrder)
+      if(/\//.test(Verb.spoken(v,t))) bad.push(v+' '+t);
+  return bad.length===0;}));
+check('Spoken form of a dual-auxiliary verb picks the first', await page.evaluate(()=>
+  Verb.spoken('cominciare','passato').startsWith('abbia cominciato,')));
+check('Every verb yields six forms in all four tenses', await page.evaluate(()=>{
+  for(const v of Object.keys(Verb.V))
+    for(const t of Verb.tenseOrder){
+      const f=Verb.forms(v,t);
+      if(f.length!==6||f.some(x=>!x||!x.trim())) return false;
+    }
+  return true;}));
+check('Participle agreement forms are present for every verb', await page.evaluate(()=>
+  Object.values(Verb.V).every(d=>Array.isArray(d.pf)&&d.pf.length===4)));
 check('A verb outside the table is named rather than silently dropped', await page.evaluate(()=>
   Verb.unknown(['Spero di poter viaggiare presto.'],[]).includes('viaggiare')));
 check('Verbs already in the table are not listed as missing', await page.evaluate(()=>
   Verb.unknown(['Vorrei riuscire a parlare meglio.'],['riuscire','parlare']).length===0));
 check('Four tense cards rendered', (await page.$$eval('#verbView .tenseCard',c=>c.length))===4);
 check('Simple tense line built from the table', await page.evaluate(()=>Verb.line('essere','presente')==='sia, sia, sia, siamo, siate, siano'));
-check('Compound tense built from auxiliary plus participle', await page.evaluate(()=>Verb.forms('andare','passato')[0]==='sia andato'));
-check('Participle agrees in the plural', await page.evaluate(()=>Verb.forms('andare','passato')[3]==='siamo andati'));
+check('Compound tense built from auxiliary plus participle', await page.evaluate(()=>Verb.forms('andare','passato')[0]==='sia andato/a'));
+check('Participle agrees in the plural', await page.evaluate(()=>Verb.forms('andare','passato')[3]==='siamo andati/e'));
 check('Avere verbs use avere as auxiliary', await page.evaluate(()=>Verb.forms('fare','passato')[0]==='abbia fatto'));
-check('Trapassato uses the imperfect auxiliary', await page.evaluate(()=>Verb.forms('essere','trapassato')[0]==='fossi stato'));
+check('Trapassato uses the imperfect auxiliary', await page.evaluate(()=>Verb.forms('essere','trapassato')[0]==='fossi stato/a'));
 await page.click('#nextTense'); await page.waitForTimeout(120);
 check('Tense forward advances', await page.evaluate(()=>App.verbTenseIndex===1));
 await page.evaluate(()=>{App.verbTenseIndex=3;Verb.renderView();});

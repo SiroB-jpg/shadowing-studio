@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.10.1
+
+Four changes to the pronunciation preview, all from Siro's reading of it.
+
+### Words Italian already accents
+**è, perché, già, città and their kind are now marked** — coloured, but never re-spelt. Under the open-and-closed notation a bare stressed vowel means *not in the lexicon*, so leaving *è* uncoloured made the commonest word in the corpus look unknown.
+
+The rule is now absolute and applies in every notation, IPA included: **if ordinary spelling already carries the accent, the letter keeps its shape.** Two earlier attempts got this wrong in ways the preview exposed — IPA notation turned *città* into *citta* and *perché* into *perche*, throwing away the stress the accent was carrying. Marking is not transcription; the app must not re-spell a word the language already spells.
+
+### Capital IPA
+Siro asked whether the IPA symbols can be capitalised. **IPA itself has no capitals** — case is contrastive in the alphabet, so there is no uppercase ɛ. Unicode does carry look-alike capitals borrowed from African orthographies, **Ɛ (U+0190)** and **Ɔ (U+0186)**, and they render correctly in every serif the app uses. A sentence opening on a stressed open vowel — *Ecco* — therefore reads **ˈƐcco** in IPA notation and **Ècco** in the two spelling notations.
+
+### Irregular stress
+Now shown, in both mechanisms:
+- **Spelling notations**: a grave accent on the stressed vowel — *mèdico*, *àbita*. Where the vowel is e or o the aperture mark already does this work, so no second cue is added.
+- **IPA notation**: the primary-stress bar **ˈ**, placed **before the syllable**, not before the vowel — *ˈmɛdico*, *Teˈlɛfono*. Placing it before the vowel would be wrong IPA and would teach the wrong habit. Correct placement needs syllable boundaries, which both candidate lexicons supply.
+
+### Both notations stay
+Open-and-closed and IPA both remain, switchable. No decision forced.
+
+### Notes
+457 checks pass, 18 of them on the pronunciation preview. The demo sentences are now addressed in tests by their opening words rather than their position, so inserting one cannot silently re-point a check — which it did, twice, while this was being written.
+
 ## v1.10.0
 
 ### Added — Pronunciation help, as a preview only

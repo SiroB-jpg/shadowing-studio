@@ -1,4 +1,19 @@
-# Italian Shadowing Studio v1.7.1
+# Italian Shadowing Studio v1.7.2
+
+## v1.7.2 notes — the speed control now works on the ElevenLabs voice
+
+Changing the speed only ever affected the system voice. The ElevenLabs voice
+plays a downloaded recording, and the app was setting the speed on that
+recording a moment too early — loading the audio wiped it, so every clip played
+at full speed. It is now set at the right moment and checked once the audio has
+loaded.
+
+Slowing down also keeps the pitch where it belongs, so a voice at 0.4× sounds
+like the same person speaking slowly rather than dropping an octave.
+
+Recordings are still cached by voice and sentence, not by speed, so changing the
+speed costs you nothing in ElevenLabs credits.
+
 
 ## v1.7.1 notes — two phone fixes
 

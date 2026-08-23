@@ -1,4 +1,21 @@
-# Italian Shadowing Studio v1.8.4
+# Italian Shadowing Studio v1.8.5
+
+## v1.8.5 notes — the villa behind the phone screen
+
+On a phone the villa now sits behind the heading at the top of the screen and
+fades out before the sentences begin, so you get the picture without it ever
+competing with the Italian. The heading is printed in ink rather than grey to
+carry it.
+
+**Along the way I found and fixed a real readability problem.** The English
+translation under each sentence had never met the accessibility standard for
+contrast — it was too pale in the light theme and too dim in the dark one. Both
+are corrected. You will notice the English, the small print and the field labels
+are a little stronger everywhere now, not only on the phone.
+
+Dark mode gets a suggestion of the villa rather than the villa itself. A picture
+you can see and light text you can read pull against each other on a dark
+screen, and the text wins.
 
 ## v1.8.4 notes — the illustration follows the library
 

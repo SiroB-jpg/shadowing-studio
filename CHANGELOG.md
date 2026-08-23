@@ -1,5 +1,28 @@
 # Changelog
 
+## v1.8.5
+
+### Added — the villa behind the phone screen
+A phone has no room for the illustration beside the text, so on a phone it now sits behind it — but not behind the sentences. The panel surface is nearly clear at the top of the screen, where only the heading sits, and is solid paper again by the time the first sentence arrives. The villa reads plainly where there is nothing to read, and fades out where there is.
+
+This deliberately relaxes the handover's *never behind text* rule, at Siro's request, and only for the heading. What that rule protects is contrast, so contrast is now measured rather than assumed.
+
+### Fixed — a contrast failure that predates all of this
+Measuring for the backdrop turned up something that had nothing to do with it. **The English translation under each sentence had never met WCAG AA**, on any screen, in any version: 3.46:1 on a light phone and 2.71:1 on a dark one, against a 4.5:1 requirement. The muted colour was too pale in the light theme and too dim in the dark one.
+
+- `--muted` is now `#546953` in the light theme (was `#748a74`) and `#968f85` in the dark (was `#6b6660`). Both clear AA with headroom on every ground the app uses, including the pale active row.
+- **This is visible everywhere, not just on phones** — the English translations, small print and field labels are all a little stronger now. It is a change nobody asked for, and it is here because granting the request safely required fixing it first.
+- On a phone the breadcrumb is now ink rather than grey. Strengthening that text is what buys the picture its visibility; without it the wash has to stay so faint it is not worth having.
+
+### How the contrast is now held
+The tests hide the text, photograph the ground underneath it, and check the worst single pixel behind every heading, Italian and English line against the colour that text is actually drawn in. Current worst case: **5.53:1 light, 4.82:1 dark**, both above the 4.5:1 bar, and light is now better than it was before the backdrop existed. Push the wash too far and the suite fails. The screenshot is decoded inside the browser, so the tests still need nothing but Playwright.
+
+### Notes
+- Dark mode gets a hint rather than a picture, and that is the honest ceiling: a visible image and readable light text pull in opposite directions there. The image is held dark so the text stays legible.
+- The playback bar stays opaque. It is sticky, and anything translucent there shows the list sliding underneath it, which reads as a fault rather than a wash.
+- Nothing changes on iPad or desktop except the muted colour.
+- 389 checks pass, 8 of them new.
+
 ## v1.8.4
 
 ### Fixed

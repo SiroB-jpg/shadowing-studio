@@ -1,4 +1,25 @@
-# Italian Shadowing Studio v1.7.2
+# Italian Shadowing Studio v1.8.2
+
+## v1.8.2 notes — your own artwork
+
+The logo is now the Ionic column with the olive branch from your mockup, and the
+library carries your watercolour of the villa. The Generate tab has the arcade
+with the cypresses, so it reads differently from the library — and the library's
+picture steps aside while you are on Generate, so you only ever see one at a
+time.
+
+All three travel inside the app's own files rather than being fetched, so there
+is nothing extra to upload and nothing that can go missing offline. Together
+they add about 30 KB.
+
+The watercolour is dimmed a little in dark mode so it does not glare.
+
+## v1.8.0 notes — a finer speed ladder
+
+**The speed control goes 0.5× to 1.0× in tenths.** 0.4× has gone — it was slower
+than anything you could actually shadow against — and there are now usable steps
+between 0.6× and 0.8×. The same ladder appears on the playback bar, in Focus mode
+and in the verb drill.
 
 ## v1.7.2 notes — the speed control now works on the ElevenLabs voice
 

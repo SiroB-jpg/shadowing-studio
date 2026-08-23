@@ -1309,6 +1309,53 @@ const GenController={
    moves it into the panel on screen and points its buttons at that panel's
    controller. Both controllers answer the same four calls, so the bar itself
    knows nothing about either. */
+
+/* ── Which files am I actually made of? ──────────────────────────────────────
+   The six files are uploaded by hand into a repository, from one folder among
+   dozens carrying the same six names. Take app.js from the wrong folder and the
+   markup and the code disagree: the app half-works, or does not start, and
+   nothing on screen says why. Each file now carries its version, and this
+   compares them at startup so a mismatched set announces itself. */
+const Build={
+  VERSION:"1.9.2",
+  html(){let m=document.querySelector('meta[name="app-version"]');
+    return m?m.getAttribute("content").trim():null;},
+  css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
+    return v?v.trim().replace(/^["']|["']$/g,""):null;},
+  async worker(){
+    try{
+      if(!window.caches)return null;
+      let names=await caches.keys(),
+          m=names.map(n=>/^italian-shadowing-studio-v([\d-]+)$/.exec(n)).filter(Boolean);
+      if(!m.length)return null;
+      /* Newest cache wins; older ones are deleted on activation anyway. */
+      return m.map(x=>x[1].replace(/-/g,".")).sort(Util.nat).pop();
+    }catch(e){return null;}
+  },
+  async check(){
+    let el=$("versionWarning");if(!el)return [];
+    let html=this.html(), css=this.css(), sw=await this.worker(), stale=[];
+    if(html&&html!==this.VERSION)stale.push(["index.html",html]);
+    if(css&&css!==this.VERSION)stale.push(["styles.css",css]);
+    /* A service worker one version behind is normal for a moment after an
+       update — it activates on the next load. Only shout if it is further off. */
+    if(sw&&sw!==this.VERSION&&!this._adjacent(sw,this.VERSION))stale.push(["sw.js",sw]);
+    if(!stale.length){el.classList.add("hidden");el.innerHTML="";return [];}
+    el.classList.remove("hidden");
+    el.innerHTML=`<strong>These files are from different versions.</strong> `
+      +`app.js is v${this.VERSION}, but `
+      +stale.map(([f,v])=>`<code>${f}</code> is v${v}`).join(" and ")
+      +`. Upload all six files again from the same folder — the app will not behave correctly until they match.`;
+    return stale;
+  },
+  /* 1.9.1 vs 1.9.2 counts as adjacent; 1.8.2 vs 1.9.2 does not. */
+  _adjacent(a,b){
+    let pa=String(a).split("."),pb=String(b).split(".");
+    if(pa[0]!==pb[0]||pa[1]!==pb[1])return false;
+    return Math.abs(Number(pa[2]||0)-Number(pb[2]||0))<=1;
+  }
+};
+
 const Playbar={
   tab:"study",
   controller(){return this.tab==="generate"?GenController:SentenceController;},
@@ -1446,4 +1493,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();

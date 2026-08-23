@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="app-version" content="1.9.2">
-<title>Italian Shadowing Studio — v1.9.2</title>
+<meta name="app-version" content="1.10.0">
+<title>Italian Shadowing Studio — v1.10.0</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1e2b20">
@@ -22,7 +22,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.9.2 — the verb drill, made calm.</p>
+      <p class="header-sub">v1.10.0 — pronunciation help, in preview.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -180,6 +180,26 @@
         <div class="panel-art"></div>
         <div class="pane-head-text"><h2>Settings</h2></div>
       </div>
+      <div id="pronPanel" class="status mt">
+        <h3 class="nomargin">Pronunciation help — preview</h3>
+        <p class="small">Not yet part of study. This shows how the marks would look in the app's own
+        typeface, on your own screen. The sentences below are annotated by hand for the preview;
+        in the real feature they would come from a pronunciation lexicon.</p>
+        <div class="row mt">
+          <label class="field"><span>Notation</span><select id="pronMode">
+            <option value="open">open vowels only — è ò</option>
+            <option value="both" selected>open and closed — è é ò ó</option>
+            <option value="ipa">IPA vowels — ɛ e ɔ o</option>
+          </select></label>
+          <label class="field"><span>Mark colour</span><select id="pronColour">
+            <option value="terracotta" selected>terracotta</option>
+            <option value="red">red</option>
+          </select></label>
+        </div>
+        <div id="pronDemo" class="pron-demo"></div>
+        <p class="small" id="pronLegend"></p>
+      </div>
+
       <label>Voice</label>
       <select id="voiceMode"><option value="eleven">ElevenLabs</option><option value="system">System voice: Alice</option></select>
       <div id="elevenPanel" class="status mt">

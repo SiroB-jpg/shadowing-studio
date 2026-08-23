@@ -1,4 +1,16 @@
-# Italian Shadowing Studio v1.9.2
+# Italian Shadowing Studio v1.10.0
+
+## v1.10.0 notes — pronunciation help, in preview
+
+Open **Settings** and you will find a new panel at the top. It shows how
+pronunciation marks would look in the app's own typeface, on your own screen,
+with three notations and two colours to compare. Nothing else in the app has
+changed — this is here to be looked at and judged, not used yet.
+
+Try each notation and each colour on the phone, the iPad and the laptop. The
+question that matters most is whether **ṡ** and **ż** look like they belong to
+the same typeface as the letters around them; they are uncommon characters, and
+if the typeface lacks them your device will quietly substitute another.
 
 ## v1.9.2 notes — why nothing would update
 

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.10.0
+
+### Added — Pronunciation help, as a preview only
+A panel at the top of **Settings** showing how pronunciation marks would look in the app's own typeface, on your own screen. It changes nothing about study, playback or the corpus; it exists to answer questions that cannot be answered from a screenshot.
+
+- **Three notations to compare**: open vowels only (è ò), open and closed (è é ò ó), and IPA vowels (ɛ e ɔ o). Voiced s and z are marked ṡ and ż in all three.
+- **Two mark colours**: terracotta and the app's red.
+- **The whole marked letter takes the colour**, per Siro's decision. That is also the simpler engineering: a diacritic cannot be coloured apart from its letter — proved by prototype — but an ordinary è can be coloured entire, with no overlay and no dependence on font metrics.
+- **The data model from the handover, in miniature.** Canonical text is stored untouched; marks live in separate metadata addressed by word and character; the renderer combines them at display time. Switching notation or colour alters no stored text. Tests assert that rendering never changes a sentence's length and never alters an unmarked character.
+
+### On the demo sentences
+Every mark was placed by hand and checked one word at a time. This is not incidental: writing the first set of examples freehand, I marked the *e* in *spettacolo* (stressed on -ta-), accented the wrong *e* in *vedere*, called *questo* open when it is closed, and marked the double *s* in *rilassato* as voiced when a double s is always voiceless. Four errors in two lines. Italian stress and vowel aperture are lexical, not derivable from spelling, and that is the whole argument for a lexicon rather than rules or a language model.
+
+### Noted for decision
+In IPA notation a closed vowel renders as a plain **e** or **o** — the same glyph as an unmarked letter, distinguished only by colour. The handover was right to say the feature must not rely on colour alone for meaning, and this is the one notation where it does.
+
+### Fixed
+- `Build.VERSION` was left at 1.9.2 while the other three files moved to 1.10.0. The version check added in v1.9.2 caught it on its first real outing, which is what it was for.
+
+### Notes
+449 checks pass, 12 of them new. Nothing in the study path, the playback engine or the CSV round-trip was touched.
+
 ## v1.9.2
 
 ### Fixed — the service worker never invalidated, so no device could get a new version

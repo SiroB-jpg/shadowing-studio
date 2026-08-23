@@ -1317,7 +1317,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.9.2",
+  VERSION:"1.10.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1353,6 +1353,104 @@ const Build={
     let pa=String(a).split("."),pb=String(b).split(".");
     if(pa[0]!==pb[0]||pa[1]!==pb[1])return false;
     return Math.abs(Number(pa[2]||0)-Number(pb[2]||0))<=1;
+  }
+};
+
+
+/* ── Pronunciation help (preview) ────────────────────────────────────────────
+   The handover's data model, in miniature. Canonical text is never altered:
+   the marks live in separate metadata, addressed by word and by character
+   within that word, and the renderer combines the two at display time. Change
+   the notation or the colour and nothing about the stored sentence changes.
+
+   Every mark below was placed by hand and checked one word at a time. That is
+   the point of the preview, not a shortcut: Italian stress and vowel aperture
+   are lexical, not derivable from spelling, and my own first attempt at writing
+   these examples freehand got four of them wrong. In the real feature they come
+   from a lexicon, and a word the lexicon does not cover stays unmarked. */
+const Pron={
+  /* [wordIndex, charWithinWord, type] */
+  DEMO:[
+    {t:"È bene che tu sia rilassato.",
+     m:[[1,1,"open_e"]],
+     n:"Only bène is marked. The stress in rilassato falls on -sa-, and a double s is always voiceless."},
+    {t:"Conviene che tu abbia tutto il necessario.",
+     m:[[0,5,"open_e"]],
+     n:"necessario is stressed on -sa-, so its e's are unstressed and take no mark."},
+    {t:"È opportuno che tutti siano presenti.",
+     m:[[5,3,"voiced_s"],[5,4,"open_e"]],
+     n:"presenti carries both: the s between vowels is voiced, and the stressed e is open."},
+    {t:"Non è necessario che tu abbia fretta.",
+     m:[[6,2,"closed_e"]],
+     n:"fretta has a closed e — shown only in the two notations that mark closed vowels."},
+    {t:"Conviene che il pianista abbia una copia dello spartito.",
+     m:[[0,5,"open_e"],[6,1,"open_o"],[7,1,"closed_e"]],
+     n:"Three marks, two of them open, one closed."},
+    {t:"È opportuno che il coro sia già in sala.",
+     m:[[4,1,"open_o"]],
+     n:"opportuno is stressed on -tu-, so only coro is marked."},
+    {t:"Vorrei vedere questo spettacolo.",
+     m:[[0,4,"open_e"],[1,3,"closed_e"],[2,2,"closed_e"]],
+     n:"vedere takes its accent on the second e, and spettacolo on -ta-, so its e is bare."},
+    {t:"Questa casa è troppo grande.",
+     m:[[0,2,"closed_e"],[1,2,"voiced_s"],[3,2,"open_o"]],
+     n:"casa: a single s between vowels is voiced."},
+    {t:"Mezzo litro di zucchero.",
+     m:[[0,1,"open_e"],[0,2,"voiced_z"],[0,3,"voiced_z"]],
+     n:"mezzo has voiced zz; zucchero has voiceless z and is left alone."},
+    {t:"Zero problemi.",
+     m:[[0,0,"voiced_z"],[0,1,"open_e"],[1,5,"open_e"]],
+     n:"Both words carry an open stressed e."}
+  ],
+
+  GLYPH:{
+    both:{open_e:"è",closed_e:"é",open_o:"ò",closed_o:"ó"},
+    open:{open_e:"è",open_o:"ò"},                  /* closed vowels left bare */
+    ipa: {open_e:"ɛ",closed_e:"e",open_o:"ɔ",closed_o:"o"}
+  },
+  CONS:{voiced_s:"ṡ",voiced_z:"ż"},
+
+  mode(){return $("pronMode")?$("pronMode").value:"both";},
+
+  /* Canonical text in, display markup out. The canonical string is untouched. */
+  render(text,marks,mode){
+    let words=text.split(" "),
+        byWord={};
+    (marks||[]).forEach(([w,c,type])=>{(byWord[w]=byWord[w]||[]).push([c,type]);});
+    return words.map((word,wi)=>{
+      let ms=byWord[wi];
+      if(!ms)return Util.esc(word);
+      let out="";
+      for(let i=0;i<word.length;i++){
+        let hit=ms.find(x=>x[0]===i);
+        if(!hit){out+=Util.esc(word[i]);continue;}
+        let type=hit[1],
+            g=this.CONS[type]||(this.GLYPH[mode]||{})[type];
+        if(!g){out+=Util.esc(word[i]);continue;}   /* not shown in this notation */
+        out+=`<span class="pron-mark">${Util.esc(g)}</span>`;
+      }
+      return out;
+    }).join(" ");
+  },
+
+  legend(mode){
+    if(mode==="ipa")return "ɛ open e · e closed e · ɔ open o · o closed o · ṡ voiced s · ż voiced z. "
+      +"Only vowels in stressed position are marked.";
+    if(mode==="open")return "è open e · ò open o · ṡ voiced s · ż voiced z. "
+      +"Closed vowels are left unmarked, so a bare stressed e or o means either closed or not yet known.";
+    return "è open e · é closed e · ò open o · ó closed o · ṡ voiced s · ż voiced z. "
+      +"Every stressed e and o is marked, so a bare one means the word is not yet in the lexicon.";
+  },
+
+  draw(){
+    let host=$("pronDemo");if(!host)return;
+    let mode=this.mode();
+    document.documentElement.setAttribute("data-pron-colour",
+      $("pronColour")?$("pronColour").value:"terracotta");
+    host.innerHTML=this.DEMO.map(d=>
+      `<div class="pron-row"><p class="italian pron-line">${this.render(d.t,d.m,mode)}</p>`
+      +`<p class="pron-note">${Util.esc(d.n)}</p></div>`).join("");
+    if($("pronLegend"))$("pronLegend").textContent=this.legend(mode);
   }
 };
 
@@ -1481,6 +1579,8 @@ function bind(){
   $("genEnglish").onchange=()=>Generator.renderCards();
   Generator.setOutputButtons(false);
   $("verbScope").onchange=()=>Verb.render();
+  if($("pronMode"))$("pronMode").onchange=()=>Pron.draw();
+  if($("pronColour"))$("pronColour").onchange=()=>Pron.draw();
   $("verbPreloadBtn").addEventListener("click",()=>closeAllMenus());
   $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
   $("verbMode").onchange=()=>Verb.restart();
@@ -1493,4 +1593,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Build.check();Pron.draw();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();

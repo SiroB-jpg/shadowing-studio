@@ -1,4 +1,20 @@
-# Italian Shadowing Studio v1.7.0
+# Italian Shadowing Studio v1.7.1
+
+## v1.7.1 notes — two phone fixes
+
+The **Focus** button now appears on a phone. In v1.7.0 it was being laid out in
+a hidden third row of the playback bar, below the bottom of the screen.
+
+**Importing the same corpus file twice no longer doubles your library.** Before
+it adds anything, the import screen now tells you what it found — how many
+sentences are already there word for word, how many have changed since you
+imported them, and how many are genuinely new. Sentences already there are
+skipped; sentences that have changed are updated in place, keeping any bookmark
+or note you had put on them.
+
+If your library is *already* doubled, open **Manage library → Remove duplicated
+sentences**. It keeps one copy of each and tells you how many it removed.
+
 
 ## v1.7.0 notes — Focus mode
 

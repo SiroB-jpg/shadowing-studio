@@ -5,7 +5,7 @@ const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,current
 
 const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
-const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});}};
+const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
 
 /* Book and chapter titles. Chapter titles come from the corpus CSV's
@@ -670,26 +670,89 @@ const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.ita
 
 const Importer={
   text:"",
-  open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importPreview").innerHTML="";$("importModal").style.display="flex";},
+  /* A sentence's place in the corpus — book, chapter and position — is its
+     identity. Same place and same words is the same sentence, and importing it
+     again must not give you two. Same place, different words is a correction:
+     it belongs in that slot, replacing what is there, not beside it. */
+  slot(s){return [String(s.book),String(s.chapter),String(s.order)].join("|");},
+  words(s){return String(s.italian||"").trim().replace(/\s+/g," ").toLowerCase();},
+  split(items){
+    let held=new Map();App.sentences.forEach(s=>held.set(this.slot(s),s));
+    let seen=new Set(),fresh=[],dupes=[],changed=[];
+    items.forEach(s=>{
+      let k=this.slot(s);
+      if(seen.has(k)){dupes.push(s);return;}
+      seen.add(k);
+      let was=held.get(k);
+      if(!was){fresh.push(s);return;}
+      if(this.words(was)===this.words(s)&&
+         String(was.english||"").trim()===String(s.english||"").trim()){dupes.push(s);return;}
+      /* Keep the learner's own marks; only the corpus columns are replaced. */
+      changed.push({...was,italian:s.italian,english:s.english,
+        audioText:s.audioText!==undefined?s.audioText:was.audioText});
+    });
+    return {fresh,dupes,changed};},
+  open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importSummary").className="status";$("importPreview").innerHTML="";$("importPreviewed").disabled=false;$("importPreviewed").textContent="Import";$("importModal").style.display="flex";},
   defs(){return{book:$("defaultBook").value,chapter:$("defaultChapter").value};},
   async fileText(){let f=$("csvFile").files[0];return f?await f.text():"";},
   preview(items,text){
     App.analysed=items;this.text=text||"";
-    $("importSummary").textContent=items.length?`Detected ${items.length} sentences.`:"No sentences detected.";
-    $("importSummary").className="status "+(items.length?"oktxt":"dangertxt");
+    let {fresh,dupes,changed}=this.split(items);
+    let msg,cls;
+    if(!items.length){msg="No sentences detected.";cls="dangertxt";}
+    else if(!dupes.length&&!changed.length){msg=`Detected ${items.length} sentences.`;cls="oktxt";}
+    else{
+      let parts=[`Detected ${items.length} sentences.`];
+      if(dupes.length)parts.push(`${dupes.length} ${dupes.length===1?"is":"are"} already in your library, word for word, and will be skipped.`);
+      if(changed.length)parts.push(`${changed.length} ${changed.length===1?"has":"have"} changed since you imported them and will be updated in place.`);
+      parts.push(fresh.length?`${fresh.length} ${fresh.length===1?"is":"are"} new and will be added.`:"Nothing new will be added.");
+      msg=parts.join(" ");cls=fresh.length||changed.length?"warntxt":"warntxt";
+    }
+    $("importSummary").textContent=msg;
+    $("importSummary").className="status "+cls;
+    $("importPreviewed").disabled=!(fresh.length||changed.length);
+    $("importPreviewed").textContent=
+      !fresh.length&&changed.length?`Update the ${changed.length} changed one(s)`
+      :fresh.length&&(dupes.length||changed.length)?`Import the ${fresh.length} new one(s)`
+      :"Import";
     let sm=items.slice(0,12);
     $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
   },
   async import(){
     if(!App.analysed.length){alert("Analyse first.");return;}
+    let {fresh,dupes,changed}=this.split(App.analysed);
     let learned=this.text?Titles.harvest(this.text,this.defs()):0;
-    await Storage.addMany(App.analysed);
-    let s=App.analysed[0];
+    if(!fresh.length&&!changed.length){
+      $("importSummary").textContent="Nothing added — every sentence in that file is already in your library, word for word."
+        +(learned?` ${learned} book and chapter name(s) were picked up.`:"");
+      $("importSummary").className="status warntxt";
+      await Library.refresh();
+      return;
+    }
+    if(changed.length)await Storage.putMany(changed);
+    if(fresh.length)await Storage.addMany(fresh);
+    let s=fresh[0]||changed[0];
     App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};
     App.analysed=[];this.text="";
     $("importModal").style.display="none";
     await Library.refresh();
-    UI.status("Imported successfully."+(learned?` ${learned} book and chapter name(s) picked up.`:""),"oktxt");
+    UI.status([fresh.length?`Imported ${fresh.length} sentence(s).`:"",
+      changed.length?`Updated ${changed.length} that had changed.`:"",
+      dupes.length?`Skipped ${dupes.length} already in your library.`:"",
+      learned?`${learned} book and chapter name(s) picked up.`:""]
+      .filter(Boolean).join(" "),"oktxt");
+  },
+  /* Clearing up a library that was imported twice before the guard existed. */
+  async dedupe(){
+    let seen=new Set(),kill=[];
+    App.sentences.forEach(s=>{let k=this.slot(s)+"|"+this.words(s);
+      if(seen.has(k))kill.push(s.id);else seen.add(k);});
+    if(!kill.length){UI.status("No duplicated sentences found.","oktxt");return 0;}
+    if(!confirm(`Remove ${kill.length} duplicated sentence(s)? One copy of each is kept. Bookmarks and notes on the copy being removed are lost.`))return 0;
+    await Storage.deleteMany(kill);
+    await Library.refresh();
+    UI.status(`Removed ${kill.length} duplicated sentence(s).`,"oktxt");
+    return kill.length;
   },
   /* Read only BookTitle / ChapterTitle and apply them to sentences already held. */
   async titlesOnly(){
@@ -1196,6 +1259,7 @@ function bind(){
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}let t=await f.text();Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
   $("analysePaste").onclick=()=>{let t=$("pasteCsv").value;Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
   $("importPreviewed").onclick=()=>Importer.import();
+  $("dedupe").onclick=()=>Importer.dedupe();
   $("exportCsv").onclick=()=>download("italian-shadowing-library-v103.csv",toCSV(),"text/csv;charset=utf-8");
   $("clearAll").onclick=async()=>{if(confirm("Delete whole local library and audio cache?")){await Storage.clear(SS);await Storage.clear(AS);App.sentences=[];App.cur={book:"",chapter:"",group:1,index:0};UI.renderAll();}};
   $("prevGroup").onclick=()=>Nav.prevGroup();

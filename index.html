@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Italian Shadowing Studio — v1.7.0</title>
+<title>Italian Shadowing Studio — v1.7.1</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#1e2b20">
@@ -18,7 +18,7 @@
   <div class="header-inner">
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.7.0 — Focus mode: one sentence, nothing else.</p>
+      <p class="header-sub">v1.7.1 — Focus mode: one sentence, nothing else.</p>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
       <input type="checkbox" id="themeToggle">
@@ -232,6 +232,10 @@
     <h3>Import and export</h3>
     <div class="row"><button id="openImport" class="ok">Import CSV</button><button id="exportCsv" class="secondary">Export CSV</button></div>
     <p class="small mt">Already have these sentences and only want their chapter names? Use <strong>Update chapter names</strong> inside the import screen — it reads the titles without adding anything.</p>
+    <hr>
+    <h3>Tidying up</h3>
+    <p class="small">If a corpus file was imported twice, every sentence appears twice and playback speaks both. This finds sentences that sit in the same place and read the same, and keeps one of each.</p>
+    <button id="dedupe" class="secondary">Remove duplicated sentences</button>
     <hr>
     <h3>Danger zone</h3>
     <p class="small">Deletes every sentence, bookmark and cached recording on this device. There is no undo.</p>

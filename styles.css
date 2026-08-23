@@ -9,7 +9,7 @@
   --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
-  --css-version:"1.10.0";
+  --css-version:"1.10.1";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#968f85;

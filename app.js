@@ -1317,7 +1317,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.10.0",
+  VERSION:"1.10.1",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1359,74 +1359,113 @@ const Build={
 
 /* ── Pronunciation help (preview) ────────────────────────────────────────────
    The handover's data model, in miniature. Canonical text is never altered:
-   the marks live in separate metadata, addressed by word and by character
-   within that word, and the renderer combines the two at display time. Change
-   the notation or the colour and nothing about the stored sentence changes.
+   marks live in separate metadata addressed by word and by character within
+   that word, and the renderer combines the two at display time.
 
-   Every mark below was placed by hand and checked one word at a time. That is
-   the point of the preview, not a shortcut: Italian stress and vowel aperture
-   are lexical, not derivable from spelling, and my own first attempt at writing
-   these examples freehand got four of them wrong. In the real feature they come
-   from a lexicon, and a word the lexicon does not cover stays unmarked. */
+   A mark is {w, c, t} — word, character, type — with two optional flags:
+     written : ordinary Italian spelling already carries this accent (è, perché,
+               città). The letter is coloured but its shape is left alone, so
+               the app never re-spells a word the language already spells.
+     Types "tick" insert the IPA stress bar before a syllable rather than
+     replacing a letter.
+
+   Every mark below was placed by hand and checked one word at a time. Italian
+   stress and vowel aperture are lexical, not derivable from spelling; my own
+   first attempt at these examples freehand got four of them wrong. */
 const Pron={
-  /* [wordIndex, charWithinWord, type] */
   DEMO:[
     {t:"È bene che tu sia rilassato.",
-     m:[[1,1,"open_e"]],
-     n:"Only bène is marked. The stress in rilassato falls on -sa-, and a double s is always voiceless."},
+     m:[{w:0,c:0,t:"open_e",written:true},{w:1,c:1,t:"open_e"}],
+     n:"È already carries its accent, so it is coloured but not re-spelt. rilassato is stressed on -sa-, and a double s is always voiceless."},
     {t:"Conviene che tu abbia tutto il necessario.",
-     m:[[0,5,"open_e"]],
+     m:[{w:0,c:5,t:"open_e"}],
      n:"necessario is stressed on -sa-, so its e's are unstressed and take no mark."},
     {t:"È opportuno che tutti siano presenti.",
-     m:[[5,3,"voiced_s"],[5,4,"open_e"]],
+     m:[{w:0,c:0,t:"open_e",written:true},{w:5,c:3,t:"voiced_s"},{w:5,c:4,t:"open_e"}],
      n:"presenti carries both: the s between vowels is voiced, and the stressed e is open."},
     {t:"Non è necessario che tu abbia fretta.",
-     m:[[6,2,"closed_e"]],
-     n:"fretta has a closed e — shown only in the two notations that mark closed vowels."},
-    {t:"Conviene che il pianista abbia una copia dello spartito.",
-     m:[[0,5,"open_e"],[6,1,"open_o"],[7,1,"closed_e"]],
-     n:"Three marks, two of them open, one closed."},
-    {t:"È opportuno che il coro sia già in sala.",
-     m:[[4,1,"open_o"]],
-     n:"opportuno is stressed on -tu-, so only coro is marked."},
+     m:[{w:1,c:0,t:"open_e",written:true},{w:6,c:2,t:"closed_e"}],
+     n:"è is open and already accented; fretta has a closed e."},
+    {t:"Ecco la casa che cercavo.",
+     m:[{w:0,c:0,t:"tick"},{w:0,c:0,t:"open_e"},{w:2,c:2,t:"voiced_s"}],
+     n:"A stressed open e opening a sentence. IPA has no capitals of its own; Unicode's Ɛ is the only way to write one."},
+    {t:"Il medico abita in città.",
+     m:[{w:1,c:0,t:"tick"},{w:1,c:1,t:"open_e"},
+        {w:2,c:0,t:"tick"},{w:2,c:0,t:"stress"},
+        {w:4,c:4,t:"open_a",written:true}],
+     n:"Irregular stress. medico and abita are stressed on the third-last syllable; città shows its own stress already."},
+    {t:"Telefono alla mia amica.",
+     m:[{w:0,c:2,t:"tick"},{w:0,c:3,t:"open_e"}],
+     n:"The stress bar sits before the whole syllable — le — not before the vowel."},
+    {t:"Perché è già tardi?",
+     m:[{w:0,c:5,t:"closed_e",written:true},{w:1,c:0,t:"open_e",written:true},
+        {w:2,c:2,t:"open_a",written:true}],
+     n:"Three words that Italian already accents. All three are coloured; none is re-spelt."},
     {t:"Vorrei vedere questo spettacolo.",
-     m:[[0,4,"open_e"],[1,3,"closed_e"],[2,2,"closed_e"]],
+     m:[{w:0,c:4,t:"open_e"},{w:1,c:3,t:"closed_e"},{w:2,c:2,t:"closed_e"}],
      n:"vedere takes its accent on the second e, and spettacolo on -ta-, so its e is bare."},
     {t:"Questa casa è troppo grande.",
-     m:[[0,2,"closed_e"],[1,2,"voiced_s"],[3,2,"open_o"]],
+     m:[{w:0,c:2,t:"closed_e"},{w:1,c:2,t:"voiced_s"},{w:2,c:0,t:"open_e",written:true},
+        {w:3,c:2,t:"open_o"}],
      n:"casa: a single s between vowels is voiced."},
     {t:"Mezzo litro di zucchero.",
-     m:[[0,1,"open_e"],[0,2,"voiced_z"],[0,3,"voiced_z"]],
-     n:"mezzo has voiced zz; zucchero has voiceless z and is left alone."},
-    {t:"Zero problemi.",
-     m:[[0,0,"voiced_z"],[0,1,"open_e"],[1,5,"open_e"]],
-     n:"Both words carry an open stressed e."}
+     m:[{w:0,c:1,t:"open_e"},{w:0,c:2,t:"voiced_z"},{w:0,c:3,t:"voiced_z"}],
+     n:"mezzo has voiced zz; zucchero has voiceless z and is left alone."}
   ],
 
+  /* Replacement glyphs per notation. Absent means "not shown in this one". */
   GLYPH:{
-    both:{open_e:"è",closed_e:"é",open_o:"ò",closed_o:"ó"},
-    open:{open_e:"è",open_o:"ò"},                  /* closed vowels left bare */
+    both:{open_e:"è",closed_e:"é",open_o:"ò",closed_o:"ó",
+          stress:"̀",open_a:"à"},
+    open:{open_e:"è",open_o:"ò",stress:"̀",open_a:"à"},
+    /* No entry for open_a: IPA has no special symbol for a stressed a, and
+       Italian's own à already carries the stress. Substituting a plain "a"
+       would delete information the spelling was giving for free. */
     ipa: {open_e:"ɛ",closed_e:"e",open_o:"ɔ",closed_o:"o"}
   },
   CONS:{voiced_s:"ṡ",voiced_z:"ż"},
+  /* Italian writes its own grave accents; these are the ones we may need. */
+  GRAVE:{a:"à",e:"è",i:"ì",o:"ò",u:"ù"},
+  /* IPA has no capitals of its own. Unicode carries look-alike capitals from
+     African orthographies, which is the only way to open a sentence in IPA. */
+  CAPS:{"ɛ":"Ɛ","ɔ":"Ɔ","e":"E","o":"O","a":"A"},
 
   mode(){return $("pronMode")?$("pronMode").value:"both";},
 
-  /* Canonical text in, display markup out. The canonical string is untouched. */
+  glyphFor(mark,original,mode){
+    if(this.CONS[mark.t])return this.CONS[mark.t];
+    if(mark.t==="stress"){
+      /* An irregular stress on a vowel with no open/closed contrast. */
+      if(mode==="ipa")return null;              /* the tick carries it instead */
+      return this.GRAVE[original.toLowerCase()]||original;
+    }
+    /* Ordinary spelling already shows it: colour the letter, leave its shape —
+       in every notation, including IPA. Substituting there turns perché into
+       perche and città into citta, throwing away the stress the accent was
+       carrying. Marking is not transcription; the app must not re-spell a word
+       the language already spells. */
+    if(mark.written)return original;
+    let g=(this.GLYPH[mode]||{})[mark.t];
+    if(!g)return null;
+    if(original===original.toUpperCase()&&original!==original.toLowerCase())
+      g=this.CAPS[g]||g.toUpperCase();
+    return g;
+  },
+
   render(text,marks,mode){
-    let words=text.split(" "),
-        byWord={};
-    (marks||[]).forEach(([w,c,type])=>{(byWord[w]=byWord[w]||[]).push([c,type]);});
+    let words=text.split(" "),byWord={};
+    (marks||[]).forEach(m=>{(byWord[m.w]=byWord[m.w]||[]).push(m);});
     return words.map((word,wi)=>{
       let ms=byWord[wi];
       if(!ms)return Util.esc(word);
       let out="";
       for(let i=0;i<word.length;i++){
-        let hit=ms.find(x=>x[0]===i);
+        if(mode==="ipa"&&ms.some(m=>m.t==="tick"&&m.c===i))
+          out+=`<span class="pron-mark">ˈ</span>`;
+        let hit=ms.find(m=>m.c===i&&m.t!=="tick");
         if(!hit){out+=Util.esc(word[i]);continue;}
-        let type=hit[1],
-            g=this.CONS[type]||(this.GLYPH[mode]||{})[type];
-        if(!g){out+=Util.esc(word[i]);continue;}   /* not shown in this notation */
+        let g=this.glyphFor(hit,word[i],mode);
+        if(g===null){out+=Util.esc(word[i]);continue;}
         out+=`<span class="pron-mark">${Util.esc(g)}</span>`;
       }
       return out;
@@ -1434,12 +1473,13 @@ const Pron={
   },
 
   legend(mode){
-    if(mode==="ipa")return "ɛ open e · e closed e · ɔ open o · o closed o · ṡ voiced s · ż voiced z. "
-      +"Only vowels in stressed position are marked.";
-    if(mode==="open")return "è open e · ò open o · ṡ voiced s · ż voiced z. "
-      +"Closed vowels are left unmarked, so a bare stressed e or o means either closed or not yet known.";
-    return "è open e · é closed e · ò open o · ó closed o · ṡ voiced s · ż voiced z. "
-      +"Every stressed e and o is marked, so a bare one means the word is not yet in the lexicon.";
+    let cons=" · ṡ voiced s · ż voiced z";
+    if(mode==="ipa")return "ɛ open e · e closed e · ɔ open o · o closed o · ˈ stress, before the syllable"
+      +cons+". Only vowels in stressed position are marked. Sentence-initial open vowels use Ɛ and Ɔ.";
+    if(mode==="open")return "è open e · ò open o · à ì ù irregular stress"+cons
+      +". Closed vowels are left unmarked, so a bare stressed e or o means either closed or not yet known.";
+    return "è open e · é closed e · ò open o · ó closed o · à ì ù irregular stress"+cons
+      +". Every stressed e and o is marked, so a bare one means the word is not yet in the lexicon.";
   },
 
   draw(){

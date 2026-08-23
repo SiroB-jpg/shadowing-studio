@@ -1,4 +1,21 @@
-# Italian Shadowing Studio v1.10.0
+# Italian Shadowing Studio v1.10.1
+
+## v1.10.1 notes — pronunciation preview, second pass
+
+**Words Italian already accents are now marked** — *è*, *perché*, *già*, *città*.
+They are coloured but never re-spelt, in any notation. Under the open-and-closed
+system a bare stressed vowel means "not in the lexicon yet", so leaving *è*
+uncoloured made it look unknown.
+
+**Irregular stress is shown**: as a grave accent in the two spelling notations
+(*mèdico*, *àbita*), and as the IPA stress bar in the third (*ˈmɛdico*) — placed
+before the syllable, which is where IPA puts it.
+
+**Capital IPA is possible.** IPA has no capitals of its own, but Unicode carries
+Ɛ and Ɔ, and they render properly in the app's typeface. So a sentence opening on
+a stressed open vowel reads *ˈƐcco* in IPA and *Ècco* in the others.
+
+Both notations remain switchable in Settings.
 
 ## v1.10.0 notes — pronunciation help, in preview
 

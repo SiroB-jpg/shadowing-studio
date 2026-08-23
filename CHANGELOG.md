@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.7.1
+
+Two defects found on Siro's iPhone after v1.7.0, and a third that was waiting to happen.
+
+### Fixed
+- **The Focus button did not appear on a phone.** At 480px and below the playback bar becomes a CSS grid with named areas, and v1.7.0 added `#openFocus` to the bar without giving it one. An unplaced grid child is auto-placed into a new implicit row, so the button was laid out full-width in a *third* row beneath the settings, pushing the bar from 175px to 227px tall and putting the button off the foot of the screen. It now has its own area beside Start. Measured at 390px and at 320px: bar back to two rows, button 44 × 44.
+- **Importing a corpus twice silently doubled it.** Every sentence appeared twice and playback spoke both. The importer added whatever it was given, with no idea what the library already held. It now compares each incoming sentence against the library before adding anything, and says what it will do before it does it: *"Detected 760 sentences. 758 are already in your library, word for word, and will be skipped. 2 have changed since you imported them and will be updated in place. Nothing new will be added."*
+- **A corrected sentence was added beside the old one rather than replacing it.** Found while writing the test for the above. A sentence's place in the corpus — book, chapter, position — is its identity: same place and same words is a duplicate and is skipped; same place, different words is a correction and is written into that slot, keeping any bookmark, difficulty mark or note you had put on it. This matters ahead of the pronunciation column, where re-importing a revised corpus will be routine.
+
+### Added
+- **Manage library → Remove duplicated sentences**, for a library that was doubled before the guard existed. It keeps one copy of each sentence, says how many it will remove, and asks first.
+
+### Notes
+340 automated checks pass, 35 of them new. Eight of the new ones are a layout check on the phone playback bar — that it lays out in two rows, that every control in it has a place in the grid, that none sits outside the bar or overlaps another, and that the Focus button is on screen and at least 40 × 40. That class of defect had no test at all before.
+
 ## v1.7.0
 
 Release 3 of the interface redesign: Focus mode.

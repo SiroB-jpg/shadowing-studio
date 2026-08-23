@@ -217,11 +217,15 @@ body.lib-collapsed #libraryPanel{display:none}
      Transport on the first row, settings in a two-column grid beneath. */
   .playbar{
     position:sticky;bottom:0;border-radius:10px;
-    display:grid;grid-template-columns:1fr auto auto auto;
-    grid-template-areas:"start prev next more" "fields fields fields fields";
+    display:grid;grid-template-columns:1fr auto auto auto auto;
+    grid-template-areas:"start focus prev next more" "fields fields fields fields fields";
     gap:.5rem;align-items:center;
   }
+  /* Every child needs a named area. An unplaced one is auto-placed into an
+     implicit third row below the settings, where it is off the foot of the
+     screen — which is what happened to the Focus button in v1.7.0. */
   .playbar>#mainToggle{grid-area:start;min-width:0}
+  .playbar>#openFocus{grid-area:focus}
   .playbar>#prevSentence{grid-area:prev}
   .playbar>#nextSentence{grid-area:next}
   .playbar>#studyMore{grid-area:more}

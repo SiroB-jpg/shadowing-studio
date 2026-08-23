@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.7.0
+
+Release 3 of the interface redesign: Focus mode.
+
+### Added — Focus mode
+- **A full-screen shadowing view.** The playback bar gains a *Focus* button. It clears everything away — library, tabs, rows, buttons — and leaves one sentence in large type, its translation beneath, and the transport. It is the screen you want on a music stand or in your hand while you are actually speaking.
+- **It shows you where you are in the repetition, which nothing did before.** Under the sentence it reads *Repetition 2 of 5* with one dot per repetition, filling as they go. Until now the app repeated a sentence five times and gave you no way of knowing which one you were hearing. Before playback starts it reads *5 repetitions each*, so the setting is legible at a glance.
+- **It opens from Study and from a generated set**, and it does not care which: it drives whichever player is already in charge, so a generated set behaves in Focus exactly as an imported chapter does.
+- **The settings are the same settings.** Speed, pause, repeat and translation appear along the foot, prefilled from the playback bar. Change one in Focus and the bar has it too — there is no second copy to fall out of step.
+- **Keyboard**: Space plays and pauses, ← and → move between sentences, Escape leaves. On the way out the app returns to where Focus finished, not where it started.
+- On a phone the heading drops the book name and wraps, so the chapter title survives rather than being cut to *Book 1 · Present Subj…*.
+
+### Changed
+- **`PlaybackEngine` gained two lines**, and only two: `if(item.onRepeat)item.onRepeat(...)` in each of its two repetition loops. This is the one place that knows which repetition is playing, so it is the only place the count can come from. Nothing existing was altered, and an item that carries no `onRepeat` runs exactly as before — there is a test for precisely that.
+- **The Italian is now set in a serif face** (Iowan Old Style, Palatino, Georgia) in Study as well as in Focus. This is a visible change beyond Focus mode itself, and part of the visual direction in the handover rather than something asked for separately. Reverting it is a one-line change to `.italian` in `styles.css` if it is not wanted.
+- Switching tabs now closes Focus mode, and stops whatever it was playing.
+
+### Notes
+305 automated checks pass, 53 of them new and specific to Focus mode. `Speech`, `WakeLock`, `MediaSessionMgr` and the CSV template round-trip are byte-identical to v1.6.0.
+
 ## v1.6.0
 
 Release 2 of the interface redesign, plus a rebuilt verb table.

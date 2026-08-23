@@ -5,6 +5,8 @@
   --header-bg:#1e2b20;--header-sub:#8faa8f;
   --status-bg:#e4ebe4;--card-bg:#f5f7f4;
   --tree-hover:#dde8dc;--tree-active-bg:#cce0cc;
+  --terracotta:#c25a44;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
 }
 :root[data-theme="dark"]{
@@ -14,6 +16,7 @@
   --header-bg:#111110;--header-sub:#a09890;
   --status-bg:#252420;--card-bg:#252220;
   --tree-hover:#252420;--tree-active-bg:#2e2a22;
+  --terracotta:#c9805f;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
@@ -242,7 +245,7 @@ body.lib-collapsed #libraryPanel{display:none}
 
 
 /* ── v1.7.0 — focus mode ──────────────────────────────────────────────────── */
-.italian,.focus-italian{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif}
+.italian,.focus-italian{font-family:var(--serif)}
 body.focus-open{overflow:hidden}
 .focus{
   position:fixed;inset:0;z-index:900;background:var(--bg);color:var(--ink);
@@ -297,4 +300,48 @@ body.focus-open{overflow:hidden}
   .focus-side{width:54px;height:54px}
   .focus-foot{gap:.5rem}
   .focus-foot .field{min-width:calc(50% - .25rem);max-width:none;flex:1 1 calc(50% - .25rem)}
+}
+
+
+/* ── v1.8.1 — logo and book illustration ─────────────────────────────────── */
+/* Siro's own artwork, embedded as data. Placement follows the handover even
+   though the subject does not: one image at a time, never behind text. */
+.art-plate{margin:0}
+.art-img{display:block;width:100%;height:auto;border-radius:8px;
+  border:1px solid var(--border);user-select:none}
+/* A pale watercolour on a charcoal page is a lamp. Settle it down in the dark
+   theme rather than keeping a second copy of the picture. */
+:root[data-theme="dark"] .art-img{filter:brightness(.82) saturate(.85);opacity:.9}
+
+/* In the library: one image, for the book you are in, above the tree. */
+.side-art{padding:.9rem 0 .2rem;border-bottom:1px solid var(--border);margin-bottom:.7rem}
+.side-art .art-plate{max-width:190px;margin:0 auto}
+
+/* In the empty state: larger, and above the words rather than behind them. */
+.empty .art-plate{max-width:230px;margin:0 auto 1.2rem}
+
+/* The identity mark in the header. */
+.header-inner .art-mark{display:block;width:38px;height:auto;flex:0 0 38px;
+  border-radius:6px;user-select:none}
+.header-brand{display:flex;align-items:center;gap:.8rem;min-width:0}
+
+@media(max-width:480px){
+  .side-art{display:none}
+  .header-inner .art-mark{width:32px;flex-basis:32px}
+}
+
+/* Generate wears the arcade rather than the villa, so the tab that invents new
+   material reads differently from the library. The library's image steps aside
+   while this tab is open — still one illustration on screen at a time. */
+.gen-head{display:flex;gap:1.1rem;align-items:flex-start;margin-bottom:.4rem}
+.gen-head-text{min-width:0;flex:1}
+.gen-head h2{margin-top:0}
+.gen-art{flex:0 0 118px;max-width:118px}
+.gen-art .art-img{border-radius:10px}
+@media(max-width:700px){
+  .gen-head{gap:.8rem}
+  .gen-art{flex-basis:82px;max-width:82px}
+}
+@media(max-width:480px){
+  .gen-art{display:none}
 }

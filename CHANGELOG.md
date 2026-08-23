@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.8.2
+
+### Changed — the artwork is now Siro's, not mine
+v1.8.0 shipped four architectural motifs and an arch mark that I drew. That was the wrong call: Siro had said he wanted to keep the logo and illustrations from the mockups, and I substituted my own work without putting the choice to him. I also justified it partly on file size, having guessed at the numbers rather than measured them — the guess was out by an order of magnitude.
+
+- **The logo is now the Ionic capital with its olive branch**, taken from Siro's iPad mockup. Embedded at 140 × 164 so it stays crisp on a retina screen. About 10 KB.
+- **The library illustration is now the watercolour villa.** About 13 KB as a JPEG. It is one image rather than one per book, which is what having a real illustration costs, and it is the right trade.
+- **Generate has its own picture** — the cypresses seen through the arcade, from the Reader mockup — so the tab that invents new material does not look like the library. The library's image steps aside while Generate is open, keeping one illustration on screen at a time. About 7 KB.
+- All three are embedded as data rather than kept as separate files. Nothing extra to upload, nothing that can 404, and no way for a missing file to make the service worker fail to install — which on iOS would have left the app stuck on an old version. The app still makes no third-party requests and still works offline. Total cost about 30 KB against 159 KB of code.
+- The pale watercolour is dimmed and desaturated in the dark theme rather than held as a second image.
+- On a phone both illustrations are hidden; the logo stays.
+
+### On the handover
+Section 07 asked for architectural and typographic motifs and warned off hills and cypresses as reading like stock imagery. Siro has chosen this image. It is his application and his taste governs; the document was written to serve the work, not the other way round. The rules that still hold, and are still tested, are the ones about placement: one image at a time, never behind text, decorative to assistive technology.
+
+### Notes
+364 checks pass. The illustration tests were rewritten: they now check that both images load rather than 404, that they are embedded rather than fetched, that each tab shows exactly one, and that the page requests nothing from anywhere else.
+
+## v1.8.1
+
+Superseded within the hour by v1.8.2, which adds the Generate illustration. Listed for continuity only.
+
+## v1.8.0
+
+Release 4 of the interface redesign — pedagogical enrichment — plus the speed ladder Siro asked for.
+
+### Changed — playback speed
+- **The speed control now runs 0.5×, 0.6×, 0.7×, 0.8×, 0.9×, 1.0×**, replacing 0.4×/0.6×/0.8×/1.0×. 0.4× was too slow to shadow against, and the coarse steps left nothing usable between 0.6× and 0.8×. Applied to all three speed controls — the playback bar, Focus mode and the verb drill — so they stay in step. Normal speed remains the default. This is only worth doing now that v1.7.2 made the control actually reach the ElevenLabs voice.
+
+### Added — the book illustration
+Release 4 in the handover reads: *importer keeps ChapterTitle; book-level titles added; corpus re-imported; ContextHeader shows the full hierarchy; book-level illustration introduced.* The first four shipped in v1.5.0 and were verified against the real corpus. The illustration is what was left.
+
+- **Each book now has an architectural motif** — an arcade, a colonnade, a pedimented facade or an arched portal — chosen from the book's own identifier, so a book always wears the same face. It appears in the library above the tree, for the book you are currently in.
+- **The empty library carries one too**, and the application header carries a small mark drawn by the same hand. That mark is the app's identity; the handover asked for one logo treatment rather than the two different ones in the mockups.
+- **The rules from section 07 are honoured and tested**: one image visible at a time, never behind text, marked decorative so screen readers skip them, desaturated and inside the palette, with terracotta only as a single small detail. Architectural and typographic motifs rather than hills and cypresses, which the handover rejects as stock imagery.
+- The drawings follow the theme: olive line work on ivory, amber on charcoal in dark mode, from the same source rather than a second set of files.
+- On a phone the library motif is hidden. A narrow screen has better uses for 110 pixels.
+
+### Notes on how they are made
+- **Drawn in the files, not fetched.** The app makes no third-party requests and must work offline — the CDN icon font was removed in v1.5.0 for exactly this reason — so an illustration has to travel inside the six files. Line art costs two or three kilobytes where a painted image would cost several hundred, and scales to any screen without a second asset.
+- **This is a different aesthetic from the mockups**, which showed a painterly arch vignette. That difference is deliberate and is the one judgement here worth disagreeing with: if the painterly treatment matters more than offline weight, say so and it can be embedded instead, at a cost of roughly 200–400 KB per book.
+
+### Not done, and why
+- The editorial header treatment from Reference C was left alone. The breadcrumb already delivers the readable hierarchy Release 4 asks for, it has been in use since v1.5.0, and restyling something that works to match a mockup is not a good trade this late in the sequence.
+
+### Notes
+362 checks pass, 16 of them new.
+
 ## v1.7.2
 
 ### Fixed

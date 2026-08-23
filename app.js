@@ -373,8 +373,21 @@ const Speech={
     App.currentAudioResolve=finish;
     a.preload="auto";
     a.playsInline=true;
-    a.playbackRate=PlaybackControls.rate();
-    a.onplaying=()=>{started=true;if(startTimer)clearTimeout(startTimer);};
+    /* Loading a clip resets playbackRate to defaultPlaybackRate, so a rate set
+       before src is assigned is thrown away. That is why choosing a speed never
+       affected the ElevenLabs voice on any platform. Set the default, which the
+       load preserves, and reassert the rate once the clip is actually there. */
+    let rate=this.audioRate();
+    a.defaultPlaybackRate=rate;
+    a.playbackRate=rate;
+    /* Slow it down without dropping the pitch — a half-speed voice an octave
+       lower is no use for shadowing. On by default in current browsers, but
+       older WebKit needs telling, and saying so explicitly costs nothing. */
+    ["preservesPitch","webkitPreservesPitch","mozPreservesPitch"].forEach(k=>{try{if(k in a)a[k]=true;}catch(e){}});
+    const applyRate=()=>{try{if(a.playbackRate!==rate)a.playbackRate=rate;}catch(e){}};
+    a.onloadedmetadata=applyRate;
+    a.oncanplay=applyRate;
+    a.onplaying=()=>{started=true;applyRate();if(startTimer)clearTimeout(startTimer);};
     a.onended=finish;
     a.onerror=()=>fail(new Error("Audio playback error"));
     a.onstalled=()=>{if(!started)fail(new Error("Audio playback stalled"));};
@@ -384,6 +397,11 @@ const Speech={
     let p=a.play();
     if(p&&p.catch)p.catch(err=>fail(err));
   });},
+  /* One place to decide how fast a recorded clip is played, so the rule is
+     visible rather than buried in the player. Recordings are cached by voice
+     and text only: the speed is applied on the way out, so changing it does not
+     invalidate the cache or cost another ElevenLabs request. */
+  audioRate(){let r=Number(PlaybackControls.rate());return isFinite(r)&&r>0?r:1;},
   key(text){return `${$("voiceId").value}|${$("model").value}|${text}`;},
   async prefetch(text){
     let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();

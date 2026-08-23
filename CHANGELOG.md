@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.7.2
+
+### Fixed
+- **Changing the speed had no effect on the ElevenLabs voice.** It never had, on any platform, in any version. The system voice was fine because its rate is set on the utterance itself; the ElevenLabs voice plays a downloaded clip through an `<audio>` element, and the app set `playbackRate` on that element *before* assigning its `src`. Loading a clip resets `playbackRate` to `defaultPlaybackRate`, so the rate was thrown away every time and every clip played at 1.0×. The app now sets `defaultPlaybackRate`, which the load preserves, and reasserts the rate once the clip is loaded.
+- **Pitch preservation is now explicit.** Slowing a voice down without correcting the pitch drops it by the same factor, which is no use for shadowing. Browsers do this by default now, but older WebKit does not, and saying so costs nothing.
+
+### Notes
+- Recordings are still cached by voice and text only. Speed is applied on the way out, so changing it costs neither a new ElevenLabs request nor a cache miss.
+- 346 checks pass, 6 of them new. The important one times real audio rather than reading the property back: a one-second clip takes about 1.13 seconds at 1.0× and about 2.59 seconds at 0.4×. Reading `playbackRate` back would not have caught the original bug, because the app was setting it — the browser was discarding it afterwards.
+- Not verified on Safari. Chromium honours 0.4× on audio; some browsers mute playback outside a range they consider useful (Firefox's is 0.25×–4.0×) and WebKit's threshold is not documented. If 0.4× turns out to be silent on the iPhone or iPad while 0.6× is fine, that is what is happening, and the fix is to time-stretch through the Web Audio API instead.
+
 ## v1.7.1
 
 Two defects found on Siro's iPhone after v1.7.0, and a third that was waiting to happen.

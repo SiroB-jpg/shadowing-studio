@@ -9,7 +9,7 @@
   --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
-  --css-version:"1.9.2";
+  --css-version:"1.10.0";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#968f85;
@@ -479,3 +479,25 @@ body.lib-collapsed .panel-art{display:block}
 .version-warning strong{font-weight:800}
 .version-warning code{background:rgba(255,255,255,.18);border-radius:5px;
   padding:.05rem .35rem;font-size:.92em}
+
+/* ── v1.10.0 — pronunciation help (preview) ──────────────────────────────────
+   The whole marked letter takes the colour, not just its diacritic. That is
+   Siro's choice and it is also the simpler engineering: a diacritic cannot be
+   coloured apart from its letter, but an ordinary è can be coloured entire. */
+:root{--pron:#c2410c}
+:root[data-pron-colour="red"]{--pron:#b83030}
+:root[data-theme="dark"]{--pron:#e8785a}
+:root[data-theme="dark"][data-pron-colour="red"]{--pron:#e06767}
+
+#pronPanel{background:var(--card-bg);border:1px solid var(--border)}
+#pronPanel .row{align-items:flex-end}
+#pronPanel .field{flex:1 1 200px}
+.pron-demo{margin-top:.9rem}
+.pron-row{padding:.7rem 0;border-top:1px solid var(--border)}
+.pron-row:first-child{border-top:0}
+.pron-line{margin:0}
+.pron-mark{color:var(--pron)}
+.pron-note{margin:.25rem 0 0;color:var(--muted);font-size:.83rem}
+@media(max-width:480px){
+  #pronPanel .field{flex:1 1 100%}
+}

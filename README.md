@@ -1,4 +1,15 @@
-# Italian Shadowing Studio v1.9.0
+# Italian Shadowing Studio v1.9.1
+
+## v1.9.1 notes
+
+**The Tense buttons are back.** v1.9.0 turned them into unlabelled arrows that
+gave no clue what they moved. They read **‹ Tense** and **Tense ›** again.
+
+**If a chapter shows its groups twice** — once numbered 1–5 and again 11–15 —
+that is the same sentences stored twice, from two imports whose group columns
+were numbered differently. **Manage library → Remove duplicated sentences** now
+finds that case as well as the simpler one, keeps the earlier copy, and carries
+over any bookmark or note from the copy it removes.
 
 ## v1.9.0 notes — the verb drill, made calm
 

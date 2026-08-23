@@ -837,16 +837,54 @@ const Importer={
       learned?`${learned} book and chapter name(s) picked up.`:""]
       .filter(Boolean).join(" "),"oktxt");
   },
-  /* Clearing up a library that was imported twice before the guard existed. */
+  /* Clearing up a library that was imported twice.
+
+     Two kinds of duplicate exist, and the second is the reason this had to be
+     widened. The first is the same sentence in the same place: two imports of
+     the same file. The second is the same sentence in the same chapter at a
+     DIFFERENT place — which happens when two files number their Group column
+     differently, one running on across the book (11, 12, 13…) and one
+     restarting at 1 in every chapter. Keyed on position, the second kind is
+     invisible: every sentence is there twice under two numbering schemes, so
+     the chapter quietly holds twice as many groups as it should. */
   async dedupe(){
-    let seen=new Set(),kill=[];
-    App.sentences.forEach(s=>{let k=this.slot(s)+"|"+this.words(s);
-      if(seen.has(k))kill.push(s.id);else seen.add(k);});
+    let bySlot=new Set(), byText=new Map(), kill=[], slotDupes=0, textDupes=0;
+    /* Earliest position wins, so the surviving numbering is the lower one. */
+    let ordered=App.sentences.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+    for(let s of ordered){
+      let slotKey=this.slot(s)+"|"+this.words(s);
+      if(bySlot.has(slotKey)){kill.push(s);slotDupes++;continue;}
+      bySlot.add(slotKey);
+      let textKey=[String(s.book),String(s.chapter),this.words(s)].join("|");
+      if(byText.has(textKey)){kill.push(s);textDupes++;continue;}
+      byText.set(textKey,s);
+    }
     if(!kill.length){UI.status("No duplicated sentences found.","oktxt");return 0;}
-    if(!confirm(`Remove ${kill.length} duplicated sentence(s)? One copy of each is kept. Bookmarks and notes on the copy being removed are lost.`))return 0;
-    await Storage.deleteMany(kill);
+    let what=[];
+    if(slotDupes)what.push(`${slotDupes} in the same place`);
+    if(textDupes)what.push(`${textDupes} the same words in a different group — two files numbering their groups differently`);
+    if(!confirm(`Found ${kill.length} duplicated sentence(s): ${what.join("; ")}.\n\n`
+      +`Remove them? The earliest copy of each is kept, along with any bookmark or note from the copy being removed.`))return 0;
+    /* Do not lose a bookmark or a note just because it was put on the copy
+       being removed. */
+    let keep=new Map();
+    byText.forEach((s,k)=>keep.set(k,s));
+    let updates=[];
+    for(let s of kill){
+      let k=[String(s.book),String(s.chapter),this.words(s)].join("|"),
+          survivor=keep.get(k);
+      if(!survivor)continue;
+      let changed=false;
+      if(s.bookmarked&&!survivor.bookmarked){survivor.bookmarked=true;changed=true;}
+      if(s.difficult&&!survivor.difficult){survivor.difficult=true;changed=true;}
+      if(s.notes&&!String(survivor.notes||"").trim()){survivor.notes=s.notes;changed=true;}
+      if(changed&&!updates.includes(survivor))updates.push(survivor);
+    }
+    if(updates.length)await Storage.putMany(updates);
+    await Storage.deleteMany(kill.map(s=>s.id));
     await Library.refresh();
-    UI.status(`Removed ${kill.length} duplicated sentence(s).`,"oktxt");
+    UI.status(`Removed ${kill.length} duplicated sentence(s).`
+      +(textDupes?` ${textDupes} of them were the same sentence filed under a different group number.`:""),"oktxt");
     return kill.length;
   },
   /* Read only BookTitle / ChapterTitle and apply them to sentences already held. */

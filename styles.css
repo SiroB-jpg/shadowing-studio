@@ -1,7 +1,7 @@
 :root{
   --bg:#eef1ed;--panel:#f5f7f4;--ink:#1e2b20;--muted:#546953;
-  --accent:#2a5c44;--soft:#d4dbd3;--active:#fefce8;--active-border:#bca84a;
-  --border:#d4dbd3;--danger:#b83030;--ok:#1e7340;
+  --accent:#2a5c44;--accent-button:#2a5c44;--on-accent:#fff;--soft:#d4dbd3;--active:#fefce8;--active-border:#8d7620;
+  --border:#d4dbd3;--danger:#a72020;--danger-button:#a72020;--ok:#176333;--ok-button:#176333;--warning:#765018;--focus:#0b63ce;
   --header-bg:#1e2b20;--header-sub:#8faa8f;
   --status-bg:#e4ebe4;--card-bg:#f5f7f4;
   --tree-hover:#dde8dc;--tree-active-bg:#cce0cc;
@@ -9,12 +9,12 @@
   --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
   --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
   --nav-h:58px;
-  --css-version:"1.10.1";
+  --css-version:"1.10.2";
 }
 :root[data-theme="dark"]{
-  --bg:#1a1916;--panel:#201f1c;--ink:#e8e3dc;--muted:#968f85;
-  --accent:#c8900a;--soft:#2e2a22;--active:#2a2415;--active-border:#8a6520;
-  --border:#333028;--danger:#b53030;--ok:#3d7a50;
+  --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
+  --accent:#e2b84b;--accent-button:#795600;--on-accent:#fff;--soft:#2e2a22;--active:#302814;--active-border:#d0a62d;
+  --border:#454037;--danger:#ff9696;--danger-button:#922828;--ok:#8ed9a2;--ok-button:#256338;--warning:#e6bd68;--focus:#78b7ff;
   --header-bg:#111110;--header-sub:#a09890;
   --status-bg:#252420;--card-bg:#252220;
   --tree-hover:#252420;--tree-active-bg:#2e2a22;
@@ -27,11 +27,12 @@ header{background:var(--header-bg);color:white;padding:.9rem 1.25rem}
 .header-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem}
 .header-text h1{margin:0;font-size:1.4rem}
 .header-text .header-sub{margin:.2rem 0 0;color:var(--header-sub);font-size:.85rem}
-.theme-toggle{display:flex;align-items:center;gap:.5rem;cursor:pointer;color:rgba(255,255,255,.75);font-size:.82rem;user-select:none;flex-shrink:0;white-space:nowrap}
+.theme-toggle{display:flex;align-items:center;gap:.5rem;min-height:44px;padding:.25rem;cursor:pointer;color:rgba(255,255,255,.82);font-size:.82rem;user-select:none;flex-shrink:0;white-space:nowrap}
 .theme-toggle input{position:absolute;opacity:0;width:0;height:0}
 .toggle-track{width:40px;height:22px;background:rgba(255,255,255,.22);border-radius:999px;position:relative;flex-shrink:0;transition:background .2s}
 .toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .2s}
-.theme-toggle input:checked + .toggle-track{background:#c8900a}
+.theme-toggle input:checked + .toggle-track{background:#795600}
+.theme-toggle input:focus-visible + .toggle-track{outline:3px solid var(--focus);outline-offset:3px}
 .theme-toggle input:checked + .toggle-track .toggle-thumb{transform:translateX(18px)}
 
 /* ── Desktop layout ─────────────────────────────────────────────────────── */
@@ -43,10 +44,11 @@ label{display:block;font-weight:700;font-size:.85rem;color:var(--muted);margin:.
 input,select,textarea,button{font:inherit;border-radius:10px}
 input,select,textarea{width:100%;border:1px solid var(--border);padding:.5rem;background:var(--panel);color:var(--ink)}
 textarea{min-height:110px;resize:vertical}
-button{touch-action:manipulation;border:0;background:var(--accent);color:white;padding:.55rem .75rem;font-weight:700;cursor:pointer;min-height:44px}
+button{touch-action:manipulation;border:0;background:var(--accent-button);color:var(--on-accent);padding:.55rem .75rem;font-weight:700;cursor:pointer;min-height:44px}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
 button.secondary{background:#5c5854;color:white}
 button.light{background:var(--soft);color:var(--ink)}
-button.danger{background:var(--danger)}button.ok{background:var(--ok)}
+button.danger{background:var(--danger-button);color:#fff}button.ok{background:var(--ok-button);color:#fff}
 button:disabled{opacity:.5;cursor:not-allowed}
 .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.row>*{flex:1}
 .mt{margin-top:.5rem}.wide{width:100%}
@@ -54,17 +56,19 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .controls{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.5rem;margin:.85rem 0}
 .small{font-size:.86rem;color:var(--muted)}
 .status{background:var(--status-bg);border-radius:10px;padding:.65rem;color:var(--muted);margin-top:.65rem}
-.oktxt{color:var(--ok)}.warntxt{color:#9b6b1f}.dangertxt{color:var(--danger)}
+.oktxt{color:var(--ok)}.warntxt{color:var(--warning)}.dangertxt{color:var(--danger)}
 .tabs{display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap;align-items:center}
 /* Show library sits in the tab row, not inside Study. Put away the library from
    Study, switch to Verb drill, and the only way back used to be switching back
    to Study first — which is not a way back anybody would find. */
 .tabs #libShow{margin-right:.35rem}
-.tab{background:var(--soft);color:var(--ink)}.tab.active{background:var(--accent);color:white}
+.tab{background:var(--soft);color:var(--ink)}.tab.active{background:var(--accent-button);color:var(--on-accent)}
 .hidden{display:none!important}
 .tree{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:.4rem;background:var(--card-bg)}
-.tree div{padding:.38rem .5rem;border-radius:8px;cursor:pointer}
-.tree div:hover{background:var(--tree-hover)}
+.tree button{display:flex;width:100%;min-height:44px;padding:.38rem .5rem;border:0;border-radius:8px;
+  background:transparent;color:inherit;text-align:left;font:inherit;align-items:flex-start;justify-content:flex-start}
+.tree button:hover{background:var(--tree-hover)}
+.tree button:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
 .tree .active{background:var(--tree-active-bg);outline:1px solid var(--accent)}
 .book{font-weight:800}.chapter{padding-left:1rem!important;font-weight:650}.groupItem{padding-left:2rem!important;color:var(--muted)}
 .card{touch-action:manipulation;border:1px solid var(--border);border-radius:14px;padding:.85rem;margin-bottom:.55rem;background:var(--card-bg);cursor:pointer}
@@ -73,10 +77,12 @@ button:disabled{opacity:.5;cursor:not-allowed}
 .english{color:var(--muted)}
 .pill{display:inline-block;background:var(--soft);border-radius:999px;padding:.15rem .5rem;font-size:.8rem;margin:.1rem .15rem .2rem 0;color:var(--muted)}
 .cardTools{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-top:.55rem}
-.mini{padding:.38rem .5rem;font-size:.86rem;min-height:38px}
+.mini{padding:.38rem .5rem;font-size:.86rem;min-height:44px}
 .modalwrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem}
 .modal{background:var(--panel);border-radius:16px;border:1px solid var(--border);padding:1rem;max-width:1050px;width:100%;max-height:92vh;overflow:auto}
 .close{max-width:120px}
+.confirmBox{max-width:520px}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
 .preview{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:.6rem}
 table{border-collapse:collapse;width:100%;font-size:.9rem}
 td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertical-align:top}th{color:var(--muted)}
@@ -122,7 +128,7 @@ td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertic
   }
   .mobile-nav-btn{
     flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:3px;background:none;border:0;color:rgba(255,255,255,.45);
+    gap:3px;background:none;border:0;color:rgba(255,255,255,.72);
     min-height:0;font-size:10px;font-weight:600;padding:6px 0;letter-spacing:.02em;
   }
   
@@ -143,7 +149,7 @@ td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertic
   .preloadBtns{flex-wrap:wrap}
   select,input{font-size:16px}
   .row>*{flex:1 1 45%}
-  button{min-height:44px}.mini{min-height:40px}
+  button{min-height:44px}.mini{min-height:44px}
   .modal{padding:.75rem;border-radius:12px}
   .formsLine{font-size:1.05rem}
   h2{font-size:1.1rem}h3{font-size:1rem}
@@ -155,14 +161,14 @@ button.mobile-only,span.mobile-only{display:none}
 .side-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem}
 #search{margin-bottom:.6rem}
 .stats{color:var(--muted);font-size:.82rem;line-height:1.5;margin-top:.6rem}
-.tree .book,.tree .chapter{display:flex;flex-direction:column;gap:1px}
+.tree .book,.tree .chapter{display:flex;flex-direction:column;gap:1px;align-items:stretch}
 .tree-title{font-weight:400;font-size:.78rem;color:var(--muted);line-height:1.25}
 .tree .active .tree-title{color:var(--accent)}
 
 button.icon{min-width:44px;padding:.5rem;display:inline-flex;align-items:center;justify-content:center}
 button.ghost{background:transparent;color:var(--muted)}
 button.ghost:hover{background:var(--soft);color:var(--ink)}
-button.primary{background:var(--accent);color:#fff;min-width:112px}
+button.primary{background:var(--accent-button);color:var(--on-accent);min-width:112px}
 .icon .ic,.rowbtn .ic{display:block}
 .mobile-nav-btn .ic{margin-bottom:1px}
 
@@ -181,19 +187,25 @@ button.primary{background:var(--accent);color:#fff;min-width:112px}
   border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
 
 /* Sentence rows: dividers and whitespace rather than cards inside cards */
-.sentences{border-top:1px solid var(--border)}
-.srow{display:grid;grid-template-columns:auto 1fr auto;align-items:start;gap:.85rem;
-  padding:.8rem .6rem .8rem .85rem;border-bottom:1px solid var(--border);
-  border-left:3px solid transparent;cursor:pointer;touch-action:manipulation;position:relative}
+.sentences{border-top:1px solid var(--border);min-height:380px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.35rem;
+  padding:.35rem .4rem .35rem .25rem;border-bottom:1px solid var(--border);
+  border-left:3px solid transparent;touch-action:manipulation;position:relative}
 .srow:hover{background:var(--tree-hover)}
 .srow.active{background:var(--active);border-left-color:var(--accent)}
 .srow.active .italian{font-weight:600}
+.srow-select{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:.85rem;
+  width:100%;min-height:44px;padding:.45rem .35rem .45rem .35rem;border:0;border-radius:9px;
+  background:transparent;color:inherit;text-align:left;font:inherit}
+.srow-select:hover{background:transparent}
+.srow-select:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
 .srow-num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem;
   min-width:2.1rem;text-align:right;padding-top:.28rem}
-.srow-text{min-width:0}
+.srow-text{display:block;min-width:0}
+.srow-text>span{display:block}
 .srow-context{font-size:.75rem;color:var(--muted);margin-bottom:.15rem}
-.srow-actions{display:flex;gap:.15rem;align-items:center}
-.rowbtn{background:transparent;color:var(--muted);min-height:40px;min-width:40px;padding:.35rem;
+.srow-actions{display:flex;gap:.2rem;align-items:center}
+.rowbtn{background:transparent;color:var(--muted);min-height:44px;min-width:44px;padding:.35rem;
   display:inline-flex;align-items:center;justify-content:center;border-radius:9px}
 .rowbtn:hover{background:var(--soft);color:var(--ink)}
 .rowbtn.on{color:var(--accent)}
@@ -201,7 +213,7 @@ button.primary{background:var(--accent);color:#fff;min-width:112px}
 .srow-playing{position:absolute;left:-2px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:13px}
 .listnote{color:var(--muted);font-size:.84rem;padding:.6rem .85rem;border-bottom:1px solid var(--border)}
 .empty{padding:2.2rem 1rem;text-align:center;color:var(--muted)}
-.empty h3{margin:0 0 .35rem;color:var(--ink)}
+.empty h2{margin:0 0 .35rem;color:var(--ink)}
 
 /* Persistent playback bar */
 .playbar{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
@@ -257,7 +269,7 @@ body.lib-collapsed #libraryPanel{display:none}
 
 /* ── v1.7.0 — focus mode ──────────────────────────────────────────────────── */
 .italian,.focus-italian{font-family:var(--serif)}
-body.focus-open{overflow:hidden}
+body.focus-open,body.modal-open{overflow:hidden}
 .focus{
   position:fixed;inset:0;z-index:900;background:var(--bg);color:var(--ink);
   display:flex;flex-direction:column;padding:1rem 1.25rem 1.25rem;
@@ -329,15 +341,17 @@ body.focus-open{overflow:hidden}
 .side-art .art-plate{max-width:190px;margin:0 auto}
 
 /* In the empty state: larger, and above the words rather than behind them. */
-.empty .art-plate{max-width:230px;margin:0 auto 1.2rem}
+.empty .art-plate{max-width:118px;margin:0 auto 1.2rem}
 
-/* The identity mark in the header. */
+/* The identity mark in the header. Reserve its footprint before JavaScript injects the image. */
+.header-inner #headerMark{display:block;width:38px;height:45px;flex:0 0 38px}
 .header-inner .art-mark{display:block;width:38px;height:auto;flex:0 0 38px;
   border-radius:6px;user-select:none}
 .header-brand{display:flex;align-items:center;gap:.8rem;min-width:0}
 
 @media(max-width:480px){
   .side-art{display:none}
+  .header-inner #headerMark{width:32px;height:38px;flex-basis:32px}
   .header-inner .art-mark{width:32px;flex-basis:32px}
 }
 
@@ -476,28 +490,8 @@ body.lib-collapsed .panel-art{display:block}
    version and the app checks they agree. */
 .version-warning{background:var(--danger);color:#fff;padding:.85rem 1rem;
   font-size:.95rem;line-height:1.45;text-align:center}
+.update-notice{display:flex;align-items:center;justify-content:center;gap:.75rem;flex-wrap:wrap;background:var(--status-bg);color:var(--ink);border-bottom:1px solid var(--border);padding:.65rem 1rem;font-weight:700}
+.update-notice button{min-width:120px}
 .version-warning strong{font-weight:800}
 .version-warning code{background:rgba(255,255,255,.18);border-radius:5px;
   padding:.05rem .35rem;font-size:.92em}
-
-/* ── v1.10.0 — pronunciation help (preview) ──────────────────────────────────
-   The whole marked letter takes the colour, not just its diacritic. That is
-   Siro's choice and it is also the simpler engineering: a diacritic cannot be
-   coloured apart from its letter, but an ordinary è can be coloured entire. */
-:root{--pron:#c2410c}
-:root[data-pron-colour="red"]{--pron:#b83030}
-:root[data-theme="dark"]{--pron:#e8785a}
-:root[data-theme="dark"][data-pron-colour="red"]{--pron:#e06767}
-
-#pronPanel{background:var(--card-bg);border:1px solid var(--border)}
-#pronPanel .row{align-items:flex-end}
-#pronPanel .field{flex:1 1 200px}
-.pron-demo{margin-top:.9rem}
-.pron-row{padding:.7rem 0;border-top:1px solid var(--border)}
-.pron-row:first-child{border-top:0}
-.pron-line{margin:0}
-.pron-mark{color:var(--pron)}
-.pron-note{margin:.25rem 0 0;color:var(--muted);font-size:.83rem}
-@media(max-width:480px){
-  #pronPanel .field{flex:1 1 100%}
-}

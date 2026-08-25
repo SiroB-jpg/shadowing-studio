@@ -161,8 +161,8 @@ check('Every icon-only control still announces itself', await page.evaluate(()=>
   [...document.querySelectorAll('button.icon, .rowbtn')].every(b=>
     (b.getAttribute('aria-label')||'').trim().length>0)));
 check('The active row is marked by more than colour', await page.evaluate(()=>{
-  const r=document.querySelector('#viewer .srow.active');
-  return r.getAttribute('aria-current')==='true';}));
+  const r=document.querySelector('#viewer .srow.active .srow-select');
+  return r?.getAttribute('aria-current')==='true';}));
 
 // ── Study view rendering ───────────────────────────────────────────────────
 group('Study view');
@@ -180,7 +180,7 @@ await page.selectOption('#showEnglish','show'); await page.waitForTimeout(150);
 await page.keyboard.press('Escape'); await page.waitForTimeout(120);
 check('First card is active on entry', await page.evaluate(()=>document.querySelectorAll('#viewer .srow')[0].classList.contains('active')));
 check('Cards carry an order pill', /^1$/.test((await page.$$eval('#viewer .srow-num',p=>p.map(x=>x.textContent)))[0]));
-await page.$$eval('#viewer .srow',c=>c[3].click()); await page.waitForTimeout(150);
+await page.$$eval('#viewer .srow',c=>c[3].querySelector('.srow-select').click()); await page.waitForTimeout(150);
 check('Tapping a card selects it', await page.evaluate(()=>App.cur.index===3));
 await page.fill('#search','A7'); await page.waitForTimeout(250);
 check('Search looks across the whole library', (await page.$$eval('#viewer .srow',c=>c.length))===1);
@@ -266,7 +266,7 @@ check('Switching to Verb drill stops the sentence player', await page.evaluate((
 group('Verb drill');
 check('Verb panel visible', await page.isVisible('#verbs'));
 const detected=await page.textContent('#detected');
-check('Verbs detected from the corpus', /Detected verbs \(\d+ of \d+ in the table\)/.test(detected), detected.slice(0,90));
+check('Verbs detected from the corpus', /Detected in .* — \d+ of the \d+ verbs the table holds/.test(detected), detected.slice(0,110));
 check('Detected label is positive when verbs are found', (await page.$eval('#detected',e=>e.className)).includes('oktxt'));
 check('Verb selector populated from detection', await page.evaluate(()=>document.getElementById('verbSel').options.length>0));
 check('Detection finds essere via its subjunctive forms', await page.evaluate(()=>Verb.detect(['Credo che tu sia pronto.']).includes('essere')));
@@ -396,12 +396,11 @@ check('Edit persists to storage', await page.evaluate(async()=>{
   const all=await Storage.all(SS); return all.some(s=>s.italian==='Frase modificata dal test.');}));
 check('Editor closes after saving', !(await page.isVisible('#editModal')));
 check('Edited sentence appears in the viewer', (await page.textContent('#viewer')).includes('Frase modificata dal test.'));
-const before=dialogs.length;
 await page.$$eval('#viewer .srow',c=>c[1].querySelector('[data-a="edit"]').click());
 await page.waitForTimeout(150);
 await page.fill('#editItalian','   ');
 await page.click('#saveEdit'); await page.waitForTimeout(250);
-check('Empty Italian is refused', dialogs.length>before && await page.isVisible('#editModal'));
+check('Empty Italian is refused', await page.isVisible('#editModal') && (await page.textContent('#status')).includes('Italian sentence cannot be empty'));
 await page.click('#closeEdit'); await page.waitForTimeout(150);
 check('A refused edit does not corrupt the sentence in memory', await page.evaluate(()=>
   App.sentences.some(s=>s.italian==='Frase modificata dal test.')));
@@ -418,11 +417,11 @@ await page.click('.desktop-tabs [data-panel="settings"]');
 await page.selectOption('#voiceMode','eleven'); await page.waitForTimeout(150);
 check('Voice mode persists', await page.evaluate(()=>localStorage.getItem('v08voiceMode')==='eleven'));
 check('ElevenLabs panel shown for ElevenLabs voice', await page.isVisible('#elevenPanel'));
-await page.fill('#apiKey','test-key'); await page.fill('#voiceId','test-voice');
-await page.selectOption('#saveEleven','yes'); await page.click('#saveElevenBtn'); await page.waitForTimeout(150);
-check('ElevenLabs settings save', await page.evaluate(()=>localStorage.getItem('v08key')==='test-key'&&localStorage.getItem('v08voice')==='test-voice'));
+check('No browser-side provider key field remains', (await page.$$('#apiKey')).length===0);
+await page.fill('#voiceId','test-voice'); await page.click('#saveElevenBtn'); await page.waitForTimeout(150);
+check('Premium voice settings save without a provider key', await page.evaluate(()=>!localStorage.getItem('v08key')&&localStorage.getItem('v08voice')==='test-voice'));
 await page.click('#clearElevenBtn'); await page.waitForTimeout(150);
-check('ElevenLabs settings clear', await page.evaluate(()=>!localStorage.getItem('v08key')&&document.getElementById('apiKey').value===''));
+check('Premium voice settings clear', await page.evaluate(()=>!localStorage.getItem('v08key')&&!localStorage.getItem('v08voice')&&document.getElementById('voiceId').value===''));
 await page.selectOption('#voiceMode','system'); await page.waitForTimeout(150);
 check('System voice hides the ElevenLabs panel', !(await page.isVisible('#elevenPanel')));
 await page.click('.theme-toggle .toggle-track'); await page.waitForTimeout(150);
@@ -432,10 +431,13 @@ check('Theme returns to sage', await page.evaluate(()=>localStorage.getItem('v08
 
 // ── Destructive action ─────────────────────────────────────────────────────
 group('Clear all');
-const dlgBefore=dialogs.length;
 await page.click('#openManage'); await page.waitForTimeout(150);
-await page.click('#clearAll'); await page.waitForTimeout(700);
-check('Clear all asks for confirmation', dialogs.length>dlgBefore && dialogs[dialogs.length-1].type==='confirm');
+check('Clear all is disabled by default', await page.isDisabled('#clearAll'));
+await page.fill('#clearConfirm','delete all');
+check('Wrong deletion phrase stays disabled', await page.isDisabled('#clearAll'));
+await page.fill('#clearConfirm','DELETE ALL');
+check('Exact deletion phrase enables clear all', !(await page.isDisabled('#clearAll')));
+await Promise.all([page.waitForLoadState('domcontentloaded'),page.click('#clearAll')]); await page.waitForTimeout(500);
 check('Clear all empties the library', await page.evaluate(()=>App.sentences.length===0));
 check('Empty library shows guidance', (await page.textContent('#viewer')).includes('No sentences yet'));
 check('Tree reports the empty state', (await page.textContent('#tree')).includes('No sentences imported yet'));

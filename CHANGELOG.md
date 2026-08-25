@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.10.2 — pronunciation-free stabilization
+
+The pronunciation preview and all associated controls, renderer code, styles, and tests have been removed. No pronunciation corpus or derived pronunciation data is included. The feature is deferred until source-data licensing and linguistic validation are complete.
+
+### Security
+
+Premium ElevenLabs speech now uses the same authenticated Cloudflare relay as sentence generation, so the provider key is no longer entered or stored in the browser. Relay passphrases are session-only and legacy persistent values are migrated once and deleted. The relay now validates exact request schemas, types, target text, count, tense, register, avoid lists, body sizes, output sizes, origins, approved premium voices and models, and provider responses. It supports Cloudflare native rate limiting plus independent generation and speech kill switches. CSV exports neutralize spreadsheet formulas, and the static app includes a restrictive Content Security Policy and deployment-ready security headers.
+
+### Accessibility and interaction
+
+Sentence selection and every library hierarchy item are native buttons. Desktop tabs implement arrow, Home, and End navigation. Dialogs expose names, trap focus, close with Escape, make the background inert, and return focus to their launcher. Visible form labels are programmatically associated, status changes use live regions, focus indicators and contrast are corrected, and repeated touch controls meet a 44-pixel minimum target. The original sentence remains ordinary text for assistive technology.
+
+### Reliability and recovery
+
+Media Session play, pause, and stop now follow one explicit active-player owner across Study, Verb Drill, and Generate. A versioned complete JSON backup preserves sentences, bookmarks, difficulty flags, notes, hierarchy titles, and non-secret preferences; restore validates all data and replaces the sentence store atomically. Provider secrets, session passphrases, cached audio, and pronunciation data are excluded. Clearing the device now requires typing `DELETE ALL`.
+
+The service worker pre-caches the complete shell, uses network-first navigation with offline fallback, and waits for the learner to approve a ready update. The first installation no longer causes an unsolicited reload. A single version command synchronizes HTML, JavaScript, CSS, service-worker, and package markers.
+
+### Repository and verification
+
+Pinned development dependencies, a lockfile, CI workflow, `.gitignore`, security policy, relay configuration example, and expanded documentation have been added. Nine automated suites pass **352 checks**. Final mobile Lighthouse scores are **97 Performance, 100 Accessibility, 100 Best Practices, and 100 SEO**; measured cumulative layout shift is effectively zero.
+
 ## v1.10.1
 
 Four changes to the pronunciation preview, all from Siro's reading of it.

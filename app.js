@@ -1,12 +1,39 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const DB="ISS_V08", SS="sentences", AS="audioCache";
-const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,playbackContext:"main",cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
+const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
+
+const SecureConfig={
+  sessionKey(name){return `iss-session-${name}`;},
+  get(name){return sessionStorage.getItem(this.sessionKey(name))||"";},
+  set(name,value){let v=String(value||"").trim();if(v)sessionStorage.setItem(this.sessionKey(name),v);else this.clear(name);},
+  clear(name){sessionStorage.removeItem(this.sessionKey(name));},
+  migrateLegacy(){
+    let relayToken=localStorage.getItem("v08relayToken")||"";
+    if(relayToken&&!this.get("relayToken"))this.set("relayToken",relayToken);
+    ["v08relayToken","v08key"].forEach(key=>localStorage.removeItem(key));
+    this.clear("elevenKey");
+  },
+  relayUrl(value){
+    let raw=String(value||"").trim();
+    if(!raw)throw new Error("Add your generator address in Settings first.");
+    let url;try{url=new URL(raw);}catch{throw new Error("Generator address is not a valid URL.");}
+    let local=["localhost","127.0.0.1","[::1]"].includes(url.hostname);
+    if(url.protocol!=="https:"&&!(url.protocol==="http:"&&local))throw new Error("Generator address must use HTTPS.");
+    let approved=local||url.origin===location.origin||url.hostname.endsWith(".workers.dev");
+    if(!approved)throw new Error("Generator address must be this app's origin or a workers.dev address.");
+    if(url.username||url.password)throw new Error("Generator address must not contain credentials.");
+    if(url.search||url.hash)throw new Error("Generator address must not contain a query string or fragment.");
+    url.pathname=url.pathname.replace(/\/+$/g,"");
+    return url.href.replace(/\/+$/g,"");
+  }
+};
 
 const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
 const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
+Storage.replaceSentences=function(items){return new Promise((resolve,reject)=>{let transaction=App.db.transaction(SS,"readwrite"),store=transaction.objectStore(SS);store.clear();items.forEach(item=>store.put(item));transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error||new Error("Restore was cancelled."));});};
 
 /* Book and chapter titles. Chapter titles come from the corpus CSV's
    ChapterTitle column, which the importer used to discard. Book titles have no
@@ -85,35 +112,71 @@ function icon(name,size){
 
 const SentenceRow={
   LABEL:{play:"Play this sentence",bm:"Bookmark",edit:"Edit",drop:"Remove from the set"},
-  /* o = {number, italian, english, showEnglish, active, playing, bookmarked,
-          context, actions:[...], on:{select,play,bm,edit,drop}} */
+  /* The main sentence and each action are separate native buttons. This avoids
+     nested interactive controls while making the entire learning flow keyboard operable. */
   build(o){
     let d=document.createElement("div");
     d.className="srow"+(o.active?" active":"")+(o.playing?" playing":"");
-    if(o.active)d.setAttribute("aria-current","true");
+    d.setAttribute("role","article");
     let acts=(o.actions||[]).map(k=>{
       let on=k==="bm"&&o.bookmarked;
-      return `<button class="rowbtn${on?" on":""}" data-a="${k}" title="${SentenceRow.LABEL[k]}" aria-label="${SentenceRow.LABEL[k]}"`+
+      return `<button type="button" class="rowbtn${on?" on":""}" data-a="${k}" title="${SentenceRow.LABEL[k]}" aria-label="${SentenceRow.LABEL[k]}"`+
              (k==="bm"?` aria-pressed="${on?"true":"false"}"`:"")+`>`+
              icon(on?"bmOn":k)+`</button>`;
     }).join("");
+    let current=o.active?' aria-current="true"':"";
     d.innerHTML=
-      `<span class="srow-num">${Util.esc(String(o.number))}</span>`+
-      `<div class="srow-text">`+
-        (o.context?`<div class="srow-context">${Util.esc(o.context)}</div>`:"")+
-        `<div class="italian">${Util.esc(o.italian)}</div>`+
-        (o.showEnglish&&o.english?`<div class="english">${Util.esc(o.english)}</div>`:"")+
-      `</div>`+
+      `<button type="button" class="srow-select" data-a="select" aria-label="Select sentence ${Util.esc(String(o.number))}"${current}>`+
+        `<span class="srow-num">${Util.esc(String(o.number))}</span>`+
+        `<span class="srow-text">`+
+          (o.context?`<span class="srow-context">${Util.esc(o.context)}</span>`:"")+
+          `<span class="italian">${Util.esc(o.italian)}</span>`+
+          (o.showEnglish&&o.english?`<span class="english">${Util.esc(o.english)}</span>`:"")+
+        `</span>`+
+      `</button>`+
       `<div class="srow-actions">${acts}</div>`+
       (o.playing?`<span class="srow-playing" aria-label="Playing">${icon("volume",14)}</span>`:"");
-    const select=()=>{if(o.on&&o.on.select)o.on.select();};
-    d.onclick=select;
-    d.addEventListener("touchend",e=>{if(e.target.closest("button"))return;e.preventDefault();select();},{passive:false});
+    let selectBtn=d.querySelector('[data-a="select"]');
+    if(selectBtn)selectBtn.onclick=()=>{if(o.on&&o.on.select)o.on.select();};
     (o.actions||[]).forEach(k=>{
       let btn=d.querySelector(`[data-a="${k}"]`);
-      if(btn&&o.on&&o.on[k])btn.onclick=e=>{e.stopPropagation();o.on[k]();};
+      if(btn&&o.on&&o.on[k])btn.onclick=()=>o.on[k]();
     });
     return d;
+  }
+};
+
+const DialogManager={
+  active:null,previous:null,inerted:[],escapeHandler:null,keyHandler:null,
+  focusable(dialog){return [...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')].filter(el=>!el.closest('.hidden')&&!el.hidden);},
+  open(dialog,initial,onEscape){
+    if(!dialog)return;
+    if(this.active&&this.active!==dialog)this.close(this.active);
+    this.active=dialog;this.previous=document.activeElement;this.escapeHandler=onEscape;
+    dialog.setAttribute("aria-hidden","false");
+    this.inerted=[...document.body.children].filter(el=>el!==dialog&&el.tagName!=="SCRIPT").map(el=>({el,was:el.inert}));
+    this.inerted.forEach(({el})=>{el.inert=true;});
+    document.body.classList.add("modal-open");
+    this.keyHandler=e=>{
+      if(e.key==="Escape"){e.preventDefault();if(this.escapeHandler)this.escapeHandler();return;}
+      if(e.key!=="Tab")return;
+      let items=this.focusable(dialog);if(!items.length){e.preventDefault();dialog.focus();return;}
+      let first=items[0],last=items[items.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+    };
+    document.addEventListener("keydown",this.keyHandler,true);
+    requestAnimationFrame(()=>{let target=typeof initial==="string"?$(initial):initial;let items=this.focusable(dialog);(target||items[0]||dialog).focus();});
+  },
+  close(dialog,returnTo){
+    if(!dialog||this.active!==dialog)return;
+    document.removeEventListener("keydown",this.keyHandler,true);
+    this.inerted.forEach(({el,was})=>{el.inert=was;});
+    let target=returnTo||this.previous;
+    this.active=null;this.previous=null;this.inerted=[];this.escapeHandler=null;this.keyHandler=null;
+    dialog.setAttribute("aria-hidden","true");
+    document.body.classList.remove("modal-open");
+    if(target&&target.isConnected)target.focus();
   }
 };
 
@@ -143,7 +206,7 @@ const Focus={
     $("focus").classList.remove("hidden");
     document.body.classList.add("focus-open");
     this.sync();
-    setTimeout(()=>$("focusToggle").focus(),40);
+    DialogManager.open($("focus"),$("focusToggle"),()=>this.leave());
   },
 
   leave(){
@@ -155,7 +218,7 @@ const Focus={
     window.scrollTo(0,this.scrollY);
     if(this.origin==="generate")Generator.renderCards(); else UI.renderAll();
     let back=this.origin==="generate"?$("genBtn"):$("mainToggle");
-    if(back)back.focus();
+    DialogManager.close($("focus"),back);
   },
 
   current(){
@@ -233,18 +296,18 @@ const Art={
 
   /* One illustration, used wherever a book needs a face. */
   plate(){
-    return `<figure class="art-plate"><img class="art-img" src="${this.LAND}" alt="" aria-hidden="true" draggable="false"></figure>`;
+    return `<figure class="art-plate"><img class="art-img" src="${this.LAND}" width="238" height="238" alt="" aria-hidden="true" draggable="false"></figure>`;
   },
 
   /* Generate gets a face of its own — the cypresses seen through the arcade —
      so the tab that invents new material does not look like the library. */
   archPlate(){
-    return `<figure class="art-plate art-arch"><img class="art-img" src="${this.ARCH}" alt="" aria-hidden="true" draggable="false"></figure>`;
+    return `<figure class="art-plate art-arch"><img class="art-img" src="${this.ARCH}" width="156" height="204" alt="" aria-hidden="true" draggable="false"></figure>`;
   },
 
   /* The identity mark in the application header. */
   mark(){
-    return `<img class="art-mark" src="${this.LOGO}" alt="" aria-hidden="true" draggable="false">`;
+    return `<img class="art-mark" src="${this.LOGO}" width="140" height="164" alt="" aria-hidden="true" draggable="false">`;
   }
 };
 
@@ -282,23 +345,29 @@ const UI={
     let t=$("tree");t.innerHTML="";
     if(!App.sentences.length){t.innerHTML='<p class="small">No sentences imported yet.</p>';return;}
     Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat).forEach(b=>{
-      let bd=document.createElement("div");
+      let bd=document.createElement("button");
+      bd.type="button";
       bd.className="book "+(App.cur.book==b?"active":"");
+      bd.setAttribute("aria-pressed",App.cur.book==b?"true":"false");
       let bt=Titles.book(b);
       bd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(b))?"Book "+b:String(b))}</span>`+(bt?`<span class="tree-title">${Util.esc(bt)}</span>`:"");
       bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.normalise();UI.renderAll();};
       t.appendChild(bd);
       Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{
-        let cd=document.createElement("div");
+        let cd=document.createElement("button");
+        cd.type="button";
         cd.className="chapter "+(App.cur.book==b&&App.cur.chapter==c?"active":"");
+        cd.setAttribute("aria-pressed",App.cur.book==b&&App.cur.chapter==c?"true":"false");
         let ct=Titles.chapter(b,c);
         cd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(c))?"Chapter "+c:String(c))}</span>`+(ct?`<span class="tree-title">${Util.esc(ct)}</span>`:"");
         cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};
         t.appendChild(cd);
         if(App.cur.book==b&&App.cur.chapter==c)
           Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{
-            let gd=document.createElement("div");
+            let gd=document.createElement("button");
+            gd.type="button";
             gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");
+            if(Number(App.cur.group)==g)gd.setAttribute("aria-current","location");
             gd.textContent="Group "+g;
             gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};
             t.appendChild(gd);
@@ -343,7 +412,7 @@ const UI={
   renderViewer(){
     let v=$("viewer");v.innerHTML="";
     if(!App.sentences.length){
-      v.innerHTML='<div class="empty">'+Art.plate()+'<h3>No sentences yet</h3><p>Open <strong>Manage library</strong> to import a CSV, or use the <strong>Generate</strong> tab.</p><p class=\"small\">A library belongs to the device it was imported on. If your sentences are on another device, export them there and import the file here.</p></div>';
+      v.innerHTML='<div class="empty">'+Art.plate()+'<h2>No sentences yet</h2><p>Open <strong>Manage library</strong> to import a CSV, or use the <strong>Generate</strong> tab.</p><p class=\"small\">A library belongs to the device it was imported on. If your sentences are on another device, export them there and import the file here.</p></div>';
       return;
     }
     let q=($("search")?$("search").value:"").trim();
@@ -447,46 +516,49 @@ const Speech={
     let p=a.play();
     if(p&&p.catch)p.catch(err=>fail(err));
   });},
-  /* One place to decide how fast a recorded clip is played, so the rule is
-     visible rather than buried in the player. Recordings are cached by voice
-     and text only: the speed is applied on the way out, so changing it does not
-     invalidate the cache or cost another ElevenLabs request. */
+  /* Recorded clips are cached by voice, model and text. The provider key stays
+     in the relay; this browser sends only the approved voice/model/text fields. */
   audioRate(){let r=Number(PlaybackControls.rate());return isFinite(r)&&r>0?r:1;},
   key(text){return `${$("voiceId").value}|${$("model").value}|${text}`;},
+  relay(){
+    let base=SecureConfig.relayUrl($("relayUrl")?$("relayUrl").value:"");
+    let token=SecureConfig.get("relayToken")||($("relayToken")?$("relayToken").value:"").trim();
+    if(!token)throw new Error("No generator passphrase");
+    return{url:base+"/tts",token};
+  },
+  async fetchPremium(text,vid){
+    let relay=this.relay(),controller=new AbortController();
+    App.elevenAbort=controller;
+    let timer=setTimeout(()=>controller.abort(),15000),response;
+    try{response=await fetch(relay.url,{method:"POST",headers:{"Accept":"audio/mpeg","Content-Type":"application/json","X-App-Token":relay.token},body:JSON.stringify({text,voiceId:vid,model:$("model").value}),signal:controller.signal});}
+    catch(e){if(e&&e.name==="AbortError"){if(App.elevenAbort!==controller)return null;throw new Error("Premium speech timed out");}throw e;}
+    finally{clearTimeout(timer);if(App.elevenAbort===controller)App.elevenAbort=null;}
+    if(response.status===429)throw new Error("Premium speech is rate limited");
+    if(!response.ok)throw new Error("Premium speech error "+response.status);
+    let blob=await response.blob();
+    if(!blob||!blob.size)throw new Error("Premium speech returned empty audio");
+    return blob;
+  },
   async prefetch(text){
-    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
-    if(!api||!vid)throw new Error("No API key or Voice ID");
+    let vid=$("voiceId").value.trim();
+    if(!vid)throw new Error("No Voice ID");
     let key=this.key(text),cached=await Storage.get(AS,key);
     if(cached?.blob)return"cached";
-    const controller=new AbortController();
-    App.elevenAbort=controller;
-    let timer=setTimeout(()=>controller.abort(),15000),r;
-    try{r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}`,{method:"POST",headers:{"Accept":"audio/mpeg","Content-Type":"application/json","xi-api-key":api},body:JSON.stringify({text,model_id:$("model").value,voice_settings:{stability:.5,similarity_boost:.75}}),signal:controller.signal});}
-    catch(e){if(e&&e.name==="AbortError"){if(App.elevenAbort!==controller)return"cancelled";throw new Error("ElevenLabs timed out");}throw e;}
-    finally{clearTimeout(timer);if(App.elevenAbort===controller)App.elevenAbort=null;}
-    if(r.status===429)throw new Error("Rate limited");
-    if(!r.ok)throw new Error("ElevenLabs error "+r.status);
-    let blob=await r.blob();
-    if(!blob||!blob.size)throw new Error("Empty audio");
+    let blob=await this.fetchPremium(text,vid);
+    if(!blob)return"cancelled";
     await Storage.put(AS,{key,blob,createdAt:Date.now()});
     return"fetched";
   },
   async eleven(text){
-    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
-    if(!api||!vid){UI.status("Missing ElevenLabs key or Voice ID. Using system voice.","warntxt");return this.system(text);}
+    let vid=$("voiceId").value.trim();
+    if(!vid){UI.status("Missing ElevenLabs Voice ID. Using system voice.","warntxt");return this.system(text);}
+    try{this.relay();}catch(e){UI.status("Missing secure relay settings. Using system voice.","warntxt");return this.system(text);}
     let key=this.key(text),cached=await Storage.get(AS,key),blob;
     if(cached?.blob)blob=cached.blob;
     else{
-      UI.status("Contacting ElevenLabs…");
-      const controller=new AbortController();
-      App.elevenAbort=controller;
-      let timer=setTimeout(()=>controller.abort(),15000),r;
-      try{r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(vid)}`,{method:"POST",headers:{"Accept":"audio/mpeg","Content-Type":"application/json","xi-api-key":api},body:JSON.stringify({text,model_id:$("model").value,voice_settings:{stability:.5,similarity_boost:.75}}),signal:controller.signal});}
-      catch(e){if(e&&e.name==="AbortError"){if(App.elevenAbort!==controller)return;throw new Error("ElevenLabs connection timed out");}throw e;}
-      finally{clearTimeout(timer);if(App.elevenAbort===controller)App.elevenAbort=null;}
-      if(!r.ok)throw new Error("ElevenLabs error "+r.status);
-      blob=await r.blob();
-      if(!blob||!blob.size)throw new Error("ElevenLabs returned empty audio");
+      UI.status("Contacting premium speech…");
+      blob=await this.fetchPremium(text,vid);
+      if(!blob)return;
       await Storage.put(AS,{key,blob,createdAt:Date.now()});
     }
     return this.playBlob(blob);
@@ -500,7 +572,7 @@ const Speech={
   }
 };
 
-class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();App.playbackContext="main";this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
+class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;MediaSessionMgr.claim(this);this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
 
 const MainPlayer=new PlaybackEngine("main",null,"Sentence playback");
 const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
@@ -761,7 +833,7 @@ const Verb={
   moveTense(delta){App.verbTenseIndex+=delta;if(App.verbTenseIndex<0)App.verbTenseIndex=this.tenseOrder.length-1;if(App.verbTenseIndex>=this.tenseOrder.length)App.verbTenseIndex=0;this.renderView();if(VerbPlayer.playing)this.restart();}
 };
 
-const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.italian||"";$("editEnglish").value=s.english||"";$("editModal").style.display="flex";setTimeout(()=>$("editItalian").focus(),50);},close(){$("editModal").style.display="none";this.sentence=null;},async save(){let s=this.sentence;if(!s)return;let it=$("editItalian").value.trim(),en=$("editEnglish").value.trim();if(!it){alert("Italian sentence cannot be empty.");return;}s.italian=it;s.english=en;await Storage.put(SS,s);this.close();await Library.refresh();UI.status("Sentence updated.","oktxt");}};
+const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.italian||"";$("editEnglish").value=s.english||"";$("editModal").style.display="flex";DialogManager.open($("editModal"),$("editItalian"),()=>this.close());},close(){$("editModal").style.display="none";DialogManager.close($("editModal"));this.sentence=null;},async save(){let s=this.sentence;if(!s)return;let it=$("editItalian").value.trim(),en=$("editEnglish").value.trim();if(!it){UI.status("Italian sentence cannot be empty.","dangertxt");$("editItalian").focus();return;}s.italian=it;s.english=en;await Storage.put(SS,s);this.close();await Library.refresh();UI.status("Sentence updated.","oktxt");}};
 
 const Importer={
   text:"",
@@ -787,7 +859,8 @@ const Importer={
         audioText:s.audioText!==undefined?s.audioText:was.audioText});
     });
     return {fresh,dupes,changed};},
-  open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importSummary").className="status";$("importPreview").innerHTML="";$("importPreviewed").disabled=false;$("importPreviewed").textContent="Import";$("importModal").style.display="flex";},
+  open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importSummary").className="status";$("importPreview").innerHTML="";$("importPreviewed").disabled=false;$("importPreviewed").textContent="Import";$("importModal").style.display="flex";DialogManager.open($("importModal"),$("importTitle"),()=>this.close());},
+  close(){$("importModal").style.display="none";DialogManager.close($("importModal"),$("openManage"));},
   defs(){return{book:$("defaultBook").value,chapter:$("defaultChapter").value};},
   async fileText(){let f=$("csvFile").files[0];return f?await f.text():"";},
   preview(items,text){
@@ -829,7 +902,7 @@ const Importer={
     let s=fresh[0]||changed[0];
     App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};
     App.analysed=[];this.text="";
-    $("importModal").style.display="none";
+    this.close();
     await Library.refresh();
     UI.status([fresh.length?`Imported ${fresh.length} sentence(s).`:"",
       changed.length?`Updated ${changed.length} that had changed.`:"",
@@ -897,7 +970,7 @@ const Importer={
       ? `Picked up ${learned} book and chapter name(s). Nothing was added or duplicated.`
       : "No BookTitle or ChapterTitle columns found in that file.";
     $("importSummary").className="status "+(learned?"oktxt":"warntxt");
-    if(learned){$("importModal").style.display="none";UI.renderAll();UI.status(`Updated ${learned} name(s).`,"oktxt");}
+    if(learned){this.close();UI.renderAll();UI.status(`Updated ${learned} name(s).`,"oktxt");}
   }
 };
 
@@ -962,8 +1035,9 @@ const Preloader={
   async start(){
     if(this.running)return;
     if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
-    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
-    if(!api||!vid){UI.status("Enter ElevenLabs API key and Voice ID first.","warntxt");return;}
+    let vid=$("voiceId").value.trim();
+    try{Speech.relay();}catch(e){UI.status("Add the secure relay address and passphrase first.","warntxt");return;}
+    if(!vid){UI.status("Enter an ElevenLabs Voice ID first.","warntxt");return;}
     this.running=true;this.cancelled=false;
     this._setAllPreloadBtns(true);
     $("preloadCancel").classList.remove("hidden");
@@ -973,8 +1047,9 @@ const Preloader={
   async startVerbs(){
     if(this.running)return;
     if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
-    let api=$("apiKey").value.trim(),vid=$("voiceId").value.trim();
-    if(!api||!vid){UI.status("Enter ElevenLabs API key and Voice ID first.","warntxt");return;}
+    let vid=$("voiceId").value.trim();
+    try{Speech.relay();}catch(e){UI.status("Add the secure relay address and passphrase first.","warntxt");return;}
+    if(!vid){UI.status("Enter an ElevenLabs Voice ID first.","warntxt");return;}
     let verbs=[...$("verbSel").options].map(o=>o.value);
     let texts=[];
     verbs.forEach(v=>Verb.tenseOrder.forEach(t=>{let line=Verb.spoken(v,t);if(line.trim())texts.push(line);}));
@@ -990,9 +1065,58 @@ const Preloader={
   }
 };
 
-function toCSV(){let h=["book","chapter","order","italian","english","bookmarked","difficult","notes"];return h.join(",")+"\n"+App.sentences.map(s=>h.map(k=>`"${String(s[k]??"").replace(/"/g,'""')}"`).join(",")).join("\n");}
-function download(name,text,type){let b=new Blob([text],{type}),a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;a.click();URL.revokeObjectURL(a.href);}
+function safeCsvValue(value){let s=String(value??"");return /^[=+\-@\t\r]/.test(s)?"'"+s:s;}
+function csvCell(value,alwaysQuote=false){let s=safeCsvValue(value);return alwaysQuote||/[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function toCSV(){let h=["book","chapter","order","italian","english","bookmarked","difficult","notes"];return h.join(",")+"\n"+App.sentences.map(s=>h.map(k=>csvCell(s[k],true)).join(",")).join("\n");}
+function download(name,text,type){let b=new Blob([text],{type}),a=document.createElement("a"),url=URL.createObjectURL(b);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);}
 
+const Preferences={
+  fields:{repeat:"v08repeat",rate:"v08rate",pause:"v08pause",playMode:"v08playMode",showEnglish:"v08showEnglish",displayMode:"v08displayMode",verbRepeat:"v08verbRepeat",verbRate:"v08verbRate",verbPause:"v08verbPause",verbMode:"v08verbMode",verbScope:"v08verbScope"},
+  keys:["v08theme","v08voice","v08model","v08voiceMode","v08relayUrl","v08libCollapsed","v08repeat","v08rate","v08pause","v08playMode","v08showEnglish","v08displayMode","v08verbRepeat","v08verbRate","v08verbPause","v08verbMode","v08verbScope"],
+  save(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id);if(el)localStorage.setItem(key,el.value);});},
+  load(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id),value=localStorage.getItem(key);if(!el||value===null)return;if(el.tagName==="SELECT"&&![...el.options].some(option=>option.value===value))return;el.value=value;});},
+  export(){this.save();let out={};this.keys.forEach(key=>{let value=localStorage.getItem(key);if(value!==null)out[key]=value;});return out;},
+  restore(values){this.keys.forEach(key=>localStorage.removeItem(key));Object.entries(values||{}).forEach(([key,value])=>{if(this.keys.includes(key)&&typeof value==="string"&&value.length<=2000)localStorage.setItem(key,value);});this.load();let theme=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",theme);if($("themeToggle"))$("themeToggle").checked=theme==="dark";}
+};
+
+const Backup={
+  SCHEMA:"shadowing-studio-backup",VERSION:1,MAX_FILE_BYTES:20_000_000,MAX_SENTENCES:100_000,
+  status(message,cls=""){let el=$("backupStatus");if(el){el.textContent=message;el.className="status "+cls;}},
+  plainMap(value,label){if(!value||typeof value!=="object"||Array.isArray(value))throw new Error(`${label} must be an object.`);let entries=Object.entries(value);if(entries.length>10_000)throw new Error(`${label} contains too many entries.`);let out={};for(let [key,text] of entries){if(typeof key!=="string"||key.length>500||typeof text!=="string"||text.length>2_000)throw new Error(`${label} contains an invalid entry.`);out[key]=text;}return out;},
+  sentence(value,index,ids){
+    if(!value||typeof value!=="object"||Array.isArray(value))throw new Error(`Sentence ${index+1} is not an object.`);
+    const string=(name,max,required=false)=>{let item=value[name];if(item===undefined||item===null)item="";if(typeof item!=="string")throw new Error(`Sentence ${index+1} has invalid ${name}.`);item=item.trim();if((required&&!item)||item.length>max)throw new Error(`Sentence ${index+1} has invalid ${name}.`);return item;};
+    let order=Number(value.order);if(!Number.isInteger(order)||order<1||order>10_000_000)throw new Error(`Sentence ${index+1} has invalid order.`);
+    const boolean=name=>{let item=value[name];if(item===undefined)return false;if(typeof item!=="boolean")throw new Error(`Sentence ${index+1} has invalid ${name}.`);return item;};
+    let out={book:string("book",500,true),chapter:string("chapter",500,true),order,italian:string("italian",4_000,true),english:string("english",8_000),bookmarked:boolean("bookmarked"),difficult:boolean("difficult"),notes:string("notes",20_000)};
+    if(value.audioText!==undefined)out.audioText=string("audioText",4_000);
+    if(value.id!==undefined){let id=Number(value.id);if(!Number.isInteger(id)||id<1||ids.has(id))throw new Error(`Sentence ${index+1} has invalid or duplicate ID.`);ids.add(id);out.id=id;}
+    return out;
+  },
+  create(){let sentences=App.sentences.map(sentence=>{let out={book:sentence.book,chapter:sentence.chapter,order:sentence.order,italian:sentence.italian,english:sentence.english||"",bookmarked:Boolean(sentence.bookmarked),difficult:Boolean(sentence.difficult),notes:sentence.notes||""};if(Number.isInteger(sentence.id))out.id=sentence.id;if(typeof sentence.audioText==="string")out.audioText=sentence.audioText;return out;});return{schema:this.SCHEMA,schemaVersion:this.VERSION,appVersion:Build.VERSION,exportedAt:new Date().toISOString(),sentences,titles:{books:{...Titles.books},chapters:{...Titles.chapters}},preferences:Preferences.export(),excludes:["relay passphrases","provider API keys","cached audio","pronunciation data"]};},
+  download(){let data=this.create(),date=data.exportedAt.slice(0,10);download(`shadowing-studio-backup-${date}.json`,JSON.stringify(data,null,2)+"\n","application/json;charset=utf-8");this.status(`Backup downloaded: ${data.sentences.length} sentence(s).`,"oktxt");},
+  validate(data){
+    if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==this.SCHEMA||data.schemaVersion!==this.VERSION)throw new Error("This is not a supported Shadowing Studio backup.");
+    if(!Array.isArray(data.sentences)||data.sentences.length>this.MAX_SENTENCES)throw new Error("The backup has an invalid sentence collection.");
+    let ids=new Set(),sentences=data.sentences.map((sentence,index)=>this.sentence(sentence,index,ids));
+    let titles=data.titles||{};
+    let books=this.plainMap(titles.books||{},"Book titles"),chapters=this.plainMap(titles.chapters||{},"Chapter titles");
+    let preferences={};if(data.preferences!==undefined){if(!data.preferences||typeof data.preferences!=="object"||Array.isArray(data.preferences))throw new Error("Preferences must be an object.");Object.entries(data.preferences).forEach(([key,value])=>{if(Preferences.keys.includes(key)&&typeof value==="string"&&value.length<=2_000)preferences[key]=value;});}
+    return{sentences,books,chapters,preferences};
+  },
+  async restoreFile(file){
+    if(!file)return;if(file.size>this.MAX_FILE_BYTES)throw new Error("Backup file is too large.");
+    let data;try{data=JSON.parse(await file.text());}catch{throw new Error("Backup file is not valid JSON.");}
+    let clean=this.validate(data);
+    if(!confirm(`Replace this device's current library with ${clean.sentences.length} sentence(s) from the selected backup?\n\nCached audio will be cleared. This cannot be undone.`))return;
+    [MainPlayer,VerbPlayer,GenPlayer].forEach(player=>{if(player.playing)player.stop("Restoring backup…");});
+    await Storage.replaceSentences(clean.sentences);await Storage.clear(AS);
+    Titles.books=clean.books;Titles.chapters=clean.chapters;Titles.save();Preferences.restore(clean.preferences);
+    $("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";let collapsed=localStorage.getItem("v08libCollapsed")==="1";document.body.classList.toggle("lib-collapsed",collapsed);$("libShow").classList.toggle("hidden",!collapsed);
+    App.cur={book:"",chapter:"",group:1,index:0};await Library.refresh();Manage.render();
+    this.status(`Restore complete: ${clean.sentences.length} sentence(s). Cached audio was cleared.`,"oktxt");
+  }
+};
 
 const WakeLock={
   lock:null,
@@ -1005,11 +1129,27 @@ const WakeLock={
 };
 
 const MediaSessionMgr={
+  engines(){return [MainPlayer,VerbPlayer,GenPlayer];},
+  active(){return this.engines().find(engine=>engine.playing)||null;},
+  preferred(){
+    let active=this.active();if(active)return active;
+    if($("generate")&&!$("generate").classList.contains("hidden")&&Generator.items.length)return GenPlayer;
+    if($("verbs")&&!$("verbs").classList.contains("hidden"))return VerbPlayer;
+    return MainPlayer;
+  },
+  controller(engine){return engine===VerbPlayer?Verb:engine===GenPlayer?GenController:SentenceController;},
+  claim(engine){
+    this.engines().forEach(other=>{if(other!==engine&&other.playing)other.stop("Switched playback.");});
+    App.playbackContext=engine.name;
+  },
+  play(){let engine=this.preferred();if(engine.playing&&!engine.paused)return;this.controller(engine).toggle();},
+  pause(){let engine=this.active();if(engine&&!engine.paused)this.controller(engine).toggle();},
+  stop(){let engine=this.active();if(engine)engine.stop("Stopped.");else this.none();},
   init(){
     if(!('mediaSession' in navigator))return;
-    navigator.mediaSession.setActionHandler('play',()=>{if(!MainPlayer.playing&&App.playbackContext!=='verb')SentenceController.toggle();else if(!VerbPlayer.playing)Verb.toggle();});
-    navigator.mediaSession.setActionHandler('pause',()=>{if(MainPlayer.playing)SentenceController.toggle();else if(VerbPlayer.playing)Verb.toggle();});
-    navigator.mediaSession.setActionHandler('stop',()=>{MainPlayer.stop('Stopped.');VerbPlayer.stop('Stopped.');});
+    navigator.mediaSession.setActionHandler('play',()=>this.play());
+    navigator.mediaSession.setActionHandler('pause',()=>this.pause());
+    navigator.mediaSession.setActionHandler('stop',()=>this.stop());
   },
   update(title,sub){
     if(!('mediaSession' in navigator))return;
@@ -1026,7 +1166,7 @@ const MediaSessionMgr={
    then read back through the ordinary CSV import path.                        */
 const CSVTemplate={
   columns:["ID","Book","Chapter","ChapterTitle","Group","Item","Italian","English","AudioText","TranslationStatus","SourceFile","Notes"],
-  cell(v){let s=String(v??"");return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;},
+  cell(v){return csvCell(v);},
   build(rows){return this.columns.join(",")+"\n"+rows.map(r=>this.columns.map(c=>this.cell(r[c])).join(",")).join("\n")+"\n";},
   /* list: [{italian,english}] — opts: {book,chapter,chapterTitle,idPrefix,startOrder,sourceFile,notes} */
   rows(list,opts){
@@ -1050,8 +1190,8 @@ const GEN_BOOK="Generated";
 const Generator={
   running:false,cancelled:false,abort:null,
   items:[],rows:[],csv:"",meta:null,lastModel:"",index:0,saved:false,
-  relayUrl(){return ($("relayUrl")?$("relayUrl").value:"").trim().replace(/\/+$/,"");},
-  token(){return ($("relayToken")?$("relayToken").value:"").trim();},
+  relayUrl(){return SecureConfig.relayUrl($("relayUrl")?$("relayUrl").value:"");},
+  token(){return SecureConfig.get("relayToken")||($("relayToken")?$("relayToken").value:"").trim();},
   status(msg,cls=""){let el=$("genStatus");if(el){el.textContent=msg;el.className="status "+cls;}},
   setBusy(b){
     ["genBtn","genSave","genDownload"].forEach(id=>{let el=$(id);if(el)el.disabled=b;});
@@ -1099,7 +1239,8 @@ const Generator={
     if(this.running)return;
     let word=($("genWord").value||"").trim();
     if(!word){this.status("Enter the word or expression you want to shadow.","warntxt");return;}
-    if(!this.relayUrl()||!this.token()){this.status("Add your generator address and passphrase in Settings first.","warntxt");return;}
+    try{this.relayUrl();}catch(e){this.status(e.message,"warntxt");return;}
+    if(!this.token()){this.status("Add your generator passphrase in Settings first.","warntxt");return;}
     let total=Number($("genCount").value)||20,
         tense=$("genTense").value,
         register=$("genRegister").value,
@@ -1317,7 +1458,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.10.1",
+  VERSION:"1.10.2",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1345,7 +1486,7 @@ const Build={
     el.innerHTML=`<strong>These files are from different versions.</strong> `
       +`app.js is v${this.VERSION}, but `
       +stale.map(([f,v])=>`<code>${f}</code> is v${v}`).join(" and ")
-      +`. Upload all six files again from the same folder — the app will not behave correctly until they match.`;
+      +`. Redeploy the complete release folder — the app will not behave correctly until these markers match.`;
     return stale;
   },
   /* 1.9.1 vs 1.9.2 counts as adjacent; 1.8.2 vs 1.9.2 does not. */
@@ -1357,143 +1498,7 @@ const Build={
 };
 
 
-/* ── Pronunciation help (preview) ────────────────────────────────────────────
-   The handover's data model, in miniature. Canonical text is never altered:
-   marks live in separate metadata addressed by word and by character within
-   that word, and the renderer combines the two at display time.
-
-   A mark is {w, c, t} — word, character, type — with two optional flags:
-     written : ordinary Italian spelling already carries this accent (è, perché,
-               città). The letter is coloured but its shape is left alone, so
-               the app never re-spells a word the language already spells.
-     Types "tick" insert the IPA stress bar before a syllable rather than
-     replacing a letter.
-
-   Every mark below was placed by hand and checked one word at a time. Italian
-   stress and vowel aperture are lexical, not derivable from spelling; my own
-   first attempt at these examples freehand got four of them wrong. */
-const Pron={
-  DEMO:[
-    {t:"È bene che tu sia rilassato.",
-     m:[{w:0,c:0,t:"open_e",written:true},{w:1,c:1,t:"open_e"}],
-     n:"È already carries its accent, so it is coloured but not re-spelt. rilassato is stressed on -sa-, and a double s is always voiceless."},
-    {t:"Conviene che tu abbia tutto il necessario.",
-     m:[{w:0,c:5,t:"open_e"}],
-     n:"necessario is stressed on -sa-, so its e's are unstressed and take no mark."},
-    {t:"È opportuno che tutti siano presenti.",
-     m:[{w:0,c:0,t:"open_e",written:true},{w:5,c:3,t:"voiced_s"},{w:5,c:4,t:"open_e"}],
-     n:"presenti carries both: the s between vowels is voiced, and the stressed e is open."},
-    {t:"Non è necessario che tu abbia fretta.",
-     m:[{w:1,c:0,t:"open_e",written:true},{w:6,c:2,t:"closed_e"}],
-     n:"è is open and already accented; fretta has a closed e."},
-    {t:"Ecco la casa che cercavo.",
-     m:[{w:0,c:0,t:"tick"},{w:0,c:0,t:"open_e"},{w:2,c:2,t:"voiced_s"}],
-     n:"A stressed open e opening a sentence. IPA has no capitals of its own; Unicode's Ɛ is the only way to write one."},
-    {t:"Il medico abita in città.",
-     m:[{w:1,c:0,t:"tick"},{w:1,c:1,t:"open_e"},
-        {w:2,c:0,t:"tick"},{w:2,c:0,t:"stress"},
-        {w:4,c:4,t:"open_a",written:true}],
-     n:"Irregular stress. medico and abita are stressed on the third-last syllable; città shows its own stress already."},
-    {t:"Telefono alla mia amica.",
-     m:[{w:0,c:2,t:"tick"},{w:0,c:3,t:"open_e"}],
-     n:"The stress bar sits before the whole syllable — le — not before the vowel."},
-    {t:"Perché è già tardi?",
-     m:[{w:0,c:5,t:"closed_e",written:true},{w:1,c:0,t:"open_e",written:true},
-        {w:2,c:2,t:"open_a",written:true}],
-     n:"Three words that Italian already accents. All three are coloured; none is re-spelt."},
-    {t:"Vorrei vedere questo spettacolo.",
-     m:[{w:0,c:4,t:"open_e"},{w:1,c:3,t:"closed_e"},{w:2,c:2,t:"closed_e"}],
-     n:"vedere takes its accent on the second e, and spettacolo on -ta-, so its e is bare."},
-    {t:"Questa casa è troppo grande.",
-     m:[{w:0,c:2,t:"closed_e"},{w:1,c:2,t:"voiced_s"},{w:2,c:0,t:"open_e",written:true},
-        {w:3,c:2,t:"open_o"}],
-     n:"casa: a single s between vowels is voiced."},
-    {t:"Mezzo litro di zucchero.",
-     m:[{w:0,c:1,t:"open_e"},{w:0,c:2,t:"voiced_z"},{w:0,c:3,t:"voiced_z"}],
-     n:"mezzo has voiced zz; zucchero has voiceless z and is left alone."}
-  ],
-
-  /* Replacement glyphs per notation. Absent means "not shown in this one". */
-  GLYPH:{
-    both:{open_e:"è",closed_e:"é",open_o:"ò",closed_o:"ó",
-          stress:"̀",open_a:"à"},
-    open:{open_e:"è",open_o:"ò",stress:"̀",open_a:"à"},
-    /* No entry for open_a: IPA has no special symbol for a stressed a, and
-       Italian's own à already carries the stress. Substituting a plain "a"
-       would delete information the spelling was giving for free. */
-    ipa: {open_e:"ɛ",closed_e:"e",open_o:"ɔ",closed_o:"o"}
-  },
-  CONS:{voiced_s:"ṡ",voiced_z:"ż"},
-  /* Italian writes its own grave accents; these are the ones we may need. */
-  GRAVE:{a:"à",e:"è",i:"ì",o:"ò",u:"ù"},
-  /* IPA has no capitals of its own. Unicode carries look-alike capitals from
-     African orthographies, which is the only way to open a sentence in IPA. */
-  CAPS:{"ɛ":"Ɛ","ɔ":"Ɔ","e":"E","o":"O","a":"A"},
-
-  mode(){return $("pronMode")?$("pronMode").value:"both";},
-
-  glyphFor(mark,original,mode){
-    if(this.CONS[mark.t])return this.CONS[mark.t];
-    if(mark.t==="stress"){
-      /* An irregular stress on a vowel with no open/closed contrast. */
-      if(mode==="ipa")return null;              /* the tick carries it instead */
-      return this.GRAVE[original.toLowerCase()]||original;
-    }
-    /* Ordinary spelling already shows it: colour the letter, leave its shape —
-       in every notation, including IPA. Substituting there turns perché into
-       perche and città into citta, throwing away the stress the accent was
-       carrying. Marking is not transcription; the app must not re-spell a word
-       the language already spells. */
-    if(mark.written)return original;
-    let g=(this.GLYPH[mode]||{})[mark.t];
-    if(!g)return null;
-    if(original===original.toUpperCase()&&original!==original.toLowerCase())
-      g=this.CAPS[g]||g.toUpperCase();
-    return g;
-  },
-
-  render(text,marks,mode){
-    let words=text.split(" "),byWord={};
-    (marks||[]).forEach(m=>{(byWord[m.w]=byWord[m.w]||[]).push(m);});
-    return words.map((word,wi)=>{
-      let ms=byWord[wi];
-      if(!ms)return Util.esc(word);
-      let out="";
-      for(let i=0;i<word.length;i++){
-        if(mode==="ipa"&&ms.some(m=>m.t==="tick"&&m.c===i))
-          out+=`<span class="pron-mark">ˈ</span>`;
-        let hit=ms.find(m=>m.c===i&&m.t!=="tick");
-        if(!hit){out+=Util.esc(word[i]);continue;}
-        let g=this.glyphFor(hit,word[i],mode);
-        if(g===null){out+=Util.esc(word[i]);continue;}
-        out+=`<span class="pron-mark">${Util.esc(g)}</span>`;
-      }
-      return out;
-    }).join(" ");
-  },
-
-  legend(mode){
-    let cons=" · ṡ voiced s · ż voiced z";
-    if(mode==="ipa")return "ɛ open e · e closed e · ɔ open o · o closed o · ˈ stress, before the syllable"
-      +cons+". Only vowels in stressed position are marked. Sentence-initial open vowels use Ɛ and Ɔ.";
-    if(mode==="open")return "è open e · ò open o · à ì ù irregular stress"+cons
-      +". Closed vowels are left unmarked, so a bare stressed e or o means either closed or not yet known.";
-    return "è open e · é closed e · ò open o · ó closed o · à ì ù irregular stress"+cons
-      +". Every stressed e and o is marked, so a bare one means the word is not yet in the lexicon.";
-  },
-
-  draw(){
-    let host=$("pronDemo");if(!host)return;
-    let mode=this.mode();
-    document.documentElement.setAttribute("data-pron-colour",
-      $("pronColour")?$("pronColour").value:"terracotta");
-    host.innerHTML=this.DEMO.map(d=>
-      `<div class="pron-row"><p class="italian pron-line">${this.render(d.t,d.m,mode)}</p>`
-      +`<p class="pron-note">${Util.esc(d.n)}</p></div>`).join("");
-    if($("pronLegend"))$("pronLegend").textContent=this.legend(mode);
-  }
-};
-
+/* Pronunciation assistance is intentionally deferred pending corpus licensing. */
 const Playbar={
   tab:"study",
   controller(){return this.tab==="generate"?GenController:SentenceController;},
@@ -1526,13 +1531,38 @@ function bind(){
   /* One bar, so one Start/Pause button. Only one player may run at a time,
      which is what makes a single button honest. */
   MainPlayer.button=$("mainToggle");GenPlayer.button=$("mainToggle");VerbPlayer.button=$("verbToggle");
-  function activatePanel(p){if(Focus.isOpen())Focus.leave();setTimeout(()=>UI.renderSideArt(),0);document.querySelectorAll(".desktop-tabs [data-panel]").forEach(x=>x.classList.remove("active"));document.querySelectorAll(".panel").forEach(x=>x.classList.add("hidden"));let tb=document.querySelector(".desktop-tabs [data-panel='"+p+"']");if(tb)tb.classList.add("active");$(p).classList.remove("hidden");if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");Playbar.attach(p);}document.querySelectorAll(".desktop-tabs [data-panel]").forEach(b=>b.onclick=()=>activatePanel(b.dataset.panel));function activateScreen(s){document.body.setAttribute("data-screen",s);document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.screen===s));if(s!=="library")activatePanel(s);}document.querySelectorAll(".mobile-nav-btn").forEach(b=>b.onclick=()=>activateScreen(b.dataset.screen));if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
+  const tabs=[...document.querySelectorAll(".desktop-tabs [role='tab']")];
+  function activatePanel(p){
+    if(Focus.isOpen())Focus.leave();
+    setTimeout(()=>UI.renderSideArt(),0);
+    document.body.setAttribute("data-screen",p);
+    document.querySelectorAll(".mobile-nav-btn").forEach(button=>{let current=button.dataset.screen===p;button.classList.toggle("active",current);if(current)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current");});
+    tabs.forEach(tab=>{let selected=tab.dataset.panel===p;tab.classList.toggle("active",selected);tab.setAttribute("aria-selected",selected?"true":"false");tab.tabIndex=selected?0:-1;});
+    document.querySelectorAll(".panel").forEach(panel=>panel.classList.toggle("hidden",panel.id!==p));
+    if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}
+    else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");
+    else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}
+    if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");
+    Playbar.attach(p);
+  }
+  tabs.forEach((tab,index)=>{
+    tab.onclick=()=>activatePanel(tab.dataset.panel);
+    tab.onkeydown=e=>{let next=index;if(e.key==="ArrowRight")next=(index+1)%tabs.length;else if(e.key==="ArrowLeft")next=(index-1+tabs.length)%tabs.length;else if(e.key==="Home")next=0;else if(e.key==="End")next=tabs.length-1;else return;e.preventDefault();tabs[next].focus();activatePanel(tabs[next].dataset.panel);};
+  });
+  function activateScreen(s){
+    document.body.setAttribute("data-screen",s);
+    document.querySelectorAll(".mobile-nav-btn").forEach(button=>{let current=button.dataset.screen===s;button.classList.toggle("active",current);if(current)button.setAttribute("aria-current","page");else button.removeAttribute("aria-current");});
+    if(s!=="library")activatePanel(s);
+  }
+  document.querySelectorAll(".mobile-nav-btn").forEach(button=>button.onclick=()=>activateScreen(button.dataset.screen));
+  if($("goToSettings"))$("goToSettings").onclick=()=>activateScreen("settings");
   /* Library management now lives in its own screen. */
-  const openManage=()=>{Manage.render();$("manageModal").style.display="flex";};
+  const closeManage=()=>{$("manageModal").style.display="none";DialogManager.close($("manageModal"),$("openManage"));};
+  const openManage=()=>{Manage.render();$("manageModal").style.display="flex";DialogManager.open($("manageModal"),$("manageTitle"),closeManage);};
   $("openManage").onclick=openManage;
-  $("closeManage").onclick=()=>$("manageModal").style.display="none";
-  $("manageModal").onclick=e=>{if(e.target===$("manageModal"))$("manageModal").style.display="none";};
-  $("openImport").onclick=()=>{$("manageModal").style.display="none";Importer.open();};
+  $("closeManage").onclick=closeManage;
+  $("manageModal").onclick=e=>{if(e.target===$("manageModal"))closeManage();};
+  $("openImport").onclick=()=>{closeManage();Importer.open();};
   $("titlesOnly").onclick=()=>Importer.titlesOnly();
 
   /* Collapsing the library gives the sentences the full width. */
@@ -1553,8 +1583,8 @@ function bind(){
   $("focusEnglishMode").onchange=()=>{$("showEnglish").value=$("focusEnglishMode").value;Focus.sync();};
   document.addEventListener("keydown",e=>{
     if(!Focus.isOpen())return;
-    if(e.key==="Escape"){e.preventDefault();Focus.leave();}
-    else if(e.key===" "){e.preventDefault();Focus.toggle();}
+    if(e.target.closest("input,select,textarea,[contenteditable='true']"))return;
+    if(e.key===" "){e.preventDefault();Focus.toggle();}
     else if(e.key==="ArrowRight"){e.preventDefault();Focus.next();}
     else if(e.key==="ArrowLeft"){e.preventDefault();Focus.prev();}
   });
@@ -1581,36 +1611,41 @@ function bind(){
   });
   document.addEventListener("keydown",e=>{if(e.key==="Escape")closeAllMenus();});
 
-  $("closeImport").onclick=()=>$("importModal").style.display="none";
+  $("closeImport").onclick=()=>Importer.close();
+  $("importModal").onclick=e=>{if(e.target===$("importModal"))Importer.close();};
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}let t=await f.text();Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
   $("analysePaste").onclick=()=>{let t=$("pasteCsv").value;Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
   $("importPreviewed").onclick=()=>Importer.import();
   $("dedupe").onclick=()=>Importer.dedupe();
-  $("exportCsv").onclick=()=>download("italian-shadowing-library-v103.csv",toCSV(),"text/csv;charset=utf-8");
-  $("clearAll").onclick=async()=>{if(confirm("Delete whole local library and audio cache?")){await Storage.clear(SS);await Storage.clear(AS);App.sentences=[];App.cur={book:"",chapter:"",group:1,index:0};UI.renderAll();}};
+  $("exportCsv").onclick=()=>download(`italian-shadowing-library-v${Build.VERSION.replaceAll(".","")}.csv`,toCSV(),"text/csv;charset=utf-8");
+  $("backupJson").onclick=()=>Backup.download();
+  $("restoreJson").onclick=()=>$("restoreFile").click();
+  $("restoreFile").onchange=async()=>{let file=$("restoreFile").files[0];try{await Backup.restoreFile(file);}catch(error){Backup.status(error&&error.message?error.message:"Backup could not be restored.","dangertxt");}finally{$("restoreFile").value="";}};
+  $("clearConfirm").oninput=()=>{$("clearAll").disabled=$("clearConfirm").value.trim()!=="DELETE ALL";};
+  $("clearAll").onclick=async()=>{if($("clearConfirm").value.trim()!=="DELETE ALL")return;$("clearAll").disabled=true;[MainPlayer,VerbPlayer,GenPlayer].forEach(player=>{if(player.playing)player.stop("Clearing local data…");});await Storage.clear(SS);await Storage.clear(AS);Preferences.keys.forEach(key=>localStorage.removeItem(key));["v08bookTitles","v08chapterTitles","v08key","v08relayToken"].forEach(key=>localStorage.removeItem(key));SecureConfig.clear("relayToken");Titles.books={};Titles.chapters={};location.reload();};
   $("prevGroup").onclick=()=>Nav.prevGroup();
   $("nextGroup").onclick=()=>Nav.nextGroup();
   $("prevSentence").onclick=()=>Playbar.prev();
   $("nextSentence").onclick=()=>Playbar.next();
   $("mainToggle").onclick=()=>Playbar.toggle();
   $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");GenPlayer.stop("Audio reset.");closeAllMenus();};
-  $("displayMode").onchange=()=>UI.renderViewer();
-  $("showEnglish").onchange=()=>{UI.renderViewer();if(Generator.items.length)Generator.renderCards();};
-  $("playMode").onchange=()=>Playbar.restart();
+  $("displayMode").onchange=()=>{Preferences.save();UI.renderViewer();};
+  $("showEnglish").onchange=()=>{Preferences.save();UI.renderViewer();if(Generator.items.length)Generator.renderCards();};
+  $("playMode").onchange=()=>{Preferences.save();Playbar.restart();};
   $("search").oninput=()=>UI.renderViewer();
   $("search").onsearch=()=>UI.renderViewer();
   $("closeEdit").onclick=()=>Editor.close();
   $("closeEditBottom").onclick=()=>Editor.close();
   $("saveEdit").onclick=()=>Editor.save();
   $("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};
-  ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();if(GenPlayer.playing)GenController.restart();};});
+  ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{Preferences.save();if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();if(GenPlayer.playing)GenController.restart();};});
   $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";};
-  $("saveElevenBtn").onclick=()=>{if($("saveEleven").value==="yes"){localStorage.setItem("v08key",$("apiKey").value);localStorage.setItem("v08voice",$("voiceId").value);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs settings saved.","oktxt");}else{UI.status("Settings not saved — change 'Save locally' to save on this browser.","warntxt");}};
-  $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("apiKey").value="";$("voiceId").value="";UI.status("ElevenLabs settings cleared.","warntxt");};
+  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the secure relay.","oktxt");};
+  $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
-  $("saveAiBtn").onclick=()=>{if($("saveAi").value==="yes"){localStorage.setItem("v08relayUrl",$("relayUrl").value);localStorage.setItem("v08relayToken",$("relayToken").value);UI.status("Generator settings saved on this browser.","oktxt");}else{UI.status("Not saved — change 'Save locally' to keep these on this browser.","warntxt");}};
-  $("clearAiBtn").onclick=()=>{["v08relayUrl","v08relayToken"].forEach(k=>localStorage.removeItem(k));$("relayUrl").value="";$("relayToken").value="";UI.status("Generator settings cleared.","warntxt");};
+  $("saveAiBtn").onclick=()=>{let url;try{url=SecureConfig.relayUrl($("relayUrl").value);}catch(e){UI.status(e.message,"dangertxt");return;}let token=$("relayToken").value.trim();if(!token){UI.status("Enter the generator passphrase.","warntxt");return;}SecureConfig.set("relayToken",token);$("relayUrl").value=url;if($("saveAi").value==="yes")localStorage.setItem("v08relayUrl",url);else localStorage.removeItem("v08relayUrl");UI.status("Generator passphrase is ready for this tab only.","oktxt");};
+  $("clearAiBtn").onclick=()=>{SecureConfig.clear("relayToken");["v08relayUrl","v08relayToken"].forEach(k=>localStorage.removeItem(k));$("relayUrl").value="";$("relayToken").value="";UI.status("Generator settings cleared.","warntxt");};
   $("genBtn").onclick=()=>Generator.start();
   $("genCancel").onclick=()=>Generator.cancel();
   $("genSave").onclick=()=>Generator.save();
@@ -1618,12 +1653,10 @@ function bind(){
   $("genWord").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();Generator.start();}};
   $("genEnglish").onchange=()=>Generator.renderCards();
   Generator.setOutputButtons(false);
-  $("verbScope").onchange=()=>Verb.render();
-  if($("pronMode"))$("pronMode").onchange=()=>Pron.draw();
-  if($("pronColour"))$("pronColour").onchange=()=>Pron.draw();
+  $("verbScope").onchange=()=>{Preferences.save();Verb.render();};
   $("verbPreloadBtn").addEventListener("click",()=>closeAllMenus());
   $("verbSel").onchange=()=>{App.verbTenseIndex=0;Verb.renderView();Verb.restart();};
-  $("verbMode").onchange=()=>Verb.restart();
+  $("verbMode").onchange=()=>{Preferences.save();Verb.restart();};
   $("verbToggle").onclick=()=>Verb.toggle();
   $("prevTense").onclick=()=>Verb.moveTense(-1);
   $("nextTense").onclick=()=>Verb.moveTense(1);
@@ -1633,4 +1666,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Build.check();Pron.draw();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{if((MainPlayer.playing&&!MainPlayer.paused)||(VerbPlayer.playing&&!VerbPlayer.paused)){if(!speechSynthesis.speaking&&!App.currentAudio){if(MainPlayer.playing)SentenceController.restart();else if(VerbPlayer.playing)Verb.restart();}}},600);});Speech.loadVoices();$("apiKey").value=localStorage.getItem("v08key")||"";$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=localStorage.getItem("v08relayToken")||"";if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"eleven";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();

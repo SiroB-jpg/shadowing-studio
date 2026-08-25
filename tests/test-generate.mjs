@@ -14,11 +14,11 @@ const page=await b.newPage();
 const errors=[]; page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
 page.on('pageerror',e=>errors.push('PAGEERROR: '+e.message));
 
-const RELAY='https://relay.test/gen';
+const RELAY='http://localhost:8931/gen';
 let calls=[];
 async function stubRelay(){
-  await page.unroute('https://relay.test/**').catch(()=>{});
-  await page.route('https://relay.test/**', async route=>{
+  await page.unroute(RELAY).catch(()=>{});
+  await page.route(RELAY, async route=>{
     const body=JSON.parse(route.request().postData());
     calls.push({body,headers:route.request().headers()});
     const sentences=Array.from({length:body.count},(_,i)=>({
@@ -38,14 +38,14 @@ await page.click('.desktop-tabs [data-panel="generate"]');
 check('Generate tab opens', await page.isVisible('#generate'));
 await page.fill('#genWord','farcela'); await page.click('#genBtn'); await page.waitForTimeout(200);
 let st=await page.textContent('#genStatus');
-check('Blocks without relay settings', /generator address and passphrase/i.test(st), st);
+check('Blocks without relay settings', /generator address.*Settings/i.test(st), st);
 
 // settings
 await page.click('.desktop-tabs [data-panel="settings"]');
 check('No OpenAI key field remains', (await page.$$('#aiKey')).length===0);
 await page.fill('#relayUrl', RELAY+'/'); await page.fill('#relayToken','pass123');
 await page.selectOption('#saveAi','yes'); await page.click('#saveAiBtn');
-check('Relay settings persist', await page.evaluate(()=>localStorage.getItem('v08relayUrl')&&localStorage.getItem('v08relayToken')==='pass123'));
+check('Relay address persists but passphrase is session-only', await page.evaluate(()=>Boolean(localStorage.getItem('v08relayUrl'))&&!localStorage.getItem('v08relayToken')&&sessionStorage.getItem('iss-session-relayToken')==='pass123'));
 
 // generate
 await page.click('.desktop-tabs [data-panel="generate"]');
@@ -101,8 +101,8 @@ check('Cards rendered for every sentence', (await page.$$eval('#genCards .srow',
 check('First card starts active', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[0].classList.contains('active')));
 
 // One bar, built once, moved to whichever panel is on screen.
-check('There is exactly one playback bar in the document',
-  (await page.$$eval('.playbar',b=>b.length))===1);
+check('There is exactly one shared Study/Generate playback bar in the document',
+  (await page.$$eval('#playbar',b=>b.length))===1);
 check('The bar moves into the Generate panel', await page.evaluate(()=>
   document.getElementById('generate').contains(document.getElementById('playbar'))));
 check('Generate carries no duplicate control set any more', await page.evaluate(()=>
@@ -178,7 +178,7 @@ check('Next sentence advances', await page.evaluate(()=>Generator.index===1));
 check('Next sentence left the Study position alone', await page.evaluate(()=>App.cur.index===0));
 await page.click('#prevSentence'); await page.click('#prevSentence'); await page.waitForTimeout(150);
 check('Previous wraps to the end', await page.evaluate(()=>Generator.index===19));
-await page.$$eval('#genCards .srow',c=>c[4].click()); await page.waitForTimeout(150);
+await page.$$eval('#genCards .srow',c=>c[4].querySelector('.srow-select').click()); await page.waitForTimeout(150);
 check('Tapping a card jumps to it', await page.evaluate(()=>Generator.index===4));
 check('Active highlight follows the jump', await page.evaluate(()=>document.querySelectorAll('#genCards .srow')[4].classList.contains('active')));
 
@@ -259,8 +259,8 @@ for(const [status,payload,expect,label] of [
   [500,{error:'Relay is missing its GEMINI_API_KEY setting.'},/missing one of its settings|GEMINI_API_KEY/i,'500 misconfigured'],
   [502,{error:'Could not reach Google: network down'},/could not reach google/i,'502 upstream down'],
 ]){
-  await page.unroute('https://relay.test/**');
-  await page.route('https://relay.test/**',r=>r.fulfill({status,contentType:'application/json',body:JSON.stringify(payload)}));
+  await page.unroute(RELAY);
+  await page.route(RELAY,r=>r.fulfill({status,contentType:'application/json',body:JSON.stringify(payload)}));
   await page.fill('#genWord','magari'); await page.click('#genBtn');
   await page.waitForFunction(()=>/dangertxt/.test(document.getElementById('genStatus').className),null,{timeout:15000});
   const msg=await page.textContent('#genStatus');
@@ -271,8 +271,8 @@ check('A failed generation leaves the previous set intact',
   await page.evaluate(()=>Generator.items.length>0));
 
 // unreachable relay
-await page.unroute('https://relay.test/**');
-await page.route('https://relay.test/**',r=>r.abort('connectionrefused'));
+await page.unroute(RELAY);
+await page.route(RELAY,r=>r.abort('connectionrefused'));
 await page.fill('#genWord','dunque'); await page.click('#genBtn');
 await page.waitForFunction(()=>/dangertxt/.test(document.getElementById('genStatus').className),null,{timeout:15000});
 check('Explains an unreachable generator', /Could not reach your generator/i.test(await page.textContent('#genStatus')));
@@ -294,7 +294,8 @@ await page.click('.mobile-nav-btn[data-screen="generate"]'); await page.waitForT
 check('Mobile generate screen visible', await page.isVisible('#generate'));
 await page.setViewportSize({width:1400,height:950});
 await page.click('.desktop-tabs [data-panel="settings"]'); await page.waitForTimeout(300);
-await page.screenshot({path:'/home/claude/settings-v130.png'});
+fs.mkdirSync(path.join(ROOT,'test-results'),{recursive:true});
+await page.screenshot({path:path.join(ROOT,'test-results','settings-v1102.png')});
 
 console.log('PASS ('+ok.length+')'); ok.forEach(t=>console.log('  ✓ '+t));
 if(fail.length){console.log('\nFAIL ('+fail.length+')'); fail.forEach(t=>console.log('  ✗ '+t));}

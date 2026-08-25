@@ -1,98 +1,86 @@
-# Setting up your sentence generator
+# Setting up the secure relay
 
-This is a one-off job, done entirely in your web browser. Nothing to install,
-no Terminal. Allow about fifteen minutes.
+Shadowing Studio uses one small Cloudflare Worker for sentence generation and, optionally, ElevenLabs speech. The Worker keeps both provider keys out of the browser, rejects unapproved request fields, accepts requests only from the configured app origin, and can use Cloudflare’s native rate-limit binding.
 
-## What you are building, and why
+## Available configurations
 
-Your app runs in a browser, and Google refuses to accept requests that come
-straight from a web page. So we put a small piece of your own in between: it
-sits on the internet, receives a request from your app, passes it to Google,
-and hands the answer back. It also keeps your Google key out of the browser
-entirely, and only answers to your app.
-
-Cloudflare hosts this sort of thing free, and your usage will be nowhere near
-their limits.
-
-## Step 1 — Get a Google key
-
-1. Go to `aistudio.google.com/apikey` and sign in with your Google account.
-2. Click **Create API key**, and let it make a new project if it asks.
-3. Copy the key somewhere safe for a few minutes. You will paste it in later.
-
-## Step 2 — Invent a passphrase
-
-Think of a phrase only you know — something like `arance-blu-quarantadue`.
-Write it down. Your app will send this to your generator so that strangers
-who find the address cannot use it. It is not a password to any account, and
-you can change it whenever you like.
-
-## Step 3 — Create the generator
-
-1. Go to `dash.cloudflare.com/sign-up` and make a free account, or sign in if
-   you already have one.
-2. In the menu down the left, find **Workers & Pages**, then click the button
-   to create a new Worker. Cloudflare offers a starter example; accept it.
-3. Give it a name such as `italian-sentences`, and click **Deploy**.
-   It will now exist, but do nothing useful yet.
-4. Click **Edit code**. A code window opens containing the starter example.
-5. Select everything in that window and delete it. Then open the file
-   `worker.js` that came with this release, copy all of it, and paste it in.
-6. Click **Deploy** (or **Save and deploy**).
-
-## Step 4 — Give it its three settings
-
-Still on your Worker's page, look for **Settings**, then a section named
-something like **Variables and Secrets**. Add three entries.
-
-| Name | Type | What to put |
+| Configuration | What works | Trade-off |
 |---|---|---|
-| `GEMINI_API_KEY` | Secret | The Google key from step 1 |
-| `APP_TOKEN` | Secret | Your passphrase from step 2 |
-| `ALLOWED_ORIGIN` | Text | `https://sirob-jpg.github.io` |
+| System voice only | Study, Verb Drill, Generate, offline shell, and browser speech | Simplest. Configure only Gemini if you want Generate; speech quality depends on the device. |
+| Secure premium speech | Everything above plus relayed ElevenLabs audio and pre-download | Requires an ElevenLabs key and explicit voice allowlist on the Worker. The provider key never enters the app. |
 
-Choose "Secret" (sometimes called "Encrypt") for the first two so they cannot
-be read back afterwards. Save, and deploy once more if it asks.
+## 1. Create provider credentials
 
-Optionally add a fourth, `GEMINI_MODEL`, if you ever want a different Google
-model. Leave it out and it uses `gemini-3.6-flash`.
+Create a Gemini API key at <https://aistudio.google.com/apikey>. If you want premium speech, also create an ElevenLabs API key and identify the exact Voice ID or IDs that this app may use.
 
-## Step 5 — Connect your app
+Create a long, random relay passphrase. Treat it as a billable service credential: do not commit it to the repository, post it publicly, or reuse an account password.
 
-1. At the top of your Worker's page you will see its address, ending in
-   `.workers.dev`. Copy it.
-2. Open your app, go to **Settings**, and find **Sentence generator**.
-3. Paste the address into **Generator address**, and type your passphrase into
-   **Passphrase**.
-4. Set **Save locally** to "save on this browser", then click
-   **Save generator settings**.
+## 2. Deploy `worker.js`
 
-## Step 6 — Try it
+Create a Cloudflare Worker and replace the starter source with this repository’s `worker.js`. Deploy it, then add these settings under the Worker’s variables and secrets.
 
-Go to the **Generate** tab, type a word such as `farcela`, choose ten
-sentences, and press Generate. You should see a table of sentences within
-several seconds. Press **Save to library** to keep them.
+| Name | Type | Required | Value |
+|---|---|---:|---|
+| `GEMINI_API_KEY` | Secret | For Generate | Gemini key |
+| `APP_TOKEN` | Secret | Yes | Long random relay passphrase |
+| `ALLOWED_ORIGIN` | Text | Yes | Exact origin, such as `https://sirob-jpg.github.io`; no trailing slash |
+| `ELEVENLABS_API_KEY` | Secret | For premium speech | ElevenLabs provider key |
+| `ELEVENLABS_VOICE_IDS` | Text | For premium speech | Comma-separated approved Voice IDs |
+| `GEMINI_MODEL` | Text | No | Defaults to `gemini-3.6-flash` |
+| `GENERATION_DISABLED` | Text | No | Set to `true` for an emergency Generate kill switch |
+| `TTS_DISABLED` | Text | No | Set to `true` for an emergency premium-speech kill switch |
 
-## If something goes wrong
+The Worker refuses to start billable generation if its exact allowed origin or required provider secret is missing. CORS is still a browser control rather than authentication; the passphrase and rate limiter protect the billable routes.
 
-The app tells you what happened in plain words. The usual causes:
+## 3. Add rate limiting
 
-- *"The passphrase in Settings does not match"* — the passphrase in the app
-  and the `APP_TOKEN` on Cloudflare are different. Check for stray spaces.
-- *"Your generator is set up for a different web address"* — `ALLOWED_ORIGIN`
-  does not match where the app is running. It must have no trailing slash.
-- *"missing one of its settings"* — one of the three entries in step 4 did not
-  save, or was spelled differently.
-- *"Could not reach your generator"* — the address in Settings is wrong, or
-  the Worker was never deployed.
-- *"free allowance is used up"* — Google's daily free quota is spent. It
-  resets; nothing is broken.
+Configure a Cloudflare Workers Rate Limiting binding named `RATE_LIMITER`. Cloudflare documents the binding and `limit({ key })` API at <https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/>.
 
-## Housekeeping
+A conservative personal-use starting point is 30 calls per 60 seconds. Use your own positive integer namespace ID, unique within the Cloudflare account when counters should remain independent.
 
-Delete the two temporary keys you made while we were testing, at
-`aistudio.google.com/apikey` and `console.groq.com/keys`. Keep only the key
-that now lives on Cloudflare.
+```jsonc
+{
+  "main": "worker.js",
+  "compatibility_date": "2026-08-24",
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ]
+}
+```
 
-If you ever think your passphrase has got out, change `APP_TOKEN` on
-Cloudflare and change it in the app's Settings to match.
+The Worker uses separate keys for generation and speech. The native rate limiter is intentionally an abuse brake, not exact billing accounting; also configure provider-side spending limits and alerts where available.
+
+## 4. Connect the app
+
+Open **Settings → Sentence generator** and enter the Worker address and relay passphrase. Choose whether to remember the address, then select **Use generator settings**.
+
+The address may be saved because it is not secret. The passphrase remains in session storage and is removed when the browser tab/session ends. Legacy releases’ persisted relay passphrases are migrated into the current session once and deleted from persistent storage.
+
+For premium speech, enter an allowed Voice ID under **Settings → ElevenLabs**, choose an approved model, and select **Save voice settings**. There is no provider-key field: the ElevenLabs key exists only on the Worker.
+
+## 5. Verify both routes
+
+First generate ten sentences for a word such as `farcela`. Then select ElevenLabs as the voice and play one sentence. An unapproved Voice ID must return an error and fall back to the system voice; an approved Voice ID should play and cache the returned audio locally.
+
+## Troubleshooting
+
+| Message | Likely cause |
+|---|---|
+| Passphrase does not match | `APP_TOKEN` and the app’s session passphrase differ. |
+| Relay is configured for another address | `ALLOWED_ORIGIN` does not exactly match the app’s origin. |
+| Generator address must use HTTPS | The app rejects non-HTTPS remote relay endpoints. Localhost HTTP remains available for tests. |
+| Voice ID is not approved | Add the exact ID to `ELEVENLABS_VOICE_IDS` and redeploy. |
+| Too many requests | The rate limiter rejected the route; wait and check for unexpected traffic. |
+| Temporarily disabled | A kill switch is active. |
+| Provider allowance used up | Review provider quotas, spending limits, and alerts. |
+
+## Operational checklist
+
+Rotate `APP_TOKEN` and provider keys if they may have leaked. Keep `ALLOWED_ORIGIN` exact, keep the voice allowlist minimal, enable Worker logs without recording request text or secrets, configure provider spending alerts, and test both kill switches before a public release.

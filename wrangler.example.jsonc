@@ -1,0 +1,20 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "italian-shadowing-studio-relay",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-24",
+  "vars": {
+    "ALLOWED_ORIGIN": "https://sirob-jpg.github.io",
+    "ELEVENLABS_VOICE_IDS": "REPLACE_WITH_APPROVED_VOICE_ID"
+  },
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": {
+        "limit": 30,
+        "period": 60
+      }
+    }
+  ]
+}

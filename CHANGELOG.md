@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.11.3 — the About page in the author's words
+
+The About page is replaced with Siro's own text. Five sections, no standfirst and no signed note; the summary line is set as a motto, the only editorial addition. Definition-list, ordered-list and signature styles went unused by the new copy and have been removed rather than left to accumulate as dead rules.
+
+## v1.11.2 — pause means silence
+
+Three faults reported from v1.10.2 testing.
+
+**A paused clip no longer wakes the system voice.** `playBlob` armed two watchdogs — nine seconds to start, forty-five to finish — and neither stopped counting when playback was paused. A clip left paused past forty-five seconds was therefore judged to have timed out; the timeout was caught as a provider failure and answered with the system-voice fallback. Sound came out of a session the learner had paused, and the button still read Resume because the engine never knew. Both watchdogs now re-arm rather than fire while playback is suspended, and `onstalled` is ignored in the same state.
+
+**A premium failure during a pause stays silent.** `Speech.speak` now takes the calling engine and declines to fall back when that engine is paused or stopped. A genuine failure is still reported and still falls back — but only into a session that is actually listening.
+
+**Premium speech says when it has no passphrase.** One relay passphrase now authenticates both premium speech and Generate, and it is session-only by design, so a new tab starts without it. The app fell back to the system voice and said so on the status line, where the next sentence overwrote it. Settings now carries a standing notice whenever ElevenLabs is selected without a passphrase, naming the single passphrase both features share. It clears as soon as one is entered.
+
+The watchdog durations are now named on `Speech.WATCHDOG` so the suite can shorten them instead of waiting the better part of a minute. A tenth suite, `test-playback-pause.mjs`, covers all three faults; against the previous build it fails on fourteen checks, including the reproduced fallback. Ten suites pass **382 checks**.
+
+## v1.11.1 — scale tokens, and the button surface on them
+
+A single scale for each dimension now sits in `:root`: eight spacing steps on a 4-pixel grid, seven type sizes, three radii, four elevations, three motion values, and the interaction constants (`--tap-min`, `--focus-ring`, `--focus-offset`). They replace the ad-hoc values the stylesheet had accumulated — 43 distinct spacing values and 27 type sizes, several of them a fraction of a pixel apart.
+
+Every button rule now references those tokens: base, variants, disabled, focus ring, library tree rows, icon-only buttons, in-row controls, and the phone overrides. Two hardcoded colours (`#5c5854`, `white`) are gone from the button surface. Six rendered views — Study, Settings, Verb drill, the library manager, a focused sentence row and the phone layout — are pixel-identical before and after.
+
+One behavioural fix travelled with it: `.tabs button` set `min-height:40px` under 480px, below the app's own 44-pixel touch-target floor. It affected nothing today, because `.desktop-tabs` is hidden at that width, but it now reads from `--tap-min` like every other control.
+
+Remaining components still carry literal values and will move over alongside the `app.js` module split. Nine suites pass **364 checks**.
+
+## v1.11.0 — the About tab
+
+A sixth tab, **About**, now sits beside Study, Verb drill, Generate and Settings, and appears in the phone navigation bar. It carries a single long-form page in five parts: what shadowing is, the distance between knowing Italian and speaking it, the parallel with musical practice, what the app is for, and where the technique comes from. It closes on the method in six words — listen, understand, imitate, repeat, internalise, flow.
+
+Opening About stops any player that is running, as Settings already did. Prose is set to a capped measure for readability, inherits the existing palette in both themes, and the phone navigation bar now holds six labels without clipping.
+
+The accessibility suite gained twelve checks covering the new tab's semantics, panel visibility, reading measure, phone reachability, navigation-label fit, and an axe audit of the page in light and dark. Nine suites pass **364 checks**.
+
 ## v1.10.2 — pronunciation-free stabilization
 
 The pronunciation preview and all associated controls, renderer code, styles, and tests have been removed. No pronunciation corpus or derived pronunciation data is included. The feature is deferred until source-data licensing and linguistic validation are complete.

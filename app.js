@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 const DB="ISS_V08", SS="sentences", AS="audioCache";
-const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
+const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,audioSuspended:false,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
 
 const SecureConfig={
   sessionKey(name){return `iss-session-${name}`;},
@@ -480,6 +480,10 @@ const Speech={
     }
     if(App.currentAudioResolve){try{App.currentAudioResolve();}catch(e){}App.currentAudioResolve=null;}
   },
+  /* How long a clip may take to start, and to finish, before it is judged
+     broken. Named rather than buried so the regression suite can shorten them
+     instead of waiting the better part of a minute. */
+  WATCHDOG:{start:9000,total:45000},
   stop(){speechSynthesis.cancel();this.stopAudioOnly();},
   system(text){return new Promise(res=>{speechSynthesis.cancel();let done=false,timer=null;const finish=()=>{if(done)return;done=true;if(timer)clearTimeout(timer);res();};let u=new SpeechSynthesisUtterance(text);u.lang="it-IT";u.rate=PlaybackControls.rate();if(App.alice)u.voice=App.alice;u.onend=finish;u.onerror=finish;timer=setTimeout(finish,25000);speechSynthesis.speak(u);});},
   playBlob(blob){return new Promise((res,rej)=>{
@@ -509,10 +513,21 @@ const Speech={
     a.onplaying=()=>{started=true;applyRate();if(startTimer)clearTimeout(startTimer);};
     a.onended=finish;
     a.onerror=()=>fail(new Error("Audio playback error"));
-    a.onstalled=()=>{if(!started)fail(new Error("Audio playback stalled"));};
+    /* A paused clip must never be mistaken for a stalled one. Both watchdogs
+       re-arm rather than fire while playback is deliberately suspended. Left
+       counting, a clip paused for 45 seconds "times out", the timeout is
+       treated as a provider failure, and the system voice starts speaking
+       over a session the learner believes is paused. */
+    const armStart=()=>{if(startTimer)clearTimeout(startTimer);
+      startTimer=setTimeout(()=>{if(settled)return;if(App.audioSuspended){armStart();return;}
+        if(!started)fail(new Error("Audio did not start"));},Speech.WATCHDOG.start);};
+    const armTotal=()=>{if(totalTimer)clearTimeout(totalTimer);
+      totalTimer=setTimeout(()=>{if(settled)return;if(App.audioSuspended){armTotal();return;}
+        fail(new Error("Audio playback timed out"));},Speech.WATCHDOG.total);};
+    a.onstalled=()=>{if(!started&&!App.audioSuspended)fail(new Error("Audio playback stalled"));};
     a.src=url;
-    startTimer=setTimeout(()=>{if(!started)fail(new Error("Audio did not start"));},9000);
-    totalTimer=setTimeout(()=>fail(new Error("Audio playback timed out")),45000);
+    armStart();
+    armTotal();
     let p=a.play();
     if(p&&p.catch)p.catch(err=>fail(err));
   });},
@@ -563,16 +578,24 @@ const Speech={
     }
     return this.playBlob(blob);
   },
-  async speak(text){
+  async speak(text,engine){
     if($("voiceMode").value=="eleven"){
       try{return await this.eleven(text);}
-      catch(e){UI.status((e&&e.message?e.message:"ElevenLabs unavailable")+". Using system voice.","warntxt");return this.system(text);}
+      catch(e){
+        /* A premium failure that lands while the learner has paused or stopped
+           must not start the system voice. That is the app talking to an empty
+           room, and it leaves the Start button reading "Resume" while sound
+           comes out — exactly the state that makes a bug feel like a haunting. */
+        if(engine&&(engine.stopped||engine.paused))return;
+        UI.status((e&&e.message?e.message:"ElevenLabs unavailable")+". Using system voice.","warntxt");
+        return this.system(text);
+      }
     }
     return this.system(text);
   }
 };
 
-class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;MediaSessionMgr.claim(this);this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
+class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;App.audioSuspended=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;App.audioSuspended=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;App.audioSuspended=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;MediaSessionMgr.claim(this);this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;App.audioSuspended=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text,this);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text,this);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
 
 const MainPlayer=new PlaybackEngine("main",null,"Sentence playback");
 const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
@@ -1458,7 +1481,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.10.2",
+  VERSION:"1.11.3",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1527,6 +1550,24 @@ const Playbar={
   restart(){this.controller().restart();}
 };
 
+/* ── Does premium speech actually have what it needs? ────────────────────────
+   One relay passphrase now authenticates both premium speech and Generate, and
+   it is session-only by design. Without it the app quietly falls back to the
+   system voice, and a warning on the status line is overwritten by the next
+   sentence before anyone reads it. This states the position in Settings and
+   leaves it on screen until it is resolved. */
+function premiumReadiness(){
+  let el=$("premiumNotice");if(!el)return;
+  let stored=SecureConfig.get("relayToken"),
+      typed=($("relayToken")&&$("relayToken").value||"").trim(),
+      wantsPremium=$("voiceMode").value==="eleven";
+  if(!wantsPremium||stored||typed){el.classList.add("hidden");el.textContent="";return;}
+  el.classList.remove("hidden");
+  el.textContent="Premium speech needs the relay passphrase, which is not set in this browser session. "
+    +"One passphrase covers both premium speech and Generate — enter it under Sentence generator below. "
+    +"Until then, sentences play in the system voice.";
+}
+
 function bind(){
   /* One bar, so one Start/Pause button. Only one player may run at a time,
      which is what makes a single button honest. */
@@ -1541,7 +1582,7 @@ function bind(){
     document.querySelectorAll(".panel").forEach(panel=>panel.classList.toggle("hidden",panel.id!==p));
     if(p==="verbs"){if(MainPlayer.playing)MainPlayer.stop("Switched to Verb Drill.");if(GenPlayer.playing)GenPlayer.stop("Switched to Verb Drill.");Verb.render();}
     else if(p==="study"&&VerbPlayer.playing)VerbPlayer.stop("Switched to Study.");
-    else if(p==="settings"||p==="generate"){let lbl=p==="generate"?"Switched to Generate.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if(p==="settings"&&GenPlayer.playing)GenPlayer.stop(lbl);}
+    else if(p==="settings"||p==="generate"||p==="about"){let lbl=p==="generate"?"Switched to Generate.":p==="about"?"Switched to About.":"Switched to Settings.";if(MainPlayer.playing)MainPlayer.stop(lbl);if(VerbPlayer.playing)VerbPlayer.stop(lbl);if((p==="settings"||p==="about")&&GenPlayer.playing)GenPlayer.stop(lbl);}
     if(p!=="generate"&&GenPlayer.playing)GenPlayer.stop("Left the Generate tab.");
     Playbar.attach(p);
   }
@@ -1639,8 +1680,9 @@ function bind(){
   $("saveEdit").onclick=()=>Editor.save();
   $("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};
   ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{Preferences.save();if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();if(GenPlayer.playing)GenController.restart();};});
-  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";};
-  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the secure relay.","oktxt");};
+  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";premiumReadiness();};
+  if($("relayToken"))$("relayToken").addEventListener("input",premiumReadiness);
+  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the secure relay.","oktxt");premiumReadiness();};
   $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
@@ -1666,4 +1708,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();})();
+(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();premiumReadiness();})();

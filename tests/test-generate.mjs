@@ -289,7 +289,7 @@ check('Legacy CSV still imports', lp.length===2&&lp[1].italian==='Come stai?');
 
 // mobile
 await page.setViewportSize({width:390,height:780}); await page.waitForTimeout(200);
-check('Mobile nav has 5 buttons', (await page.$$eval('.mobile-nav-btn',x=>x.length))===5);
+check('Mobile nav has 6 buttons', (await page.$$eval('.mobile-nav-btn',x=>x.length))===6);
 await page.click('.mobile-nav-btn[data-screen="generate"]'); await page.waitForTimeout(200);
 check('Mobile generate screen visible', await page.isVisible('#generate'));
 await page.setViewportSize({width:1400,height:950});

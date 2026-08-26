@@ -51,6 +51,21 @@ await page.keyboard.press('ArrowRight');
 check('Arrow key activates next tab', await page.getAttribute('#verbsTab', 'aria-selected') === 'true');
 check('Arrow key focuses next tab', (await page.evaluate(() => document.activeElement?.id)) === 'verbsTab');
 
+await page.click('#aboutTab');
+await page.waitForTimeout(120);
+check('About tab is selected', await page.getAttribute('#aboutTab', 'aria-selected') === 'true');
+check('About panel is revealed', await page.isVisible('#about'));
+check('About panel is labelled by its tab', await page.getAttribute('#about', 'aria-labelledby') === 'aboutTab');
+check('Other panels close when About opens', await page.isHidden('#study') && await page.isHidden('#settings'));
+check('About carries the method sections', (await page.locator('#about .prose h3').count()) >= 5);
+check('About reading measure is capped', await page.evaluate(() => {
+  const w = document.querySelector('#about .prose').getBoundingClientRect().width;
+  return w > 0 && w <= 760;
+}));
+await axe(page, 'about-light');
+await page.click('#studyTab');
+check('Leaving About restores Study', await page.isVisible('#study'));
+
 await page.click('#settingsTab');
 await page.evaluate(() => { const input = document.querySelector('#themeToggle'); input.checked = true; input.dispatchEvent(new Event('change', { bubbles: true })); });
 await axe(page, 'settings-dark');
@@ -66,6 +81,18 @@ const undersized = await mobile.locator('button:visible').evaluateAll(buttons =>
   return { id: b.id || b.getAttribute('aria-label') || b.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) };
 }).filter(x => x.w < 44 || x.h < 44));
 check('Visible mobile buttons meet 44px target', undersized.length === 0, JSON.stringify(undersized));
+
+await mobile.click('.mobile-nav-btn[data-screen="about"]');
+await mobile.waitForTimeout(150);
+check('About is reachable from the phone nav', await mobile.isVisible('#about'));
+check('About phone nav button is current', await mobile.getAttribute('.mobile-nav-btn[data-screen="about"]', 'aria-current') === 'page');
+const navLabels = await mobile.locator('.mobile-nav-btn span').evaluateAll(spans => spans.map(s => ({
+  text: s.textContent.trim(), clipped: s.scrollWidth > s.clientWidth + 1
+})).filter(x => x.clipped));
+check('Phone nav labels are not clipped', navLabels.length === 0, JSON.stringify(navLabels));
+await mobile.evaluate(() => { const i = document.querySelector('#themeToggle'); i.checked = true; i.dispatchEvent(new Event('change', { bubbles: true })); });
+await mobile.waitForTimeout(120);
+await axe(mobile, 'about-mobile-dark');
 
 await browser.close();
 fs.writeFileSync(path.join(here,'a11y-results.json'), JSON.stringify(results, null, 2));

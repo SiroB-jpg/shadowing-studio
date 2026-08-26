@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="no-referrer">
-<meta name="app-version" content="1.10.2">
-<title>Italian Shadowing Studio — v1.10.2</title>
+<meta name="app-version" content="1.11.3">
+<title>Italian Shadowing Studio — v1.11.3</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="description" content="Offline-first Italian shadowing practice with sentence libraries, verb drills, configurable playback, and optional generated exercises.">
@@ -27,7 +27,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.10.2 — stability, accessibility and security update.</p>
+      <p class="header-sub">v1.11.3 — an About page, and quieter pauses.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -62,6 +62,7 @@
       <button id="verbsTab" class="tab" data-panel="verbs" role="tab" aria-selected="false" aria-controls="verbs" tabindex="-1">Verb drill</button>
       <button id="generateTab" class="tab" data-panel="generate" role="tab" aria-selected="false" aria-controls="generate" tabindex="-1">Generate</button>
       <button id="settingsTab" class="tab" data-panel="settings" role="tab" aria-selected="false" aria-controls="settings" tabindex="-1">Settings</button>
+      <button id="aboutTab" class="tab" data-panel="about" role="tab" aria-selected="false" aria-controls="about" tabindex="-1">About</button>
     </div>
 
     <div id="study" class="panel" role="tabpanel" aria-labelledby="studyTab">
@@ -189,6 +190,7 @@
       <select id="voiceMode"><option value="system" selected>System voice: Alice</option><option value="eleven">ElevenLabs</option></select>
       <div id="elevenPanel" class="status mt">
         <h3>ElevenLabs</h3>
+        <p id="premiumNotice" class="notice-warn hidden" role="status"></p>
         <div class="grid">
           <div><label for="voiceId">Voice ID</label><input id="voiceId" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
           <div><label for="model">Model</label><select id="model"><option value="eleven_multilingual_v2">eleven_multilingual_v2</option><option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option></select></div>
@@ -211,6 +213,52 @@
       </div>
     </div>
 
+
+    <div id="about" class="panel hidden" role="tabpanel" aria-labelledby="aboutTab">
+      <div class="pane-head">
+        <div class="panel-art"></div>
+        <div class="pane-head-text">
+          <h2>About Italian Shadowing Studio</h2>
+        </div>
+      </div>
+
+      <div class="prose">
+        <h3>What is shadowing?</h3>
+        <p>Shadowing is a way of practising spoken language by listening closely to a model and speaking along with it, following just behind the speaker.</p>
+        <p>Rather than simply listening to a sentence and repeating it afterwards, you try to reproduce what you hear as you hear it: the words, sounds, stress, rhythm, phrasing and intonation.</p>
+        <p>This brings listening and speaking together. You train your ear to hear Italian accurately while training your voice to produce it.</p>
+
+        <h3>From knowing Italian to speaking Italian</h3>
+        <p>Understanding a language and being able to speak it freely are not quite the same skill.</p>
+        <p>You may know a word or grammatical structure perfectly well, yet still have to stop and think before you can use it. Shadowing helps turn things you know into things you can do.</p>
+        <p>Through repeated listening and speaking, words, phrases and grammatical structures become increasingly familiar. Instead of having to build every sentence consciously, common patterns begin to come to you more readily.</p>
+        <p>The aim is to internalise the language: to absorb its sounds, structures and patterns until producing them becomes increasingly natural and automatic.</p>
+
+        <h3>Practise language like a musician</h3>
+        <p>There is a close parallel between shadowing and the way a musician practises.</p>
+        <p>A musician does not learn a difficult passage simply by understanding the notes. The passage has to be repeated. It may be slowed down, broken into smaller parts and practised again and again.</p>
+        <p>Gradually, something changes. What first required intense concentration becomes easier. The music is absorbed by the brain and the body. The fingers learn the movements, the ear anticipates the sounds, and eventually the passage can flow without every action having to be consciously directed.</p>
+        <p>Shadowing approaches spoken language in much the same way.</p>
+        <p>A new Italian structure may at first feel awkward and require conscious thought. Through repeated listening and speaking, its words, sounds and patterns become increasingly absorbed by the brain and body. The mouth becomes accustomed to producing them, the ear becomes accustomed to hearing them, and the structure itself becomes familiar.</p>
+        <p>With enough good practice, thought becomes action, and action becomes flow.</p>
+
+        <h3>Why this app?</h3>
+        <p>Italian Shadowing Studio is designed as a practice room for spoken Italian.</p>
+        <p>It lets you work with small, useful pieces of language: slowing them down, repeating them, adding pauses and returning to them until they become comfortable.</p>
+        <p>The purpose is not to memorise hundreds of sentences. The sentences are models through which you practise the building blocks of the language. As words and structures recur in different combinations, they become more deeply internalised and increasingly available when you want to speak for yourself.</p>
+        <p>Like musical practice, repetition should not be mindless. Listen carefully. Notice what is difficult. Slow it down when necessary. Repeat it. Then try it again at a natural pace.</p>
+
+        <h3>Where does shadowing come from?</h3>
+        <p>Shadowing has its roots in research into speech and in interpreter training, where listening and speaking at the same time are essential skills. It was later developed as a method for second-language learning and has been particularly influential in language teaching in Japan.</p>
+        <p>Today, shadowing is used to develop closer listening, clearer pronunciation, more natural rhythm and greater ease in producing spoken language.</p>
+
+        <p class="motto-lead">The philosophy behind Italian Shadowing Studio can be summed up simply:</p>
+        <p class="motto">Listen. Understand. Imitate. Repeat. Internalise. Flow.</p>
+        <p>The goal is not to become good at repeating recordings.</p>
+        <p>The goal is to practise Italian until its sounds and structures become part of you, and increasingly available when you speak.</p>
+      </div>
+    </div>
+
     <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready.</div>
   </section>
 </main>
@@ -221,6 +269,7 @@
   <button class="mobile-nav-btn" data-screen="verbs" aria-label="Verbs"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M3 10h18M9.5 10v9.5"/></svg><span>Verbs</span></button>
   <button class="mobile-nav-btn" data-screen="generate" aria-label="Generate sentences"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 4l1.7 4.3L17 10l-4.3 1.7L11 16l-1.7-4.3L5 10l4.3-1.7z"/><path d="M17.5 14.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg><span>Generate</span></button>
   <button class="mobile-nav-btn" data-screen="settings" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="3.1"/><path d="M12 2.8l1.1 2.3 2.5-.6.6 2.5 2.3 1.1-1.3 2.2 1.3 2.2-2.3 1.1-.6 2.5-2.5-.6L12 21.2l-1.1-2.3-2.5.6-.6-2.5-2.3-1.1L6.8 12 5.5 9.8l2.3-1.1.6-2.5 2.5.6z"/></svg><span>Settings</span></button>
+  <button class="mobile-nav-btn" data-screen="about" aria-label="About shadowing"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.9"/></svg><span>About</span></button>
 </nav>
 
 

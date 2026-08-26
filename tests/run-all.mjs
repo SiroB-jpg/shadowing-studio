@@ -12,7 +12,8 @@ const suites = [
   ['Media-session ownership', 'test-media-session.mjs'],
   ['Backup, restore and destructive safeguards', 'test-backup.mjs'],
   ['Service worker, updates and offline reloads', 'test-service-worker.mjs'],
-  ['Responsive layout and visual flows', 'test-responsive.mjs']
+  ['Responsive layout and visual flows', 'test-responsive.mjs'],
+  ['Pause, premium fallback and readiness', 'test-playback-pause.mjs']
 ];
 let failed = 0, total = 0;
 for (const [name, file] of suites) {

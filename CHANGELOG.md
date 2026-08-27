@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.11.6 — silence is a failure too
+
+Reported from an iPad: with ElevenLabs selected, starting from Chapter 6 produced *no playback at all — not even the system voice*. Switching to the system voice in Settings made it work. That is a real fault and v1.11.5 did not address it.
+
+**Fifteen seconds of nothing, per sentence, indefinitely.** `fetchPremium` allowed the relay fifteen seconds to answer. Against a relay that does not answer — unreachable, asleep, or being blocked on that network — the app waited the full fifteen seconds in complete silence, fell back to the system voice for that one sentence, and then did the same thing again for the next. Worse, a timeout was never classed as a fault worth standing down over, so it repeated for every sentence in the chapter. There is no wording on screen for that state, and no reason a learner would read it as anything other than "playback is broken". Reproduced in a headless browser against a stub relay: four sentences, four silences, nothing spoken.
+
+First contact now gets **five seconds**, not fifteen — a relay that cannot answer a small request in five seconds will not carry a session. Once one request has succeeded, the budget rises to twelve for the rest of the session. Two silent waits stand premium speech down, so from the third sentence onward playback starts immediately in the system voice with a standing notice saying why. Worst case is now about ten seconds of hesitation at the top of a chapter instead of unbounded silence.
+
+**A superseded request no longer swallows its sentence.** `fetchPremium` returns `null` when its request was replaced rather than failed, and `eleven` returned on that without speaking — the loop moved on with no sound at all. It now hands the sentence to the system voice.
+
+**Unreachable is reported as unreachable.** A timeout said "Premium speech timed out"; it now says how long it waited, and a connection that never opens is named as such rather than surfacing as a generic error.
+
+Ten suites, **423 checks** — 5 new, driving a relay that accepts a request and never answers, and asserting that no sentence is left silent, that first contact gives up quickly, and that the session recovers to immediate playback.
+
+## v1.11.5 — the relay explains itself, and the voice follows the learner
+
+v1.11.4's error reporting worked: it produced `Premium speech error 400`. That is a *hard rejection from the relay*, not a rate limit and not a missing passphrase — and it re-diagnoses the whole complaint.
+
+**The app was throwing away the relay's explanation.** `worker.js` answers a bad request with a sentence in the JSON body — "Voice ID is not approved for this relay", "Speech model is not approved", "Wrong or missing passphrase". `fetchPremium` read the status code and discarded the body, so a precise diagnosis arrived as a bare number. It now reads the body and reports what the relay actually said.
+
+**Why a chapter started in the ElevenLabs voice and changed partway through.** `Speech.eleven` checks the audio cache before the network. The opening sentences of Chapter 1 were already recorded on the device from earlier sessions, so they played in the ElevenLabs voice; the first *uncached* sentence hit the 400 and fell back. Group 2 had a few cached, then the same. Chapter 3 had none, so it never sounded premium at all. One fault, three appearances.
+
+**Premium speech now stands down instead of drifting.** Three settings-fault rejections in a row — 400, 401, 403, the kinds that cannot change between one sentence and the next — and the ElevenLabs voice steps aside, raises a standing notice in Study that names the relay's reason, and offers a *try premium speech again* action. Rate limits and provider outages do not trip it; those are weather. Cached clips keep playing in the ElevenLabs voice throughout. The notice clears when relay settings are saved, when a connection test succeeds, or on request.
+
+**Pre-download stops after the first doomed request.** A Voice ID the relay will not approve is refused identically for every sentence. v1.11.4 reported "0 downloaded, 0 already cached, 50 failed"; it now attempts one, stops, and says what the relay said.
+
+**Test connection actually tests the voice.** It sent an empty body, which proved only the passphrase — so it could report "all check out" while every real sentence was rejected for an unapproved Voice ID. It now sends the Voice ID and model in use with a one-word text, and distinguishes a Worker missing its `ELEVENLABS_API_KEY` (502 from ElevenLabs) from a Voice ID missing from `ELEVENLABS_VOICE_IDS` (400 from the relay).
+
+**Playback follows the library selection.** Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while displaying Chapter 3. `Nav.nextGroup` and the sentence controls had always restarted; the three tree handlers never did. They do now, from a pause as well — if the learner picked this sentence, this sentence is what should be spoken.
+
+Ten suites, **418 checks** — 14 new, covering the surfaced relay message, the fatal/transient distinction, the stand-down and its notice, and the voice following a chapter, a group and a pause.
+
 ## v1.11.4 — one relay, one passphrase, and a way out of Focus mode
 
 Six faults reported from v1.11.3 on device. Four of them were one fault wearing four coats.

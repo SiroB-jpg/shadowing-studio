@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.11.4";
+  --css-version:"1.11.6";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -618,6 +618,15 @@ body.lib-collapsed .panel-art{display:block}
   line-height:var(--lh-normal);
 }
 .notice-ok{border-left-color:var(--ok)}
+
+/* An action inside a sentence of prose. A real button, styled as the link the
+   sentence reads like. */
+.linklike{
+  background:none;border:0;padding:0;margin:0;min-height:0;
+  color:var(--accent);font:inherit;font-weight:700;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;
+}
+.linklike:hover{color:var(--ink)}
 
 /* A checkbox and its wording on one line. The bare `label` rule is built for
    a field caption above an input, which is the wrong shape here. */

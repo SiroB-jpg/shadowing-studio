@@ -368,7 +368,7 @@ const UI={
       bd.setAttribute("aria-pressed",App.cur.book==b?"true":"false");
       let bt=Titles.book(b);
       bd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(b))?"Book "+b:String(b))}</span>`+(bt?`<span class="tree-title">${Util.esc(bt)}</span>`:"");
-      bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.normalise();UI.renderAll();};
+      bd.onclick=()=>{App.cur.book=b;App.cur.chapter="";App.cur.group=1;App.cur.index=0;UI.normalise();UI.renderAll();SentenceController.follow();};
       t.appendChild(bd);
       Util.uniq(App.sentences.filter(s=>s.book==b).map(s=>s.chapter)).sort(Util.nat).forEach(c=>{
         let cd=document.createElement("button");
@@ -377,7 +377,7 @@ const UI={
         cd.setAttribute("aria-pressed",App.cur.book==b&&App.cur.chapter==c?"true":"false");
         let ct=Titles.chapter(b,c);
         cd.innerHTML=`<span>${Util.esc(/^\d+$/.test(String(c))?"Chapter "+c:String(c))}</span>`+(ct?`<span class="tree-title">${Util.esc(ct)}</span>`:"");
-        cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();};
+        cd.onclick=()=>{App.cur.book=b;App.cur.chapter=c;App.cur.group=1;App.cur.index=0;UI.renderAll();SentenceController.follow();};
         t.appendChild(cd);
         if(App.cur.book==b&&App.cur.chapter==c)
           Util.uniq(App.sentences.filter(s=>s.book==b&&s.chapter==c).map(Util.gnum)).sort((a,b)=>a-b).forEach(g=>{
@@ -386,7 +386,7 @@ const UI={
             gd.className="groupItem "+(Number(App.cur.group)==g?"active":"");
             if(Number(App.cur.group)==g)gd.setAttribute("aria-current","location");
             gd.textContent="Group "+g;
-            gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();};
+            gd.onclick=()=>{App.cur.group=g;App.cur.index=0;UI.renderAll();SentenceController.follow();};
             t.appendChild(gd);
           });
       });
@@ -501,6 +501,16 @@ const Speech={
      broken. Named rather than buried so the regression suite can shorten them
      instead of waiting the better part of a minute. */
   WATCHDOG:{start:9000,total:45000},
+  /* How long to wait on the relay before giving the sentence to the system
+     voice. Fifteen seconds was the old figure, and against an unresponsive
+     relay it produced fifteen seconds of complete silence per sentence — no
+     premium voice, no system voice, nothing — repeated for every sentence,
+     because a timeout was never classed as a fault worth standing down over.
+     A learner reasonably reads that as "playback does not work".
+     First contact is deliberately short: if the relay cannot answer a small
+     request in five seconds it is not going to carry a session. */
+  RELAY_TIMEOUT:{first:5000,settled:12000},
+  relayProven:false,
   stop(){speechSynthesis.cancel();this.stopAudioOnly();},
   system(text){return new Promise(res=>{speechSynthesis.cancel();let done=false,timer=null;const finish=()=>{if(done)return;done=true;if(timer)clearTimeout(timer);res();};let u=new SpeechSynthesisUtterance(text);u.lang="it-IT";u.rate=PlaybackControls.rate();if(App.alice)u.voice=App.alice;u.onend=finish;u.onerror=finish;timer=setTimeout(finish,25000);speechSynthesis.speak(u);});},
   playBlob(blob){return new Promise((res,rej)=>{
@@ -558,17 +568,54 @@ const Speech={
     if(!token)throw new Error("No generator passphrase");
     return{url:base+"/tts",token};
   },
+  /* A settings fault does not get better by being asked fifty more times. When
+     the relay rejects three requests in a row for a reason that cannot change
+     between sentences, premium speech stands down, says why, and stays down
+     until something is actually altered. Without this the app drifts silently
+     onto the system voice mid-chapter and gives no account of itself. */
+  breaker:{
+    strikes:0,misses:0,tripped:false,reason:"",
+    LIMIT:3,MISS_LIMIT:2,
+    record(err){
+      if(err&&err.fatal){this.misses=0;this.strikes++;this.reason=err.message||"";if(this.strikes>=this.LIMIT)this.trip();return;}
+      /* Two silent waits is already twice as much silence as anyone should be
+         asked to sit through. Standing down here is what turns "nothing plays
+         at all" into "it is reading in the system voice, and here is why". */
+      if(err&&err.unreachable){this.strikes=0;this.misses++;this.reason=err.message||"";if(this.misses>=this.MISS_LIMIT)this.trip();return;}
+      this.strikes=0;this.misses=0;
+    },
+    trip(){if(this.tripped)return;this.tripped=true;speechNotice();},
+    reset(){let was=this.tripped;this.strikes=0;this.misses=0;this.tripped=false;this.reason="";Speech.relayProven=false;if(was)speechNotice();},
+    ok(){this.strikes=0;this.misses=0;}
+  },
   async fetchPremium(text,vid){
     let relay=this.relay(),controller=new AbortController();
     App.elevenAbort=controller;
-    let timer=setTimeout(()=>controller.abort(),15000),response;
+    let budget=this.relayProven?this.RELAY_TIMEOUT.settled:this.RELAY_TIMEOUT.first;
+    let timer=setTimeout(()=>controller.abort(),budget),response;
     try{response=await fetch(relay.url,{method:"POST",headers:{"Accept":"audio/mpeg","Content-Type":"application/json","X-App-Token":relay.token},body:JSON.stringify({text,voiceId:vid,model:$("model").value}),signal:controller.signal});}
-    catch(e){if(e&&e.name==="AbortError"){if(App.elevenAbort!==controller)return null;throw new Error("Premium speech timed out");}throw e;}
+    catch(e){if(e&&e.name==="AbortError"){if(App.elevenAbort!==controller)return null;let te=new Error(`The relay did not answer within ${Math.round(budget/1000)} seconds.`);te.unreachable=true;throw te;}
+      let ne=new Error("Could not reach the relay.");ne.unreachable=true;throw ne;}
     finally{clearTimeout(timer);if(App.elevenAbort===controller)App.elevenAbort=null;}
-    if(response.status===429)throw new Error("Premium speech is rate limited");
-    if(!response.ok)throw new Error("Premium speech error "+response.status);
+    if(!response.ok){
+      /* The relay explains itself in the JSON body — "Voice ID is not approved
+         for this relay", "Speech model is not approved", "Wrong or missing
+         passphrase". v1.11.4 threw that explanation away and reported a bare
+         status code, which sent us hunting the passphrase when the relay had
+         already named the real fault. Read it. */
+      let detail="";
+      try{let body=await response.json();if(body&&body.error)detail=String(body.error);}catch(e){}
+      let err=new Error(detail||("Premium speech error "+response.status));
+      err.status=response.status;
+      /* A 400/401/403 is a settings fault: every following sentence will fail
+         in exactly the same way. A 429 or a 5xx is weather. */
+      err.fatal=response.status===400||response.status===401||response.status===403;
+      err.rateLimited=response.status===429;
+      throw err;
+    }
     let blob=await response.blob();
     if(!blob||!blob.size)throw new Error("Premium speech returned empty audio");
+    this.relayProven=true;
     return blob;
   },
   /* A zero-cost health check. The relay validates the passphrase before it
@@ -583,7 +630,12 @@ const Speech={
     catch(e){throw new Error("Add the relay address and passphrase, then press Save.");}
     let controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000),response;
     try{
-      response=await fetch(relay.url,{method:"POST",headers:{"Content-Type":"application/json","X-App-Token":relay.token},body:"{}",signal:controller.signal});
+      /* Send the settings actually in use. An empty body only proved the
+         passphrase, so the test could report "all check out" while every real
+         sentence was rejected for an unapproved Voice ID. One short word costs
+         a handful of characters and exercises the whole path. */
+      let probe=JSON.stringify({text:"sì",voiceId:($("voiceId")&&$("voiceId").value||"").trim(),model:($("model")&&$("model").value||"").trim()});
+      response=await fetch(relay.url,{method:"POST",headers:{"Accept":"audio/mpeg","Content-Type":"application/json","X-App-Token":relay.token},body:probe,signal:controller.signal});
     }catch(e){
       if(e&&e.name==="AbortError")throw new Error("The relay did not answer within 12 seconds. Check the address, and check the Worker is deployed.");
       throw new Error("Could not reach the relay at all. Check the address and your connection.");
@@ -595,7 +647,9 @@ const Speech={
     if(response.status===429)return"Connected. The relay is rate limited right now, which still proves the passphrase is correct.";
     if(response.status===503)throw new Error(detail||"The relay is reachable but premium speech is switched off on it.");
     if(response.status===500)throw new Error(detail||"The relay is reachable and the passphrase is right, but the relay itself is missing a setting.");
-    if(response.status===400||response.ok)return"Connected. Address, passphrase and relay settings all check out.";
+    if(response.status===400)throw new Error(`The relay answered and accepted the passphrase, but rejected the request: ${detail||"no reason given"} Check the Voice ID here against ELEVENLABS_VOICE_IDS on the Worker.`);
+    if(response.status===502)throw new Error(detail||"The relay reached ElevenLabs and ElevenLabs refused. Check the ELEVENLABS_API_KEY secret on the Worker.");
+    if(response.ok){this.breaker.reset();return"Connected. Address, passphrase, Voice ID and model all check out.";}
     throw new Error(`The relay answered with an unexpected status ${response.status}.${detail?" "+detail:""}`);
   },
   async prefetch(text){
@@ -611,15 +665,24 @@ const Speech={
   async eleven(text){
     let vid=$("voiceId").value.trim();
     if(!vid){UI.status("Missing ElevenLabs Voice ID. Using system voice.","warntxt");return this.system(text);}
-    try{this.relay();}catch(e){UI.status("Missing secure relay settings. Using system voice.","warntxt");return this.system(text);}
+    try{this.relay();}catch(e){UI.status("Missing relay settings. Using system voice.","warntxt");return this.system(text);}
+    /* A cached clip still plays while the breaker is tripped — the recording is
+       already on the device and costs nothing. This is also why a chapter could
+       start in the ElevenLabs voice and change partway through: the opening
+       sentences were cached from an earlier session and the first uncached one
+       hit the fault. */
     let key=this.key(text),cached=await Storage.get(AS,key),blob;
-    if(cached?.blob)blob=cached.blob;
-    else{
-      UI.status("Contacting premium speech…");
-      blob=await this.fetchPremium(text,vid);
-      if(!blob)return;
-      await Storage.put(AS,{key,blob,createdAt:Date.now()});
-    }
+    if(cached?.blob)return this.playBlob(cached.blob);
+    if(this.breaker.tripped)return this.system(text);
+    UI.status(this.relayProven?"Contacting premium speech…":"Contacting premium speech for the first time…");
+    try{blob=await this.fetchPremium(text,vid);}
+    catch(e){this.breaker.record(e);throw e;}
+    /* fetchPremium returns null when its request was superseded rather than
+       failed. Returning here left the sentence silent — the loop moved on with
+       no sound at all. Say it in the system voice instead. */
+    if(!blob)return this.system(text);
+    this.breaker.ok();
+    await Storage.put(AS,{key,blob,createdAt:Date.now()});
     return this.playBlob(blob);
   },
   async speak(text,engine){
@@ -657,7 +720,7 @@ function withProgress(p){
   }};
 }
 
-const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
+const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},/* Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while showing Chapter 3. Playback now follows the selection, from a pause as well — the learner asked for this sentence, so this sentence is what should be spoken. */follow(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
 const Verb={
   tenseOrder:["presente","passato","imperfetto","trapassato"],
@@ -1098,7 +1161,7 @@ const Preloader={
     ["preloadBtn","verbPreloadBtn"].forEach(id=>{let el=$(id);if(el)el.disabled=disabled;});
   },
   async _runLoop(items,labelFn,cancelBtnId){
-    let total=items.length,done=0,fetched=0,skipped=0,failed=0,firstError="";
+    let total=items.length,done=0,fetched=0,skipped=0,failed=0,firstError="",fatal="",stop=false;
     /* The relay is rate limited. The old loop fired every 400ms with no
        backoff and folded every rejection into a silent "failed" count, so a
        whole chapter could report "0 downloaded" with no reason given. Now a
@@ -1106,7 +1169,7 @@ const Preloader={
        the first real error is shown by name. */
     let gap=this.GAP_MS;
     for(let item of items){
-      if(this.cancelled)break;
+      if(this.cancelled||stop)break;
       UI.status(labelFn(done+1,total));
       let attempts=0,settled=false;
       while(!settled&&!this.cancelled){
@@ -1126,6 +1189,11 @@ const Preloader={
             await Util.sleep(wait);
           }else{
             failed++;if(!firstError)firstError=msg;settled=true;
+            /* A rejection the relay will repeat for every sentence — a Voice ID
+               it does not approve, a wrong passphrase — is answered once, not
+               fifty times. v1.11.4 reported "50 failed" where one attempt would
+               have told the whole story. */
+            if(e&&e.fatal){fatal=msg;this.cancelled=false;stop=true;}
           }
         }
       }
@@ -1136,6 +1204,7 @@ const Preloader={
     this._setAllPreloadBtns(false);
     if($(cancelBtnId))$(cancelBtnId).classList.add("hidden");
     if(this.cancelled){UI.status(`Cancelled. ${fetched} downloaded, ${skipped} already cached.`,"warntxt");}
+    else if(fatal){UI.status(`Stopped after the first sentence — the relay refused it, and would refuse the other ${total-1} for the same reason. It said: ${fatal}`,"dangertxt");}
     else if(failed){UI.status(`${fetched} downloaded, ${skipped} already cached, ${failed} failed. First failure: ${firstError}`,"dangertxt");}
     else{UI.status(`Done: ${fetched} downloaded, ${skipped} already cached.`,"oktxt");}
   },
@@ -1566,7 +1635,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.11.4",
+  VERSION:"1.11.6",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1654,6 +1723,22 @@ const Playbar={
    system voice, and a warning on the status line is overwritten by the next
    sentence before anyone reads it. This states the position in Settings and
    leaves it on screen until it is resolved. */
+/* When premium speech stands down mid-session, the learner is owed an account
+   of it that does not scroll away with the next sentence. The status line is
+   the wrong place: it said "Using system voice" once, six sentences in, and was
+   overwritten before anyone could read it. */
+function speechNotice(){
+  let el=$("speechNotice");if(!el)return;
+  if(!Speech.breaker.tripped){el.classList.add("hidden");el.innerHTML="";return;}
+  el.classList.remove("hidden");
+  el.innerHTML=`<strong>The ElevenLabs voice has stood down.</strong> Sentences are playing in the system voice so that the session keeps moving. `
+    +`The relay said: <em>${Util.esc(Speech.breaker.reason||"no reason given")}</em> `
+    +`Fix it under Relay connection in Settings, then <button type="button" id="retryPremium" class="linklike">try premium speech again</button>. `
+    +`Sentences already downloaded still play in the ElevenLabs voice.`;
+  let btn=$("retryPremium");
+  if(btn)btn.onclick=()=>{Speech.breaker.reset();UI.status("Premium speech re-armed. The next sentence will try the relay again.","oktxt");};
+}
+
 function relayReadiness(){
   let state=$("relayState");
   let url=($("relayUrl")&&$("relayUrl").value||"").trim(),
@@ -1801,10 +1886,10 @@ function bind(){
   $("saveEdit").onclick=()=>Editor.save();
   $("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};
   ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{Preferences.save();if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();if(GenPlayer.playing)GenController.restart();};});
-  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";relayReadiness();};
+  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");Speech.breaker.reset();if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";relayReadiness();};
   if($("relayToken"))$("relayToken").addEventListener("input",relayReadiness);
   if($("relayUrl"))$("relayUrl").addEventListener("input",relayReadiness);
-  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the relay connection above.","oktxt");relayReadiness();};
+  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");Speech.breaker.reset();UI.status("ElevenLabs voice settings saved. Premium speech will use the relay connection above.","oktxt");relayReadiness();};
   $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
@@ -1816,6 +1901,7 @@ function bind(){
     SecureConfig.set("relayToken",token,remember);
     $("relayUrl").value=url;
     if($("saveAi").value==="yes")localStorage.setItem("v08relayUrl",url);else localStorage.removeItem("v08relayUrl");
+    Speech.breaker.reset();
     UI.status(remember?"Relay saved. The passphrase is remembered on this device.":"Relay saved for this session only.","oktxt");
     relayReadiness();
   };

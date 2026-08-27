@@ -47,6 +47,28 @@ try{
   await page.click('#openFocus');await page.waitForTimeout(100);
   pass.mobileFocusVisible=await page.isVisible('#focus');
   pass.mobileFocusNoOverflow=await noOverflow();
+  /* v1.11.4 — the exit was a faint 20px x, the only way out of a full-screen
+     mode. It is now a named button that meets the tap target on its own, and
+     the header is set in --ink rather than --muted. */
+  const exitBtn=await page.locator('#closeFocus').evaluate(el=>{
+    const box=el.getBoundingClientRect(),cs=getComputedStyle(el);
+    return{text:el.textContent.trim(),w:box.width,h:box.height,
+      onScreen:box.top>=0&&box.left>=0&&box.right<=innerWidth&&box.bottom<=innerHeight};
+  });
+  pass.focusExitSaysExit=/exit/i.test(exitBtn.text);
+  pass.focusExitMeetsTapTarget=exitBtn.w>=44&&exitBtn.h>=44;
+  pass.focusExitOnScreen=exitBtn.onScreen;
+  const focusInk=await page.evaluate(()=>{
+    const ink=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+    const norm=v=>v.replace(/\s/g,'');
+    const asRgb=hex=>{const h=hex.replace('#','');return`rgb(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)})`;};
+    const want=norm(asRgb(ink));
+    return['focusCrumb','focusPos','focusNum'].every(id=>{
+      const el=document.getElementById(id);
+      return !el||norm(getComputedStyle(el.closest('[class]')||el).color)===want;
+    });
+  });
+  pass.focusHeaderUsesInk=focusInk;
   await page.screenshot({path:path.join(out,'phone-focus.png')});
   await page.keyboard.press('Escape');
 

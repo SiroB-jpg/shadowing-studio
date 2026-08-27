@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.11.4 — one relay, one passphrase, and a way out of Focus mode
+
+Six faults reported from v1.11.3 on device. Four of them were one fault wearing four coats.
+
+**The passphrase can now be remembered on a device.** It authenticates *both* premium speech and Generate, and it lived in `sessionStorage` only. On a shared computer that is right. On an iOS Home Screen app it is not: every cold launch is a fresh session, so the passphrase vanished, `Speech.eleven` caught "No generator passphrase", and the app fell silently back to the system voice. That single cause accounts for premium speech "not connecting at all, or patchy", for a chapter reverting to the system voice between groups, and for pre-downloads that counted sentences and saved none. `SecureConfig` now reads session storage first and a per-device store second, with an explicit opt-in tickbox and copy that says plainly what each state costs.
+
+**Settings is arranged around what the credential actually does.** The relay address and passphrase were filed under *Sentence generator*, at the bottom, below an ElevenLabs panel that silently depended on them — so a learner who did not want the generator had no reason to fill them in, and no way to find out why the voice would not work. **Relay connection** is now the first thing in Settings, states that it powers both, and carries a live state line: not connected, typed but not saved, connected for this session only, or remembered on this device. Its save button says **Save**, not "Use generator settings".
+
+**A Test connection button.** The relay validates the passphrase before it reads the request body, so an empty body proves the address, the passphrase and the relay's own secrets without spending one ElevenLabs character. Each status is reported as the thing it means — a wrong passphrase, a mismatched `ALLOWED_ORIGIN`, a rate limit, a missing Worker secret — rather than as "it didn't work".
+
+**Pre-download survives a rate limit.** The loop fired every 400 ms with no backoff and folded every rejection into a silent `failed` count, so a whole chapter could report nothing downloaded and no reason. It now paces at 700 ms, backs off and retries on a rate limit rather than counting it as a failure, and names the first real error.
+
+**Generate's Start button was below the fold.** The playback bar is `position:sticky; bottom:0`. In Study that works, because the sentence viewer scrolls inside a fixed-height panel. The Generate panel simply grows with its cards, so a bar appended last had no sticky range at all and sat under ten generated sentences, off the bottom of an iPad screen. A set would generate perfectly and then appear to refuse to play in either voice. The bar now sits above the cards.
+
+**Focus mode has an Exit button.** The only way out of a full-screen mode was a 20-pixel `×` drawn in `--muted`. The header — breadcrumb, position, sentence number — was `--muted` too, which on the dark ground is a smudge rather than text. All of it is now `--ink`, and the exit is a named button that meets the 44-pixel target on its own.
+
+**Icons are 24px, and the Settings icon is a cog.** Action icons were 18–20 pixels in `--muted`; the row buttons at the end of a sentence — play, bookmark, edit, drop — are now 26. The Settings glyph was a circle inside a twelve-point starburst, which reads as a sun, an asterisk or nothing at all. It is a cog: outer ring, centre hole, eight teeth.
+
+**The verb drill no longer invents words.** The "possibly also here" scan had no word boundary on either side, so it could start part-way through a longer word and report the tail as an infinitive — *considererebbe* came back as *considerere*. A stray *servare* is that same fault, not a missing verb. Tokens must now be whole words, the stop-list of `-are`/`-ere`/`-ire` nouns is longer, and nothing is silently dropped at six items: the count is stated and the remainder acknowledged.
+
+*Still open: the drill can only conjugate the 112 verbs it holds tables for, and only in the subjunctive. Extending `tools/conjugator` to the full paradigm is v1.12.0 work, and auditing the corpus for verbs the table lacks needs the corpus CSV.*
+
+Ten suites, **404 checks** — 22 new, covering the device-storage opt-in, the relay state wording, the whole-word scan, the Focus exit target and the icon sizes.
+
 ## v1.11.3 — the About page in the author's words
 
 The About page is replaced with Siro's own text. Five sections, no standfirst and no signed note; the summary line is set as a motto, the only editorial addition. Definition-list, ordered-list and signature styles went unused by the new copy and have been removed rather than left to accumulate as dead rules.

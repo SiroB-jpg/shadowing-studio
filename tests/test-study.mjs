@@ -287,6 +287,20 @@ check('uscire is not mistaken for riuscire', await page.evaluate(()=>
 check('The verb table has no duplicated entries', await page.evaluate(()=>{
   const n=Object.keys(Verb.V); return new Set(n).size===n.length && n.length>=112;}));
 
+/* ── v1.11.4 — the "possibly also here" scan must not invent words ───────── */
+check('The unknown-verb scan matches whole words only', await page.evaluate(()=>
+  !Verb.unknown(['Non credo che lui lo considererebbe mai.'],[]).includes('considerere')));
+check('It still finds a real infinitive the table lacks', await page.evaluate(()=>
+  Verb.unknown(['Bisogna osservare le regole con attenzione.'],[]).includes('osservare')));
+check('It does not report a fragment of a longer verb form', await page.evaluate(()=>
+  Verb.unknown(['Speravo che loro conservassero la calma.'],[]).every(w=>w!=='servare'&&w!=='servere')));
+check('A verb already detected is not repeated as unknown', await page.evaluate(()=>
+  !Verb.unknown(['Voglio parlare con te.'],['parlare']).includes('parlare')));
+check('Common -ere nouns are not offered as verbs', await page.evaluate(()=>
+  Verb.unknown(['Ha un carattere difficile e un bicchiere in mano.'],[]).length===0));
+check('Nothing is silently dropped at six items', await page.evaluate(()=>
+  Verb.unknown(['osservare conservare riservare preservare somministrare collaborare esercitare programmare'],[]).length>6));
+
 // ── the generated table: agreement, dual auxiliaries, reflexives ──────────
 check('The table now covers the corpus, not a fraction of it', await page.evaluate(()=>Object.keys(Verb.V).length===112));
 check('Corpus verbs the table used to lack are present', await page.evaluate(()=>

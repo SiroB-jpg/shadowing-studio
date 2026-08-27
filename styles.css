@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.11.3";
+  --css-version:"1.11.4";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -233,10 +233,17 @@ button.mobile-only,span.mobile-only{display:none}
 .tree .active .tree-title{color:var(--accent)}
 
 button.icon{min-width:var(--tap-min);padding:var(--space-xs);display:inline-flex;align-items:center;justify-content:center}
-button.ghost{background:transparent;color:var(--muted)}
+button.ghost{background:transparent;color:var(--ink)}
 button.ghost:hover{background:var(--soft);color:var(--ink)}
 button.primary{background:var(--accent-button);color:var(--on-accent);min-width:112px}
-.icon .ic,.rowbtn .ic{display:block}
+/* Icons were 20px in --muted — legible on a desktop monitor at arm's length
+   and not much else. The row buttons that sit at the end of a sentence are
+   the ones people actually miss, so they get the larger step. */
+.icon .ic,.rowbtn .ic{display:block;width:24px;height:24px}
+.rowbtn .ic{width:26px;height:26px}
+.mobile-nav-btn .ic{width:24px;height:24px}
+.focus-side .ic{width:30px;height:30px}
+.focus-play .ic{width:44px;height:44px}
 .mobile-nav-btn .ic{margin-bottom:1px}
 
 .panel-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
@@ -272,7 +279,7 @@ button.primary{background:var(--accent-button);color:var(--on-accent);min-width:
 .srow-text>span{display:block}
 .srow-context{font-size:.75rem;color:var(--muted);margin-bottom:.15rem}
 .srow-actions{display:flex;gap:.2rem;align-items:center}
-.rowbtn{background:transparent;color:var(--muted);min-height:var(--tap-min);min-width:var(--tap-min);padding:var(--space-2xs);
+.rowbtn{background:transparent;color:var(--ink);min-height:var(--tap-min);min-width:var(--tap-min);padding:var(--space-2xs);
   display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm)}
 .rowbtn:hover{background:var(--soft);color:var(--ink)}
 .rowbtn.on{color:var(--accent)}
@@ -343,20 +350,31 @@ body.focus-open,body.modal-open{overflow:hidden}
   padding-bottom:calc(1.25rem + env(safe-area-inset-bottom));
 }
 .focus-head{display:flex;align-items:center;gap:1rem;flex-shrink:0}
-.focus-where{flex:1;min-width:0;color:var(--muted);font-size:.9rem;
+/* The exit used to be a faint 20px "x" in --muted. On a dark ground that is a
+   smudge, not a control, and it is the only way out of a full-screen mode.
+   It is now a named button that meets the tap target on its own. */
+.focus-exit{
+  flex:0 0 auto;min-height:var(--tap-min);padding:.5rem 1.1rem;
+  background:var(--soft);color:var(--ink);border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-size:1rem;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:.4rem;
+}
+.focus-exit:hover{background:var(--accent-button);color:var(--on-accent);border-color:var(--accent-button)}
+.focus-exit .ic{width:18px;height:18px}
+.focus-where{flex:1;min-width:0;color:var(--ink);font-size:1rem;font-weight:600;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.focus-where .csep{margin:0 .45rem;opacity:.55}
-.focus-pos{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums;
-  background:var(--soft);border-radius:999px;padding:.2rem .7rem}
+.focus-where .csep{margin:0 .45rem;opacity:.7}
+.focus-pos{color:var(--ink);font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums;
+  background:var(--soft);border-radius:999px;padding:.25rem .8rem}
 .focus-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
   text-align:center;gap:1rem;padding:1rem 0;min-height:0}
-.focus-num{margin:0;color:var(--muted);font-size:.85rem}
+.focus-num{margin:0;color:var(--ink);font-size:.95rem;font-weight:600;opacity:.85}
 .focus-italian{margin:0;font-size:clamp(1.9rem,4.6vw,3.5rem);line-height:1.25;
   max-width:22ch;font-weight:500;color:var(--ink)}
-.focus-english{margin:0;color:var(--muted);font-size:clamp(1rem,1.6vw,1.3rem);
+.focus-english{margin:0;color:var(--ink);opacity:.88;font-size:clamp(1rem,1.6vw,1.3rem);
   max-width:34ch;line-height:1.45}
 .focus-reps{display:flex;flex-direction:column;align-items:center;gap:.5rem;flex-shrink:0;min-height:2.6rem}
-.focus-rep-label{color:var(--muted);font-size:.85rem}
+.focus-rep-label{color:var(--ink);opacity:.85;font-size:.9rem}
 .focus-dots{display:flex;gap:.4rem}
 .focus-dots .dot{width:10px;height:10px;border-radius:50%;background:var(--soft);
   border:1px solid var(--border);display:inline-block}
@@ -589,7 +607,7 @@ body.lib-collapsed .panel-art{display:block}
 
 /* ── v1.11.2 — standing settings notice ─────────────────────────────────────
    Not a toast. It stays until the condition it describes is resolved. */
-.notice-warn{
+.notice-warn,.notice-ok{
   margin:var(--space-xs) 0 var(--space-sm);
   padding:var(--space-sm);
   border-left:3px solid var(--warning);
@@ -598,4 +616,17 @@ body.lib-collapsed .panel-art{display:block}
   color:var(--ink);
   font-size:var(--text-sm);
   line-height:var(--lh-normal);
+}
+.notice-ok{border-left-color:var(--ok)}
+
+/* A checkbox and its wording on one line. The bare `label` rule is built for
+   a field caption above an input, which is the wrong shape here. */
+.checkline{
+  display:flex;align-items:flex-start;gap:.55rem;
+  margin:var(--space-sm) 0 var(--space-2xs);
+  font-weight:600;font-size:var(--text-sm);color:var(--ink);
+  cursor:pointer;line-height:var(--lh-normal);
+}
+.checkline input[type="checkbox"]{
+  width:22px;height:22px;flex:0 0 auto;margin:0;accent-color:var(--accent);cursor:pointer;
 }

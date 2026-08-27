@@ -1,4 +1,4 @@
-# Italian Shadowing Studio v1.10.2
+# Italian Shadowing Studio v1.11.3
 
 Italian Shadowing Studio is an **offline-first progressive web app** for practising Italian through repeated listening and shadowing. It provides a local sentence library, configurable Study playback, Focus mode, a 112-verb subjunctive drill, optional sentence generation, and optional premium speech through a private relay.
 

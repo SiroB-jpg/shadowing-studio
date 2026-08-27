@@ -189,6 +189,59 @@ check('Notice names the shared passphrase', /premium speech and Generate/i.test(
 check('Notice clears once a passphrase is entered', notice.afterTyping);
 check('Notice returns if the passphrase is removed', notice.afterClearing);
 
+/* ── v1.11.4 — the relay connection is one shared credential ──────────────── */
+const relay = await page.evaluate(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const state = document.getElementById('relayState');
+  const url = document.getElementById('relayUrl');
+  const token = document.getElementById('relayToken');
+  const remember = document.getElementById('rememberToken');
+  const saveBtn = document.getElementById('saveAiBtn');
+  if (!state || !remember || !saveBtn) return { missing: true };
+
+  SecureConfig.clear('relayToken');
+  url.value = ''; token.value = ''; remember.checked = false;
+  token.dispatchEvent(new Event('input')); await wait(30);
+  const emptyWording = state.textContent;
+
+  url.value = 'https://example.workers.dev';
+  token.value = 'a-passphrase';
+  remember.checked = false;
+  saveBtn.click(); await wait(40);
+  const sessionOnlyWording = state.textContent;
+  const notPersisted = !localStorage.getItem('iss-device-relayToken');
+
+  remember.checked = true;
+  saveBtn.click(); await wait(40);
+  const rememberedWording = state.textContent;
+  const persisted = localStorage.getItem('iss-device-relayToken') === 'a-passphrase';
+
+  /* A new session must still find it. */
+  sessionStorage.removeItem('iss-session-relayToken');
+  const survivesNewSession = SecureConfig.get('relayToken') === 'a-passphrase';
+
+  document.getElementById('clearAiBtn').click(); await wait(30);
+  const clearedEverywhere = !localStorage.getItem('iss-device-relayToken')
+    && !sessionStorage.getItem('iss-session-relayToken')
+    && SecureConfig.get('relayToken') === '';
+
+  return { emptyWording, sessionOnlyWording, rememberedWording, notPersisted,
+           persisted, survivesNewSession, clearedEverywhere,
+           saveLabel: saveBtn.textContent.trim(),
+           hasTest: !!document.getElementById('testRelayBtn') };
+});
+check('Settings carries a relay connection state line', !relay.missing, relay.missing ? '#relayState or #rememberToken absent' : '');
+check('Save button says Save', relay.saveLabel === 'Save', relay.saveLabel);
+check('A Test connection button exists', relay.hasTest);
+check('Empty state names both dependants', /ElevenLabs|Generate/i.test(relay.emptyWording || ''), (relay.emptyWording || '').slice(0, 90));
+check('Unticked box keeps the passphrase out of device storage', relay.notPersisted);
+check('Unticked state says it lasts for this session only', /session only/i.test(relay.sessionOnlyWording || ''), (relay.sessionOnlyWording || '').slice(0, 90));
+check('Ticked box stores the passphrase on the device', relay.persisted);
+check('Remembered state says so', /remembered on this device/i.test(relay.rememberedWording || ''), (relay.rememberedWording || '').slice(0, 90));
+check('A remembered passphrase survives a new session', relay.survivesNewSession);
+check('Clear removes it from session and device alike', relay.clearedEverywhere);
+
+
 await browser.close();
 server.close();
 

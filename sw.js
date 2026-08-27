@@ -1,4 +1,4 @@
-const CACHE_NAME = 'italian-shadowing-studio-v1-11-3';
+const CACHE_NAME = 'italian-shadowing-studio-v1-11-4';
 const ASSETS = [
   './index.html',
   './boot.js',

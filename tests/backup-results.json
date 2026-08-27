@@ -1,0 +1,44 @@
+{
+  "pass": {
+    "complete": true,
+    "secretFree": true,
+    "restored": true,
+    "sessionSecretNotImported": true,
+    "validation": true,
+    "typedDeletion": true
+  },
+  "result": {
+    "exported": {
+      "sentenceCount": 1,
+      "bookmark": true,
+      "note": "Review weekly",
+      "bookTitle": "Subjunctive",
+      "theme": "dark",
+      "hasRelayUrl": true,
+      "hasLegacySecret": false,
+      "hasSessionSecret": false,
+      "hasPron": false
+    },
+    "restored": {
+      "count": 1,
+      "italian": "Credo che sia pronto.",
+      "bookmark": true,
+      "note": "Review weekly",
+      "bookTitle": "Subjunctive",
+      "chapterTitle": "Opinions",
+      "theme": "dark",
+      "relayUrl": "https://example.workers.dev",
+      "relayToken": "session-secret"
+    },
+    "validation": {
+      "invalidBoolean": true,
+      "duplicateId": true,
+      "unknownPreferenceExcluded": true
+    },
+    "gating": {
+      "initiallyDisabled": true,
+      "wrongCaseDisabled": true,
+      "exactEnabled": true
+    }
+  }
+}

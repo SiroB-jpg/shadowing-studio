@@ -94,6 +94,20 @@ await mobile.evaluate(() => { const i = document.querySelector('#themeToggle'); 
 await mobile.waitForTimeout(120);
 await axe(mobile, 'about-mobile-dark');
 
+/* ── v1.11.4 — icons carry meaning, so they have to be seen ───────────────── */
+const iconSizes = await mobile.locator('.icon .ic, .rowbtn .ic, .mobile-nav-btn .ic').evaluateAll(nodes =>
+  nodes.map(n => {
+    const box = n.getBoundingClientRect();
+    return { w: Math.round(box.width), h: Math.round(box.height) };
+  }).filter(b => b.w > 0 && b.w < 24));
+check('Every action icon renders at 24px or larger', iconSizes.length === 0, JSON.stringify(iconSizes.slice(0, 5)));
+const gear = await mobile.locator('.mobile-nav-btn[data-screen="settings"] .ic').evaluate(svg => ({
+  circles: svg.querySelectorAll('circle').length,
+  teeth: (svg.querySelector('path')?.getAttribute('d') || '').split('M').length - 1
+}));
+check('The Settings icon is a cog, not a starburst', gear.circles === 2 && gear.teeth === 8, JSON.stringify(gear));
+
+
 await browser.close();
 fs.writeFileSync(path.join(here,'a11y-results.json'), JSON.stringify(results, null, 2));
 const failures = results.checks.filter(c => !c.pass);

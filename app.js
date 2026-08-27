@@ -3,14 +3,31 @@ const $=id=>document.getElementById(id);
 const DB="ISS_V08", SS="sentences", AS="audioCache";
 const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,audioSuspended:false,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
 
+/* The passphrase authenticates BOTH premium speech and Generate. It was
+   session-only by design, which is safe on a shared computer and quietly
+   broken on a phone: an iOS Home Screen app gets a fresh session on every
+   cold launch, so the passphrase vanished, premium speech fell back to the
+   system voice, and nothing on screen said why. It is now session-only by
+   default with an explicit per-device opt-in. */
 const SecureConfig={
   sessionKey(name){return `iss-session-${name}`;},
-  get(name){return sessionStorage.getItem(this.sessionKey(name))||"";},
-  set(name,value){let v=String(value||"").trim();if(v)sessionStorage.setItem(this.sessionKey(name),v);else this.clear(name);},
-  clear(name){sessionStorage.removeItem(this.sessionKey(name));},
+  deviceKey(name){return `iss-device-${name}`;},
+  remembered(name){try{return localStorage.getItem(this.deviceKey(name))||"";}catch(e){return "";}},
+  isRemembered(name){return !!this.remembered(name);},
+  get(name){return sessionStorage.getItem(this.sessionKey(name))||this.remembered(name)||"";},
+  set(name,value,remember){
+    let v=String(value||"").trim();
+    if(!v){this.clear(name);return;}
+    try{sessionStorage.setItem(this.sessionKey(name),v);}catch(e){}
+    try{if(remember)localStorage.setItem(this.deviceKey(name),v);else localStorage.removeItem(this.deviceKey(name));}catch(e){}
+  },
+  clear(name){
+    try{sessionStorage.removeItem(this.sessionKey(name));}catch(e){}
+    try{localStorage.removeItem(this.deviceKey(name));}catch(e){}
+  },
   migrateLegacy(){
     let relayToken=localStorage.getItem("v08relayToken")||"";
-    if(relayToken&&!this.get("relayToken"))this.set("relayToken",relayToken);
+    if(relayToken&&!this.get("relayToken"))this.set("relayToken",relayToken,false);
     ["v08relayToken","v08key"].forEach(key=>localStorage.removeItem(key));
     this.clear("elevenKey");
   },
@@ -106,7 +123,7 @@ const SVG={
 };
 function icon(name,size){
   let raw=SVG[name]||"",solid=raw.endsWith("|solid"),d=solid?raw.slice(0,-6):raw;
-  return `<svg class="ic" viewBox="0 0 24 24" width="${size||18}" height="${size||18}" fill="${solid?"currentColor":"none"}" `+
+  return `<svg class="ic" viewBox="0 0 24 24" width="${size||22}" height="${size||22}" fill="${solid?"currentColor":"none"}" `+
          `stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
 }
 
@@ -554,6 +571,33 @@ const Speech={
     if(!blob||!blob.size)throw new Error("Premium speech returned empty audio");
     return blob;
   },
+  /* A zero-cost health check. The relay validates the passphrase before it
+     reads the body, so an empty body proves the address, the passphrase and
+     the relay's own secrets are all in order without spending a single
+     ElevenLabs character. Each status is reported as the thing it actually
+     means, because "it didn't work" sent us hunting the wrong file more than
+     once. */
+  async testRelay(){
+    let relay;
+    try{relay=this.relay();}
+    catch(e){throw new Error("Add the relay address and passphrase, then press Save.");}
+    let controller=new AbortController(),timer=setTimeout(()=>controller.abort(),12000),response;
+    try{
+      response=await fetch(relay.url,{method:"POST",headers:{"Content-Type":"application/json","X-App-Token":relay.token},body:"{}",signal:controller.signal});
+    }catch(e){
+      if(e&&e.name==="AbortError")throw new Error("The relay did not answer within 12 seconds. Check the address, and check the Worker is deployed.");
+      throw new Error("Could not reach the relay at all. Check the address and your connection.");
+    }finally{clearTimeout(timer);}
+    let detail="";
+    try{let body=await response.json();if(body&&body.error)detail=String(body.error);}catch(e){}
+    if(response.status===401)throw new Error("The relay answered, but rejected the passphrase. Check it against APP_TOKEN on the Worker.");
+    if(response.status===403)throw new Error("The relay refused this address. Its ALLOWED_ORIGIN does not match this app.");
+    if(response.status===429)return"Connected. The relay is rate limited right now, which still proves the passphrase is correct.";
+    if(response.status===503)throw new Error(detail||"The relay is reachable but premium speech is switched off on it.");
+    if(response.status===500)throw new Error(detail||"The relay is reachable and the passphrase is right, but the relay itself is missing a setting.");
+    if(response.status===400||response.ok)return"Connected. Address, passphrase and relay settings all check out.";
+    throw new Error(`The relay answered with an unexpected status ${response.status}.${detail?" "+detail:""}`);
+  },
   async prefetch(text){
     let vid=$("voiceId").value.trim();
     if(!vid)throw new Error("No Voice ID");
@@ -786,17 +830,31 @@ const Verb={
   selectedTense(){return this.tenseOrder[App.verbTenseIndex]||this.tenseOrder[0];},
   /* Infinitive-shaped words in view that the table cannot conjugate. A rough
      heuristic, so it is reported as "possibly", never as fact. */
-  STOP:new Set(["carattere","genere","mestiere","bicchiere","cameriere","celebre","sincere"]),
+  /* Nouns and adjectives that end in -are / -ere / -ire and are not verbs. */
+  STOP:new Set(["carattere","genere","mestiere","bicchiere","cameriere","celebre","sincere",
+    "quartiere","cavaliere","infermiere","pensiere","sentiere","affare","affari","esemplare",
+    "familiare","militare","particolare","popolare","regolare","singolare","solare","secolare",
+    "volgare","scolare","lunare","similare","severe","primavere","galere","polvere","povere",
+    "camere","opere","torre","padre","madre","cifre","febbre","libere"]),
+  /* Infinitive-shaped words in view that the table cannot conjugate. A rough
+     heuristic, so it is reported as "possibly", never as fact.
+
+     The scan used to have no word boundary on either side, so it could start
+     part-way through a longer word and report the tail as a verb:
+     "considererebbe" came back as "considerere", which is not a word in any
+     language. A stray "servare" is that same fault. The token must now be a
+     whole word, and nothing is silently dropped — the count is stated. */
   unknown(texts,detected){
-    let all=" "+texts.join(" ").toLowerCase()+" ",known=new Set(Object.keys(this.V)),seen=new Set(detected),out=[];
-    let re=/[a-zà-ùéìòù]{5,}(?:are|ere|ire)/g,m;
+    let all=" "+texts.join(" ").toLowerCase().replace(/[^a-zà-ÿ'\s]/g," ")+" ",
+        known=new Set(Object.keys(this.V)),seen=new Set(detected),out=[];
+    let re=/(?:^|[\s'])([a-zà-ÿ]{5,}(?:are|ere|ire))(?=[\s'])/g,m;
     while((m=re.exec(all))){
-      let w=m[0];
+      let w=m[1];
+      re.lastIndex=m.index+1;
       if(known.has(w)||seen.has(w)||this.STOP.has(w)||out.includes(w))continue;
       out.push(w);
-      if(out.length>=6)break;
     }
-    return out;
+    return out.sort(Util.nat);
   },
   render(){
     if(!$("verbSel"))return;
@@ -806,9 +864,13 @@ const Verb={
     let texts=this.scope().map(x=>x.italian),
         missing=this.unknown(texts,detected),
         total=Object.keys(this.V).length,
+        shown=missing.slice(0,12),
         note=missing.length
-          ? `<div class="small mt">Possibly also here, but not in the ${total}-verb conjugation table: `+
-            missing.map(v=>`<em>${Util.esc(v)}</em>`).join(", ")+`. The drill can only conjugate verbs it holds tables for.</div>`
+          ? `<div class="small mt">Possibly also here, but not in the ${total}-verb conjugation table `+
+            `(${missing.length} word${missing.length===1?"":"s"}): `+
+            shown.map(v=>`<em>${Util.esc(v)}</em>`).join(", ")+
+            (missing.length>shown.length?`, and ${missing.length-shown.length} more`:"")+
+            `. The drill can only conjugate verbs it holds tables for.</div>`
           : "";
     if(detected.length){
       $("detected").innerHTML=`Detected in ${this.scopeName()} — ${detected.length} of the ${total} verbs the table holds: `
@@ -1023,6 +1085,8 @@ const Nav={nextGroup(render=true){let gs=Util.uniq(Library.chapter().map(Util.gn
 
 const Preloader={
   running:false,cancelled:false,
+  /* Paced for a rate-limited relay, not for a stopwatch. */
+  GAP_MS:700,MAX_GAP_MS:4000,RETRY_MS:20000,MAX_RETRIES:3,
   sentences(){
     let s=$("preloadScope").value;
     if(s==="group")return Library.group();
@@ -1034,27 +1098,48 @@ const Preloader={
     ["preloadBtn","verbPreloadBtn"].forEach(id=>{let el=$(id);if(el)el.disabled=disabled;});
   },
   async _runLoop(items,labelFn,cancelBtnId){
-    let total=items.length,done=0,fetched=0,skipped=0,failed=0;
+    let total=items.length,done=0,fetched=0,skipped=0,failed=0,firstError="";
+    /* The relay is rate limited. The old loop fired every 400ms with no
+       backoff and folded every rejection into a silent "failed" count, so a
+       whole chapter could report "0 downloaded" with no reason given. Now a
+       rate limit waits and retries instead of being counted as a failure, and
+       the first real error is shown by name. */
+    let gap=this.GAP_MS;
     for(let item of items){
       if(this.cancelled)break;
       UI.status(labelFn(done+1,total));
-      try{
-        let result=await Speech.prefetch(item);
-        if(result==="cached")skipped++;
-        else if(result==="fetched")fetched++;
-      }catch(e){
-        if(this.cancelled)break;
-        failed++;
+      let attempts=0,settled=false;
+      while(!settled&&!this.cancelled){
+        try{
+          let result=await Speech.prefetch(item);
+          if(result==="cached")skipped++;
+          else if(result==="fetched")fetched++;
+          settled=true;
+        }catch(e){
+          if(this.cancelled)break;
+          let msg=(e&&e.message)?e.message:String(e);
+          if(/rate limited|429|Too many/i.test(msg)&&attempts<this.MAX_RETRIES){
+            attempts++;
+            gap=Math.min(gap*2,this.MAX_GAP_MS);
+            let wait=this.RETRY_MS*attempts;
+            UI.status(`Relay is rate limited — waiting ${Math.round(wait/1000)}s, then continuing (${done+1} of ${total}).`,"warntxt");
+            await Util.sleep(wait);
+          }else{
+            failed++;if(!firstError)firstError=msg;settled=true;
+          }
+        }
       }
       done++;
-      if(!this.cancelled&&done<total)await Util.sleep(400);
+      if(!this.cancelled&&done<total)await Util.sleep(gap);
     }
     this.running=false;
     this._setAllPreloadBtns(false);
     if($(cancelBtnId))$(cancelBtnId).classList.add("hidden");
     if(this.cancelled){UI.status(`Cancelled. ${fetched} downloaded, ${skipped} already cached.`,"warntxt");}
-    else{UI.status(`Done: ${fetched} downloaded, ${skipped} already cached${failed?", "+failed+" failed":""}.`,"oktxt");}
+    else if(failed){UI.status(`${fetched} downloaded, ${skipped} already cached, ${failed} failed. First failure: ${firstError}`,"dangertxt");}
+    else{UI.status(`Done: ${fetched} downloaded, ${skipped} already cached.`,"oktxt");}
   },
+
   async start(){
     if(this.running)return;
     if($("voiceMode").value!=="eleven"){UI.status("Switch voice to ElevenLabs to pre-download audio.","warntxt");return;}
@@ -1481,7 +1566,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.11.3",
+  VERSION:"1.11.4",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1527,8 +1612,21 @@ const Playbar={
   controller(){return this.tab==="generate"?GenController:SentenceController;},
   attach(tab){
     this.tab=(tab==="generate")?"generate":"study";
-    let bar=$("playbar"),host=$(this.tab==="generate"?"generate":"study");
-    if(bar&&host&&bar.parentNode!==host)host.appendChild(bar);
+    let bar=$("playbar"),gen=this.tab==="generate",host=$(gen?"generate":"study");
+    if(bar&&host){
+      /* The bar is position:sticky, bottom:0. In Study that works, because the
+         sentence viewer scrolls inside a fixed-height panel, so there is a
+         containing block for the bar to stick against. The Generate panel has
+         no such scroller — it simply grows with the cards. Appended last, the
+         bar had no sticky range at all and sat below ten generated cards, off
+         the bottom of an iPad screen. A set would generate perfectly and then
+         appear to refuse to play, in either voice, because Start was never on
+         screen. It now goes above the cards, where it is visible the moment a
+         set arrives. */
+      let anchor=gen?$("genCards"):null;
+      if(anchor&&anchor.parentNode===host){if(bar.nextSibling!==anchor)host.insertBefore(bar,anchor);}
+      else if(bar.parentNode!==host)host.appendChild(bar);
+    }
     this.relabel();
   },
   /* A generated set has no chapters, so the chapter scope is named for what it
@@ -1556,15 +1654,38 @@ const Playbar={
    system voice, and a warning on the status line is overwritten by the next
    sentence before anyone reads it. This states the position in Settings and
    leaves it on screen until it is resolved. */
+function relayReadiness(){
+  let state=$("relayState");
+  let url=($("relayUrl")&&$("relayUrl").value||"").trim(),
+      token=SecureConfig.get("relayToken")||($("relayToken")&&$("relayToken").value||"").trim(),
+      saved=!!SecureConfig.get("relayToken"),
+      remembered=SecureConfig.isRemembered("relayToken");
+  if(state){
+    let cls="notice-warn",text;
+    if(!url&&!token)text="Not connected. The ElevenLabs voice and Generate both need the address and passphrase below. Until then, sentences play in the system voice.";
+    else if(!url)text="No relay address. Add it below, then press Save.";
+    else if(!token)text="No passphrase. Enter it below, then press Save. Without it both the ElevenLabs voice and Generate stay switched off.";
+    else if(!saved)text="Typed but not saved. Press Save to apply it.";
+    else{cls="notice-ok";text=remembered
+      ? "Connected. The passphrase is remembered on this device, so premium speech and Generate survive a restart."
+      : "Connected for this session only. Closing the app will clear the passphrase — tick “Remember the passphrase on this device” below if this is your own device.";}
+    state.className=cls;state.textContent=text;
+  }
+  premiumReadiness();
+}
+
+/* Premium speech silently falling back to the system voice was the single most
+   confusing failure in the app, because the passphrase is shared with Generate
+   and nothing said so. This states the position in the ElevenLabs panel itself
+   and leaves it on screen until it is resolved. */
 function premiumReadiness(){
   let el=$("premiumNotice");if(!el)return;
-  let stored=SecureConfig.get("relayToken"),
-      typed=($("relayToken")&&$("relayToken").value||"").trim(),
+  let token=SecureConfig.get("relayToken")||($("relayToken")&&$("relayToken").value||"").trim(),
       wantsPremium=$("voiceMode").value==="eleven";
-  if(!wantsPremium||stored||typed){el.classList.add("hidden");el.textContent="";return;}
+  if(!wantsPremium||token){el.classList.add("hidden");el.textContent="";return;}
   el.classList.remove("hidden");
-  el.textContent="Premium speech needs the relay passphrase, which is not set in this browser session. "
-    +"One passphrase covers both premium speech and Generate — enter it under Sentence generator below. "
+  el.textContent="The ElevenLabs voice needs the relay passphrase, which is not set. "
+    +"One passphrase covers both premium speech and Generate — set it under Relay connection above. "
     +"Until then, sentences play in the system voice.";
 }
 
@@ -1680,14 +1801,43 @@ function bind(){
   $("saveEdit").onclick=()=>Editor.save();
   $("editModal").onclick=e=>{if(e.target===$("editModal"))Editor.close();};
   ["repeat","rate","pause","verbRepeat","verbRate","verbPause"].forEach(id=>{if($(id))$(id).onchange=()=>{Preferences.save();if(MainPlayer.playing)SentenceController.restart();if(VerbPlayer.playing)Verb.restart();if(GenPlayer.playing)GenController.restart();};});
-  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";premiumReadiness();};
-  if($("relayToken"))$("relayToken").addEventListener("input",premiumReadiness);
-  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the secure relay.","oktxt");premiumReadiness();};
+  $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";relayReadiness();};
+  if($("relayToken"))$("relayToken").addEventListener("input",relayReadiness);
+  if($("relayUrl"))$("relayUrl").addEventListener("input",relayReadiness);
+  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");UI.status("ElevenLabs voice settings saved. Premium speech will use the relay connection above.","oktxt");relayReadiness();};
   $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
-  $("saveAiBtn").onclick=()=>{let url;try{url=SecureConfig.relayUrl($("relayUrl").value);}catch(e){UI.status(e.message,"dangertxt");return;}let token=$("relayToken").value.trim();if(!token){UI.status("Enter the generator passphrase.","warntxt");return;}SecureConfig.set("relayToken",token);$("relayUrl").value=url;if($("saveAi").value==="yes")localStorage.setItem("v08relayUrl",url);else localStorage.removeItem("v08relayUrl");UI.status("Generator passphrase is ready for this tab only.","oktxt");};
-  $("clearAiBtn").onclick=()=>{SecureConfig.clear("relayToken");["v08relayUrl","v08relayToken"].forEach(k=>localStorage.removeItem(k));$("relayUrl").value="";$("relayToken").value="";UI.status("Generator settings cleared.","warntxt");};
+  $("saveAiBtn").onclick=()=>{
+    let url;try{url=SecureConfig.relayUrl($("relayUrl").value);}catch(e){UI.status(e.message,"dangertxt");relayReadiness();return;}
+    let token=$("relayToken").value.trim();
+    if(!token){UI.status("Enter the relay passphrase.","warntxt");relayReadiness();return;}
+    let remember=!!($("rememberToken")&&$("rememberToken").checked);
+    SecureConfig.set("relayToken",token,remember);
+    $("relayUrl").value=url;
+    if($("saveAi").value==="yes")localStorage.setItem("v08relayUrl",url);else localStorage.removeItem("v08relayUrl");
+    UI.status(remember?"Relay saved. The passphrase is remembered on this device.":"Relay saved for this session only.","oktxt");
+    relayReadiness();
+  };
+  if($("rememberToken"))$("rememberToken").onchange=()=>{
+    if(!SecureConfig.get("relayToken"))return;
+    SecureConfig.set("relayToken",SecureConfig.get("relayToken"),$("rememberToken").checked);
+    relayReadiness();
+  };
+  if($("testRelayBtn"))$("testRelayBtn").onclick=async()=>{
+    let btn=$("testRelayBtn");btn.disabled=true;
+    let previous=btn.textContent;btn.textContent="Testing…";
+    try{
+      let result=await Speech.testRelay();
+      UI.status(result,"oktxt");
+      if($("relayState")){$("relayState").className="notice-ok";$("relayState").textContent=result;}
+    }catch(e){
+      let msg=(e&&e.message)?e.message:"Relay test failed.";
+      UI.status(msg,"dangertxt");
+      if($("relayState")){$("relayState").className="notice-warn";$("relayState").textContent=msg;}
+    }finally{btn.disabled=false;btn.textContent=previous;}
+  };
+  $("clearAiBtn").onclick=()=>{SecureConfig.clear("relayToken");["v08relayUrl","v08relayToken"].forEach(k=>localStorage.removeItem(k));$("relayUrl").value="";$("relayToken").value="";if($("rememberToken"))$("rememberToken").checked=false;UI.status("Relay settings cleared.","warntxt");relayReadiness();};
   $("genBtn").onclick=()=>Generator.start();
   $("genCancel").onclick=()=>Generator.cancel();
   $("genSave").onclick=()=>Generator.save();
@@ -1708,4 +1858,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();premiumReadiness();})();
+(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();

@@ -242,6 +242,120 @@ check('A remembered passphrase survives a new session', relay.survivesNewSession
 check('Clear removes it from session and device alike', relay.clearedEverywhere);
 
 
+/* ── v1.11.5 — the relay's own explanation, and standing down on a settings fault ── */
+const premium = await page.evaluate(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const realFetch = window.fetch;
+  const reply = (status, body) => () => Promise.resolve(new Response(
+    JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }));
+
+  document.getElementById('relayUrl').value = 'https://example.workers.dev';
+  SecureConfig.set('relayToken', 'a-passphrase', false);
+  document.getElementById('voiceId').value = 'a-voice-id-1234';
+
+  const grab = async () => { try { await Speech.fetchPremium('ciao', 'a-voice-id-1234'); return null; }
+                             catch (e) { return { message: e.message, fatal: !!e.fatal, rateLimited: !!e.rateLimited }; } };
+
+  window.fetch = reply(400, { error: 'Voice ID is not approved for this relay.' });
+  const badVoice = await grab();
+
+  window.fetch = reply(429, { error: 'Too many speech requests. Wait a minute and try again.' });
+  const limited = await grab();
+
+  window.fetch = reply(401, { error: 'Wrong or missing passphrase.' });
+  const badPass = await grab();
+
+  /* Three settings faults in a row and premium speech stands down. */
+  Speech.breaker.reset();
+  window.fetch = reply(400, { error: 'Voice ID is not approved for this relay.' });
+  for (let i = 0; i < 3; i++) Speech.breaker.record(await grab());
+  await wait(30);
+  const notice = document.getElementById('speechNotice');
+  const trippedAt3 = Speech.breaker.tripped;
+  const noticeShown = !notice.classList.contains('hidden');
+  const noticeNamesReason = /not approved for this relay/i.test(notice.textContent);
+  const hasRetry = !!document.getElementById('retryPremium');
+
+  /* A rate limit is weather, not a settings fault — it must not trip it. */
+  Speech.breaker.reset();
+  window.fetch = reply(429, { error: 'Too many speech requests.' });
+  for (let i = 0; i < 5; i++) Speech.breaker.record(await grab());
+  const rateLimitNeverTrips = !Speech.breaker.tripped;
+
+  Speech.breaker.reset();
+  const resetClearsNotice = notice.classList.contains('hidden');
+
+  window.fetch = realFetch;
+  SecureConfig.clear('relayToken');
+  document.getElementById('relayUrl').value = '';
+  document.getElementById('voiceId').value = '';
+  return { badVoice, limited, badPass, trippedAt3, noticeShown, noticeNamesReason,
+           hasRetry, rateLimitNeverTrips, resetClearsNotice };
+});
+check('A rejected Voice ID is reported in the relay\'s own words',
+  /not approved for this relay/i.test(premium.badVoice?.message || ''), premium.badVoice?.message);
+check('A settings fault is marked fatal', premium.badVoice?.fatal === true);
+check('A rejected passphrase is reported in words too',
+  /wrong or missing passphrase/i.test(premium.badPass?.message || ''), premium.badPass?.message);
+check('A rate limit is not treated as a settings fault',
+  premium.limited?.rateLimited === true && premium.limited?.fatal === false);
+check('Three settings faults stand premium speech down', premium.trippedAt3);
+check('Standing down raises a notice that does not scroll away', premium.noticeShown);
+check('The notice names the relay\'s reason', premium.noticeNamesReason, 'reason absent');
+check('The notice offers a way to try again', premium.hasRetry);
+check('Rate limits never trip the breaker', premium.rateLimitNeverTrips);
+check('Resetting clears the notice', premium.resetClearsNotice);
+
+
+/* ── v1.11.6 — an unresponsive relay must not read as "playback is broken" ── */
+const silence = await page.evaluate(async () => {
+  const log = [];
+  const realSystem = Speech.system, realBlob = Speech.playBlob, realFetch = window.fetch;
+  Speech.system = () => { log.push('SYSTEM'); return Promise.resolve(); };
+  Speech.playBlob = () => { log.push('PREMIUM'); return Promise.resolve(); };
+  Speech.RELAY_TIMEOUT = { first: 250, settled: 500 };   // same shape, test speed
+
+  document.getElementById('relayUrl').value = 'https://example.workers.dev';
+  SecureConfig.set('relayToken', 'p', false);
+  document.getElementById('voiceId').value = 'a-voice-id-1234';
+  document.getElementById('voiceMode').value = 'eleven';
+  Speech.breaker.reset();
+
+  /* A relay that never answers, honouring abort the way real fetch does. */
+  window.fetch = (u, o) => new Promise((_, rej) => {
+    const sig = o && o.signal;
+    if (sig) sig.addEventListener('abort', () => { const e = new Error('aborted'); e.name = 'AbortError'; rej(e); });
+  });
+
+  const engine = { stopped: false, paused: false };
+  const waits = [];
+  for (let i = 0; i < 4; i++) {
+    const t = Date.now();
+    await Speech.speak('Sentence number ' + i, engine);
+    waits.push(Date.now() - t);
+  }
+  const notice = document.getElementById('speechNotice');
+  const result = {
+    everySentenceSpoke: log.length === 4 && log.every(v => v === 'SYSTEM'),
+    firstWait: waits[0], lastWait: waits[3],
+    tripped: Speech.breaker.tripped,
+    noticeVisible: !notice.classList.contains('hidden'),
+    noticeNamesWait: /did not answer/i.test(notice.textContent)
+  };
+  Speech.system = realSystem; Speech.playBlob = realBlob; window.fetch = realFetch;
+  Speech.RELAY_TIMEOUT = { first: 5000, settled: 12000 };
+  Speech.breaker.reset(); SecureConfig.clear('relayToken');
+  document.getElementById('relayUrl').value = ''; document.getElementById('voiceId').value = '';
+  document.getElementById('voiceMode').value = 'system';
+  return result;
+});
+check('An unresponsive relay never leaves a sentence silent', silence.everySentenceSpoke, JSON.stringify(silence));
+check('First contact gives up quickly rather than hanging', silence.firstWait < 1500, silence.firstWait + 'ms');
+check('Two silent waits stand premium speech down', silence.tripped);
+check('Once stood down, sentences start at once', silence.lastWait < 100, silence.lastWait + 'ms');
+check('The notice explains the silence', silence.noticeVisible && silence.noticeNamesWait);
+
+
 await browser.close();
 server.close();
 

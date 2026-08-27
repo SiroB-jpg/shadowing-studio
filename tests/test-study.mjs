@@ -287,6 +287,44 @@ check('uscire is not mistaken for riuscire', await page.evaluate(()=>
 check('The verb table has no duplicated entries', await page.evaluate(()=>{
   const n=Object.keys(Verb.V); return new Set(n).size===n.length && n.length>=112;}));
 
+/* ── v1.11.5 — the voice follows the library selection ──────────────────── */
+check('SentenceController can follow a selection', await page.evaluate(()=>typeof SentenceController.follow==='function'));
+const followed = await page.evaluate(async () => {
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  const realRestart = MainPlayer.restart;
+  let restarts = 0;
+  MainPlayer.restart = () => { restarts++; };
+  MainPlayer.playing = true;
+
+  const before = { book: App.cur.book, chapter: App.cur.chapter, group: App.cur.group };
+  const chapters = [...document.querySelectorAll('#tree .chapter')];
+  const other = chapters.find(el => !el.classList.contains('active'));
+  if (other) other.click(); await wait(30);
+  const onChapter = restarts;
+  const moved = App.cur.chapter !== before.chapter;
+
+  const groups = [...document.querySelectorAll('#tree .groupItem')];
+  const otherGroup = groups.find(el => !el.classList.contains('active'));
+  if (otherGroup) otherGroup.click(); await wait(30);
+  const onGroup = restarts;
+
+  /* Paused counts as playing — the learner picked this sentence on purpose. */
+  MainPlayer.paused = true;
+  const beforePaused = restarts;
+  const g2 = [...document.querySelectorAll('#tree .groupItem')].find(el => !el.classList.contains('active'));
+  if (g2) g2.click(); await wait(30);
+  const whilePaused = restarts > beforePaused;
+
+  MainPlayer.playing = false; MainPlayer.paused = false; MainPlayer.restart = realRestart;
+  return { onChapter, onGroup, moved, whilePaused, hadChapters: chapters.length > 1, hadGroups: groups.length > 1 };
+});
+check('Choosing a chapter while playing restarts the voice there',
+  !followed.hadChapters || (followed.onChapter >= 1 && followed.moved), JSON.stringify(followed));
+check('Choosing a group while playing restarts the voice there',
+  !followed.hadGroups || followed.onGroup > followed.onChapter, JSON.stringify(followed));
+check('It follows from a pause as well',
+  !followed.hadGroups || followed.whilePaused, JSON.stringify(followed));
+
 /* ── v1.11.4 — the "possibly also here" scan must not invent words ───────── */
 check('The unknown-verb scan matches whole words only', await page.evaluate(()=>
   !Verb.unknown(['Non credo che lui lo considererebbe mai.'],[]).includes('considerere')));

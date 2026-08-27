@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="no-referrer">
-<meta name="app-version" content="1.11.4">
-<title>Italian Shadowing Studio — v1.11.4</title>
+<meta name="app-version" content="1.11.6">
+<title>Italian Shadowing Studio — v1.11.6</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="description" content="Offline-first Italian shadowing practice with sentence libraries, verb drills, configurable playback, and optional generated exercises.">
@@ -27,7 +27,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.11.4 — an About page, and quieter pauses.</p>
+      <p class="header-sub">v1.11.6 — an About page, and quieter pauses.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -72,6 +72,8 @@
         <span class="voice-chip mobile-only">Voice: <strong id="voiceChipLabel">ElevenLabs</strong></span>
         <button class="icon ghost mobile-only" id="goToSettings" title="Settings" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.1"/><path d="M19.4 12h2.2M4.6 12H2.4M12 4.6V2.4M12 19.4v2.2M17.23 6.77l1.56-1.56M5.21 18.79l1.56-1.56M17.23 17.23l1.56 1.56M5.21 5.21l1.56 1.56"/></svg></button>
       </div>
+
+      <p id="speechNotice" class="notice-warn hidden" role="status"></p>
 
       <div id="viewer" class="sentences" role="region" aria-label="Study sentences"></div>
 

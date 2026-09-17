@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.13.1 — the structure line is now the learner's to ask for
+
+v1.13.0 shipped the gloss switched on. That was wrong against a design decision already taken: **the structural gloss is opt-in**, used only where it adds something the natural English does not already give, with no clutter. It arrived as neither — always on, with no way to turn it off.
+
+**Study now has a third choice beside Translation.** In the ⋯ menu: **Structure — hide structure line / show structure line**. It **defaults to hidden**, which is what opt-in means, and the choice is remembered on the device like every other study setting. Focus mode carries the same control, and the two stay in step: change it in either place and both follow.
+
+**The line still requires the English to be showing.** Hiding the English is a recall exercise, and handing back the Italian's shape would undo it. One function decides — `Gloss.on()` — so Study, search results and Focus cannot drift apart.
+
+**Focus mode shows the line at all.** v1.13.0 only added it to the sentence row; Focus draws its own markup and was silently left out.
+
+**The subtitle under the app name was describing the wrong release.** It has read "an About page, and quieter pauses" since v1.11.6, because `set-version` updates the number in that line but not the words. Corrected, and worth remembering at each release: **the strapline is written by hand.**
+
+Twelve suites, **516 checks** — 14 new, covering the control's presence, its default, the single decision point and the Focus pairing.
+
 ## v1.13.0 — the third line, and which register you are in
 
 Some Italian cannot be shown in English without hiding the thing it teaches. *Gli piacciono i cani* and *Non gli piace il rumore* both arrive in English as *he likes / does not like something* — which erases the very contrast those two items exist to teach, and erases the shape of the Italian entirely: **to-him are-pleasing the dogs**. Forty-three items across the A2.4 and A2.6 chapters carry a `literal_gloss` for exactly this reason. Until now the app did not read it.

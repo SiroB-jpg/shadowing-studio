@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.13.0";
+  --css-version:"1.13.1";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -285,6 +285,9 @@ button.primary{background:var(--accent-button);color:var(--on-accent);min-width:
   border-left:2px solid var(--border)}
 /* The address label reports a register. It is deliberately quiet and is not a
    control — nothing here is clickable. */
+/* Focus mode: same treatment as the row, sized for the larger type. */
+.focus-gloss{color:var(--muted);font-style:italic;opacity:.85;margin-top:.35rem;
+  padding-left:.7rem;border-left:2px solid var(--border)}
 .addr{display:block;font-size:.68rem;line-height:1.1;color:var(--muted);
   text-align:right;margin-top:.15rem;letter-spacing:.02em;opacity:.8}
 .srow-actions{display:flex;gap:.2rem;align-items:center}

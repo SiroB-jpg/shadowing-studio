@@ -214,6 +214,15 @@ function icon(name,size){
    invites the learner to change it. */
 const ADDRESS_LABEL={tu:"tu",lei:"Lei",lei_chunk:"Lei",voi:"voi",formal_or_impersonal_you:"formal",noi:"noi"};
 
+/* The structure line is opt-in: the learner asks for it, and it stays off until
+   they do. It also requires the English to be showing — hiding the English is a
+   recall exercise, and handing back the Italian's shape would undo it. One
+   function decides, so Study, search results and Focus cannot drift apart. */
+const Gloss={
+  on(){let g=$("showGloss"),e=$("showEnglish");
+    return !!g&&g.value==="show"&&(!e||e.value!=="hide");}
+};
+
 const SentenceRow={
   LABEL:{play:"Play this sentence",bm:"Bookmark",edit:"Edit",drop:"Remove from the set"},
   /* The main sentence and each action are separate native buttons. This avoids
@@ -243,7 +252,7 @@ const SentenceRow={
              under the English, reads as subordinate to it, and is hidden whenever
              the English is — a learner practising recall should not be handed the
              structure either. */
-          (o.showEnglish&&o.gloss?`<span class="gloss">${Util.esc(o.gloss)}</span>`:"")+
+          (o.showGloss&&o.gloss?`<span class="gloss">${Util.esc(o.gloss)}</span>`:"")+
         `</span>`+
       `</button>`+
       `<div class="srow-actions">${acts}</div>`+
@@ -315,6 +324,7 @@ const Focus={
     $("focusPause").value=$("pause").value;
     $("focusRepeat").value=$("repeat").value;
     $("focusEnglishMode").value=$("showEnglish").value;
+    $("focusGlossMode").value=$("showGloss").value;
     $("focus").classList.remove("hidden");
     document.body.classList.add("focus-open");
     this.sync();
@@ -361,6 +371,9 @@ const Focus={
     let showEn=$("focusEnglishMode").value==="show";
     $("focusEnglish").textContent=showEn&&c.english?c.english:"";
     $("focusEnglish").classList.toggle("hidden",!(showEn&&c.english));
+    let showGl=showEn&&$("focusGlossMode").value==="show"&&!!c.gloss;
+    $("focusGloss").textContent=showGl?c.gloss:"";
+    $("focusGloss").classList.toggle("hidden",!showGl);
     let playing=this.player().playing&&!this.player().paused;
     $("focusToggle").setAttribute("aria-label",playing?"Pause":"Play");
     $("focusToggle").innerHTML=playing
@@ -502,6 +515,7 @@ const UI={
     return SentenceRow.build({
       number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
       showEnglish:$("showEnglish").value=="show",
+      showGloss:Gloss.on(),
       active:i===App.cur.index,
       playing:MainPlayer.playing&&i===App.cur.index,
       bookmarked:!!s.bookmarked,
@@ -538,6 +552,7 @@ const UI={
       hits.forEach(s=>v.appendChild(SentenceRow.build({
         number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
         showEnglish:$("showEnglish").value=="show",
+        showGloss:Gloss.on(),
         bookmarked:!!s.bookmarked,
         context:Titles.crumb(s.book,s.chapter,Util.gnum(s)).map(p=>p.label).join(" · "),
         actions:["play","bm"],
@@ -1396,8 +1411,8 @@ function toCSV(){let h=["book","chapter","order","italian","english","bookmarked
 function download(name,text,type){let b=new Blob([text],{type}),a=document.createElement("a"),url=URL.createObjectURL(b);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);}
 
 const Preferences={
-  fields:{repeat:"v08repeat",rate:"v08rate",pause:"v08pause",playMode:"v08playMode",showEnglish:"v08showEnglish",displayMode:"v08displayMode",verbRepeat:"v08verbRepeat",verbRate:"v08verbRate",verbPause:"v08verbPause",verbMode:"v08verbMode",verbScope:"v08verbScope"},
-  keys:["v08theme","v08voice","v08model","v08voiceMode","v08relayUrl","v08libCollapsed","v08repeat","v08rate","v08pause","v08playMode","v08showEnglish","v08displayMode","v08verbRepeat","v08verbRate","v08verbPause","v08verbMode","v08verbScope"],
+  fields:{repeat:"v08repeat",rate:"v08rate",pause:"v08pause",playMode:"v08playMode",showEnglish:"v08showEnglish",showGloss:"v08showGloss",displayMode:"v08displayMode",verbRepeat:"v08verbRepeat",verbRate:"v08verbRate",verbPause:"v08verbPause",verbMode:"v08verbMode",verbScope:"v08verbScope"},
+  keys:["v08theme","v08voice","v08model","v08voiceMode","v08relayUrl","v08libCollapsed","v08repeat","v08rate","v08pause","v08playMode","v08showEnglish","v08showGloss","v08displayMode","v08verbRepeat","v08verbRate","v08verbPause","v08verbMode","v08verbScope"],
   save(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id);if(el)localStorage.setItem(key,el.value);});},
   load(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id),value=localStorage.getItem(key);if(!el||value===null)return;if(el.tagName==="SELECT"&&![...el.options].some(option=>option.value===value))return;el.value=value;});},
   export(){this.save();let out={};this.keys.forEach(key=>{let value=localStorage.getItem(key);if(value!==null)out[key]=value;});return out;},
@@ -1783,7 +1798,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.13.0",
+  VERSION:"1.13.1",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -1975,7 +1990,8 @@ function bind(){
   $("focusRate").onchange=()=>{$("rate").value=$("focusRate").value;Focus.controller().restart();};
   $("focusPause").onchange=()=>{$("pause").value=$("focusPause").value;Focus.controller().restart();};
   $("focusRepeat").onchange=()=>{$("repeat").value=$("focusRepeat").value;Focus.repeat(0,Number($("focusRepeat").value)||1);Focus.controller().restart();};
-  $("focusEnglishMode").onchange=()=>{$("showEnglish").value=$("focusEnglishMode").value;Focus.sync();};
+  $("focusEnglishMode").onchange=()=>{$("showEnglish").value=$("focusEnglishMode").value;Preferences.save();Focus.sync();UI.renderAll();};
+  $("focusGlossMode").onchange=()=>{$("showGloss").value=$("focusGlossMode").value;Preferences.save();Focus.sync();UI.renderAll();};
   document.addEventListener("keydown",e=>{
     if(!Focus.isOpen())return;
     if(e.target.closest("input,select,textarea,[contenteditable='true']"))return;
@@ -2026,6 +2042,7 @@ function bind(){
   $("hardReset").onclick=()=>{MainPlayer.stop("Audio reset.");VerbPlayer.stop("Audio reset.");GenPlayer.stop("Audio reset.");closeAllMenus();};
   $("displayMode").onchange=()=>{Preferences.save();UI.renderViewer();};
   $("showEnglish").onchange=()=>{Preferences.save();UI.renderViewer();if(Generator.items.length)Generator.renderCards();};
+  $("showGloss").onchange=()=>{Preferences.save();UI.renderViewer();};
   $("playMode").onchange=()=>{Preferences.save();Playbar.restart();};
   $("search").oninput=()=>UI.renderViewer();
   $("search").onsearch=()=>UI.renderViewer();

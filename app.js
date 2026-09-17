@@ -605,7 +605,7 @@ const Speech={
          already named the real fault. Read it. */
       let detail="";
       try{let body=await response.json();if(body&&body.error)detail=String(body.error);}catch(e){}
-      let err=new Error(detail||("Premium speech error "+response.status));
+      let err=new Error(Speech.explain(response.status,detail));
       err.status=response.status;
       /* A 400/401/403 is a settings fault: every following sentence will fail
          in exactly the same way. A 429 or a 5xx is weather. */
@@ -624,6 +624,20 @@ const Speech={
      ElevenLabs character. Each status is reported as the thing it actually
      means, because "it didn't work" sent us hunting the wrong file more than
      once. */
+  /* A speech request answered by the sentence-generator's validation means the
+     deployed Worker predates the /tts route: it never looked at the path, so it
+     read a speech request as a generation request and complained that no target
+     word was supplied. No amount of app-side correction can fix that, and a bare
+     "error 400" sends you looking in the wrong place entirely. Name it. */
+  GENERATE_SIDE:/target word|target expression|count must be|tense|register|avoid may/i,
+  wrongRoute(detail){return this.GENERATE_SIDE.test(detail||"");},
+  explain(status,detail){
+    if(this.wrongRoute(detail))
+      return "The relay answered, but it handled this as a sentence-generation request — it said “"+detail+"”. "
+        +"That means the Worker deployed on Cloudflare does not serve the /tts route, so it cannot produce speech at all. "
+        +"Deploy the current worker.js to Cloudflare; nothing in this app can work around it.";
+    return detail||("Premium speech error "+status);
+  },
   async testRelay(){
     let relay;
     try{relay=this.relay();}
@@ -647,7 +661,10 @@ const Speech={
     if(response.status===429)return"Connected. The relay is rate limited right now, which still proves the passphrase is correct.";
     if(response.status===503)throw new Error(detail||"The relay is reachable but premium speech is switched off on it.");
     if(response.status===500)throw new Error(detail||"The relay is reachable and the passphrase is right, but the relay itself is missing a setting.");
-    if(response.status===400)throw new Error(`The relay answered and accepted the passphrase, but rejected the request: ${detail||"no reason given"} Check the Voice ID here against ELEVENLABS_VOICE_IDS on the Worker.`);
+    if(response.status===400){
+      if(this.wrongRoute(detail))throw new Error(this.explain(400,detail));
+      throw new Error(`The relay answered and accepted the passphrase, but rejected the request: ${detail||"no reason given"} Check the Voice ID here against ELEVENLABS_VOICE_IDS on the Worker.`);
+    }
     if(response.status===502)throw new Error(detail||"The relay reached ElevenLabs and ElevenLabs refused. Check the ELEVENLABS_API_KEY secret on the Worker.");
     if(response.ok){this.breaker.reset();return"Connected. Address, passphrase, Voice ID and model all check out.";}
     throw new Error(`The relay answered with an unexpected status ${response.status}.${detail?" "+detail:""}`);
@@ -1635,7 +1652,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.11.6",
+  VERSION:"1.11.7",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");

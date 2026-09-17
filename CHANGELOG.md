@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.11.7 — the relay is not the one in this repository
+
+The pre-download stopped after one sentence, as v1.11.5 intended, and reported what the relay said: **"No target word supplied."** That sentence appears exactly once in `worker.js`, in `validateRequest` — the *sentence generator's* validation. A speech request was answered by the generation code path.
+
+The current `worker.js` routes on `pathname.endsWith("/tts")`. For a speech request to be read as a generation request, the Worker deployed on Cloudflare must have no `/tts` branch at all: it never looked at the path, treated the body as a generation request, found no `word` field and refused it. That is a Worker predating the premium-speech route. It also accounts for the iPhone's bare `Premium speech error 400` — same rejection, before v1.11.5 taught the app to read the body.
+
+No app-side change can fix this; the fix is to deploy `worker.js`. What the app can do is stop sending anyone to look in the wrong place, so a generator-side rejection to a speech request is now identified by name: it quotes what the relay said, states that the deployed Worker does not serve `/tts`, and says to deploy `worker.js` rather than adjust a setting. `Test connection` reaches the same conclusion. Speech-side rejections — an unapproved Voice ID, a wrong passphrase — are deliberately *not* caught by this rule and still report as themselves.
+
+Ten suites, **429 checks** — 6 new, separating generator-side wording from speech-side wording in both the playback path and the connection test.
+
 ## v1.11.6 — silence is a failure too
 
 Reported from an iPad: with ElevenLabs selected, starting from Chapter 6 produced *no playback at all — not even the system voice*. Switching to the system voice in Settings made it work. That is a real fault and v1.11.5 did not address it.

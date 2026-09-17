@@ -356,6 +356,50 @@ check('Once stood down, sentences start at once', silence.lastWait < 100, silenc
 check('The notice explains the silence', silence.noticeVisible && silence.noticeNamesWait);
 
 
+/* ── v1.11.7 — a relay that predates the /tts route says so ──────────────── */
+const wrongRoute = await page.evaluate(async () => {
+  const realFetch = window.fetch;
+  document.getElementById('relayUrl').value = 'https://example.workers.dev';
+  SecureConfig.set('relayToken', 'p', false);
+  document.getElementById('voiceId').value = 'a-voice-id-1234';
+  Speech.breaker.reset();
+
+  window.fetch = () => Promise.resolve(new Response(
+    JSON.stringify({ error: 'No target word supplied.' }),
+    { status: 400, headers: { 'Content-Type': 'application/json' } }));
+
+  let speechMsg = '';
+  try { await Speech.fetchPremium('ciao', 'a-voice-id-1234'); }
+  catch (e) { speechMsg = e.message; }
+
+  let testMsg = '';
+  try { await Speech.testRelay(); } catch (e) { testMsg = e.message; }
+
+  const classified = {
+    targetWord: Speech.wrongRoute('No target word supplied.'),
+    countRule: Speech.wrongRoute('Count must be an integer from 1 to 25.'),
+    voiceRule: Speech.wrongRoute('Voice ID is not approved for this relay.'),
+    passRule: Speech.wrongRoute('Wrong or missing passphrase.')
+  };
+
+  window.fetch = realFetch;
+  Speech.breaker.reset(); SecureConfig.clear('relayToken');
+  document.getElementById('relayUrl').value = ''; document.getElementById('voiceId').value = '';
+  return { speechMsg, testMsg, classified };
+});
+check('A generator-side rejection is named as a missing /tts route',
+  /does not serve the \/tts route/i.test(wrongRoute.speechMsg), wrongRoute.speechMsg.slice(0, 110));
+check('It quotes what the relay actually said',
+  /No target word supplied/.test(wrongRoute.speechMsg), wrongRoute.speechMsg.slice(0, 110));
+check('It says to deploy worker.js rather than change a setting',
+  /deploy the current worker\.js/i.test(wrongRoute.speechMsg));
+check('Test connection reaches the same conclusion',
+  /does not serve the \/tts route/i.test(wrongRoute.testMsg), wrongRoute.testMsg.slice(0, 110));
+check('Generator-side wording is recognised', wrongRoute.classified.targetWord && wrongRoute.classified.countRule);
+check('Speech-side wording is not mistaken for it',
+  !wrongRoute.classified.voiceRule && !wrongRoute.classified.passRule);
+
+
 await browser.close();
 server.close();
 

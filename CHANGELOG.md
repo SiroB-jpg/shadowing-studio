@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.13.0 — the third line, and which register you are in
+
+Some Italian cannot be shown in English without hiding the thing it teaches. *Gli piacciono i cani* and *Non gli piace il rumore* both arrive in English as *he likes / does not like something* — which erases the very contrast those two items exist to teach, and erases the shape of the Italian entirely: **to-him are-pleasing the dogs**. Forty-three items across the A2.4 and A2.6 chapters carry a `literal_gloss` for exactly this reason. Until now the app did not read it.
+
+**The gloss is now a third line.** It sits under the English, in italic, smaller, indented behind a rule — support, not a second translation, and never something to say aloud. It appears only where the corpus supplies one, so nothing gains an empty line. **It hides whenever the English hides**: a learner practising recall should not be handed the structure either.
+
+**A small label reports the register.** The corpus tags five ways of being addressed and the app knew none of them. Each row now shows a quiet word under its number — *tu*, *Lei*, *voi* — so the learner can see which register they are in. `neutral` shows nothing, because a label on every row is not information.
+
+**It reports; it does not offer.** There is deliberately no switch. A learner who flipped one to formal would be handed `lei_chunk` items that are not productive and `voi` items that address a group. The corpus teaches that distinction group by group, by exposure; a control would undo it.
+
+**Both fields belong to the corpus.** A re-import replaces them, including replacing a gloss with nothing when the corpus has dropped one — and a changed gloss now counts as a change rather than passing as a duplicate. The learner's bookmark, difficulty flag and note are untouched, as before.
+
+Column names accepted for the two: `literal_gloss`, `gloss`, `structural_english` · `address_system`, `address_form`. Both are in the closed list at the top of `app.js`.
+
+Twelve suites, **502 checks** — 28 new, run against real A2.4 items from the master corpus. Rendering was checked by eye in light and dark, including on a highlighted row.
+
 ## v1.12.0 — the importer learns where a sentence goes
 
 Three of the newest and largest modules could not be *placed* by the app. Not imported without their extras — placed. Essential Spoken Italian (1,500 sentences), Travel Italian (360) and the Core A0–B2 corpus export (2,310) name a sentence's book, chapter and position with columns the importer had never heard of: `book_number`, `chapter_number`, `chapter_id`, `group_number`, `group_id`, `item_number`, `sequence`. **4,170 sentences would have landed in a single undifferentiated chapter, numbered by their line in the file** — and the app said nothing, because it found the word `italian` in the header and assumed the rest.

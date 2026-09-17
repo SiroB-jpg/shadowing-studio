@@ -120,6 +120,8 @@ const CSVCols={
   order:["order","number","no","#"],
   sentenceId:["sentence_id","sentenceid","line_id","lineid","record_id","recordid","id"],
   rowType:["record_type","recordtype","item_type","itemtype"],
+  gloss:["literal_gloss","literalgloss","gloss","structural_english","structuralenglish"],
+  address:["address_system","addresssystem","address_form","addressform"],
   bookTitle:["booktitle","book_title"],
   chapterTitle:["chaptertitle","chapter_title"],
   /* Row kinds that are content but not a sentence the learner shadows. */
@@ -134,6 +136,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
         idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},
         bi=idx(CSVCols.book),ci=idx(CSVCols.chapter),oi=idx(CSVCols.order),
         gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),
+        li=idx(CSVCols.gloss),ai=idx(CSVCols.address),
         ii=idx(CSVCols.italian),ei=idx(CSVCols.english);
     let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
     /* A row the file itself marks as something other than a shadowable sentence —
@@ -179,6 +182,10 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
              order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),
              bookmarked:false,difficult:false,notes:""};
       let id=has?cell(r,si):"";if(id)s.sentenceId=id;
+      /* The gloss exists only where natural English inverts the Italian, so most
+         items have none. Empty stays empty rather than becoming an empty line. */
+      let g=has?cell(r,li):"";if(g)s.gloss=g;
+      let a=has?cell(r,ai):"";if(a&&a.toLowerCase()!=="neutral")s.address=a;
       return s;
     }).filter(x=>x.italian);
   },chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
@@ -202,6 +209,11 @@ function icon(name,size){
          `stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
 }
 
+/* The corpus names five ways of being addressed. The learner sees a short word,
+   not the corpus tag: the label reports which register the item is in, and never
+   invites the learner to change it. */
+const ADDRESS_LABEL={tu:"tu",lei:"Lei",lei_chunk:"Lei",voi:"voi",formal_or_impersonal_you:"formal",noi:"noi"};
+
 const SentenceRow={
   LABEL:{play:"Play this sentence",bm:"Bookmark",edit:"Edit",drop:"Remove from the set"},
   /* The main sentence and each action are separate native buttons. This avoids
@@ -219,11 +231,19 @@ const SentenceRow={
     let current=o.active?' aria-current="true"':"";
     d.innerHTML=
       `<button type="button" class="srow-select" data-a="select" aria-label="Select sentence ${Util.esc(String(o.number))}"${current}>`+
-        `<span class="srow-num">${Util.esc(String(o.number))}</span>`+
+        /* Number and register share one grid cell, so the row stays two columns. */
+        `<span class="srow-meta"><span class="srow-num">${Util.esc(String(o.number))}</span>`+
+        (o.address?`<span class="addr">${Util.esc(ADDRESS_LABEL[String(o.address).toLowerCase()]||o.address)}</span>`:"")+
+        `</span>`+
         `<span class="srow-text">`+
           (o.context?`<span class="srow-context">${Util.esc(o.context)}</span>`:"")+
           `<span class="italian">${Util.esc(o.italian)}</span>`+
           (o.showEnglish&&o.english?`<span class="english">${Util.esc(o.english)}</span>`:"")+
+          /* The gloss is a lens on the Italian, not a second translation. It sits
+             under the English, reads as subordinate to it, and is hidden whenever
+             the English is — a learner practising recall should not be handed the
+             structure either. */
+          (o.showEnglish&&o.gloss?`<span class="gloss">${Util.esc(o.gloss)}</span>`:"")+
         `</span>`+
       `</button>`+
       `<div class="srow-actions">${acts}</div>`+
@@ -480,7 +500,7 @@ const UI={
 
   rowFor(s,i,list){
     return SentenceRow.build({
-      number:s.order,italian:s.italian,english:s.english,
+      number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
       showEnglish:$("showEnglish").value=="show",
       active:i===App.cur.index,
       playing:MainPlayer.playing&&i===App.cur.index,
@@ -516,7 +536,7 @@ const UI={
       head.textContent=`${hits.length} match${hits.length===1?"":"es"} across the library${hits.length===60?" (showing the first 60)":""}. Tap one to open its group.`;
       v.appendChild(head);
       hits.forEach(s=>v.appendChild(SentenceRow.build({
-        number:s.order,italian:s.italian,english:s.english,
+        number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
         showEnglish:$("showEnglish").value=="show",
         bookmarked:!!s.bookmarked,
         context:Titles.crumb(s.book,s.chapter,Util.gnum(s)).map(p=>p.label).join(" · "),
@@ -1102,6 +1122,8 @@ const Importer={
       let sameId=String(was.sentenceId||"")===String(s.sentenceId||"");
       if(sameId&&this.words(was)===this.words(s)&&
          String(was.english||"").trim()===String(s.english||"").trim()&&
+         String(was.gloss||"").trim()===String(s.gloss||"").trim()&&
+         String(was.address||"").trim()===String(s.address||"").trim()&&
          String(was.book)===String(s.book)&&String(was.chapter)===String(s.chapter)&&
          Number(was.order)===Number(s.order)){dupes.push(s);return;}
       /* Keep the learner's own marks; only the corpus columns are replaced.
@@ -1110,6 +1132,10 @@ const Importer={
          the slot it used to occupy. */
       let next={...was,italian:s.italian,english:s.english,
         audioText:s.audioText!==undefined?s.audioText:was.audioText};
+      /* gloss and address belong to the corpus, so a re-import replaces them —
+         including replacing them with nothing when the corpus has dropped one. */
+      if(s.gloss)next.gloss=s.gloss;else delete next.gloss;
+      if(s.address)next.address=s.address;else delete next.address;
       if(s.sentenceId)next.sentenceId=s.sentenceId;
       if(ik&&byId.get(ik)){next.book=s.book;next.chapter=s.chapter;next.order=s.order;}
       changed.push(next);
@@ -1757,7 +1783,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.12.0",
+  VERSION:"1.13.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");

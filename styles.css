@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.12.0";
+  --css-version:"1.13.0";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -273,11 +273,20 @@ button.primary{background:var(--accent-button);color:var(--on-accent);min-width:
   background:transparent;color:inherit;text-align:left;font:inherit}
 .srow-select:hover{background:transparent}
 .srow-select:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
-.srow-num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem;
-  min-width:2.1rem;text-align:right;padding-top:.28rem}
+.srow-meta{display:block;min-width:2.1rem;text-align:right;padding-top:.28rem}
+.srow-num{display:block;font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem}
 .srow-text{display:block;min-width:0}
 .srow-text>span{display:block}
 .srow-context{font-size:.75rem;color:var(--muted);margin-bottom:.15rem}
+/* The gloss is support, not content: smaller than the English, set in italic so
+   it never reads as a sentence to say, and indented so the eye can skip it. */
+.gloss{color:var(--muted);font-style:italic;font-size:var(--text-sm);
+  opacity:.85;margin-top:.1rem;padding-left:.6rem;
+  border-left:2px solid var(--border)}
+/* The address label reports a register. It is deliberately quiet and is not a
+   control — nothing here is clickable. */
+.addr{display:block;font-size:.68rem;line-height:1.1;color:var(--muted);
+  text-align:right;margin-top:.15rem;letter-spacing:.02em;opacity:.8}
 .srow-actions{display:flex;gap:.2rem;align-items:center}
 .rowbtn{background:transparent;color:var(--ink);min-height:var(--tap-min);min-width:var(--tap-min);padding:var(--space-2xs);
   display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm)}

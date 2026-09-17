@@ -1,0 +1,29 @@
+{
+  "pass": {
+    "desktopRows": true,
+    "desktopNoOverflow": true,
+    "darkSettingsVisible": true,
+    "mobileNoOverflow": true,
+    "mobileNavVisible": true,
+    "mobileNavTargets": true,
+    "mobileManageFits": true,
+    "mobileManageFocus": true,
+    "mobileFocusVisible": true,
+    "mobileFocusNoOverflow": true,
+    "focusExitSaysExit": true,
+    "focusExitMeetsTapTarget": true,
+    "focusExitOnScreen": true,
+    "focusHeaderUsesInk": true,
+    "text200NoHorizontalOverflow": true,
+    "landscapeNoOverflow": true,
+    "noRuntimeErrors": true
+  },
+  "errors": [],
+  "screenshots": [
+    "desktop-settings-dark.png",
+    "desktop-study.png",
+    "phone-focus.png",
+    "phone-manage.png",
+    "phone-study.png"
+  ]
+}

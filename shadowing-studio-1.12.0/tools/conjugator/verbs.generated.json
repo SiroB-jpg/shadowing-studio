@@ -1,0 +1,3412 @@
+{
+ "_meta": {
+  "generated": "2026-08-21",
+  "generator": "conjugator.mjs",
+  "source": "46 hand-written tables from shadowing-studio/app.js + 66 verbs from verb-gap.json",
+  "counts": {
+   "verbs": 112,
+   "high": 112,
+   "low": 0,
+   "reflexive": 10,
+   "dualAux": 7,
+   "needsHumanReview": 1
+  },
+  "fields": {
+   "presente": "congiuntivo presente, 6 persons (io tu lui/lei noi voi loro)",
+   "imperfetto": "congiuntivo imperfetto, 6 persons",
+   "aux": "\"avere\" | \"essere\" | [first, second] when the verb takes both; order = more common reading first",
+   "part": "past participle, masculine singular (the form used with avere)",
+   "partForms": "{ms,fs,mp,fp} agreement forms; used ONLY with essere -- with avere the participle is invariable",
+   "reflexive": "true = forms already carry the clitic (mi/ti/si/ci/vi/si); aux is always essere",
+   "irregular": "true = the entry needed a lexical table (irregular present stem, participle or imperfetto), not just the rules",
+   "confidence": "\"low\" = the FORMS are uncertain; a human Italian speaker should check them (reason in `notes`)",
+   "notes": "present only when confidence is \"low\"; says exactly what is uncertain",
+   "review": "present when the forms are certain but the entry itself is questionable (e.g. the string is more often another part of speech, or the verb is impersonal)"
+  },
+  "compoundTenses": "NOT stored. Build at runtime: congiuntivo passato = aux presente + participle, trapassato = aux imperfetto + participle. With essere the participle takes partForms[ms|fs|mp|fp] (singular for persons 0-2, plural for 3-5); with avere it stays `part`. compoundForms() in conjugator.mjs does exactly this."
+ },
+ "verbs": {
+  "accentuare": {
+   "en": "to accentuate, to emphasise",
+   "presente": [
+    "accentui",
+    "accentui",
+    "accentui",
+    "accentuiamo",
+    "accentuiate",
+    "accentuino"
+   ],
+   "imperfetto": [
+    "accentuassi",
+    "accentuassi",
+    "accentuasse",
+    "accentuassimo",
+    "accentuaste",
+    "accentuassero"
+   ],
+   "aux": "avere",
+   "part": "accentuato",
+   "partForms": {
+    "ms": "accentuato",
+    "fs": "accentuata",
+    "mp": "accentuati",
+    "fp": "accentuate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "accettare": {
+   "en": "to accept",
+   "presente": [
+    "accetti",
+    "accetti",
+    "accetti",
+    "accettiamo",
+    "accettiate",
+    "accettino"
+   ],
+   "imperfetto": [
+    "accettassi",
+    "accettassi",
+    "accettasse",
+    "accettassimo",
+    "accettaste",
+    "accettassero"
+   ],
+   "aux": "avere",
+   "part": "accettato",
+   "partForms": {
+    "ms": "accettato",
+    "fs": "accettata",
+    "mp": "accettati",
+    "fp": "accettate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "accorgersi": {
+   "en": "to notice, to realise",
+   "presente": [
+    "mi accorga",
+    "ti accorga",
+    "si accorga",
+    "ci accorgiamo",
+    "vi accorgiate",
+    "si accorgano"
+   ],
+   "imperfetto": [
+    "mi accorgessi",
+    "ti accorgessi",
+    "si accorgesse",
+    "ci accorgessimo",
+    "vi accorgeste",
+    "si accorgessero"
+   ],
+   "aux": "essere",
+   "part": "accorto",
+   "partForms": {
+    "ms": "accorto",
+    "fs": "accorta",
+    "mp": "accorti",
+    "fp": "accorte"
+   },
+   "reflexive": true,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "adattarsi": {
+   "en": "to adapt (oneself)",
+   "presente": [
+    "mi adatti",
+    "ti adatti",
+    "si adatti",
+    "ci adattiamo",
+    "vi adattiate",
+    "si adattino"
+   ],
+   "imperfetto": [
+    "mi adattassi",
+    "ti adattassi",
+    "si adattasse",
+    "ci adattassimo",
+    "vi adattaste",
+    "si adattassero"
+   ],
+   "aux": "essere",
+   "part": "adattato",
+   "partForms": {
+    "ms": "adattato",
+    "fs": "adattata",
+    "mp": "adattati",
+    "fp": "adattate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "aggiungere": {
+   "en": "to add",
+   "presente": [
+    "aggiunga",
+    "aggiunga",
+    "aggiunga",
+    "aggiungiamo",
+    "aggiungiate",
+    "aggiungano"
+   ],
+   "imperfetto": [
+    "aggiungessi",
+    "aggiungessi",
+    "aggiungesse",
+    "aggiungessimo",
+    "aggiungeste",
+    "aggiungessero"
+   ],
+   "aux": "avere",
+   "part": "aggiunto",
+   "partForms": {
+    "ms": "aggiunto",
+    "fs": "aggiunta",
+    "mp": "aggiunti",
+    "fp": "aggiunte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "aiutare": {
+   "en": "to help",
+   "presente": [
+    "aiuti",
+    "aiuti",
+    "aiuti",
+    "aiutiamo",
+    "aiutiate",
+    "aiutino"
+   ],
+   "imperfetto": [
+    "aiutassi",
+    "aiutassi",
+    "aiutasse",
+    "aiutassimo",
+    "aiutaste",
+    "aiutassero"
+   ],
+   "aux": "avere",
+   "part": "aiutato",
+   "partForms": {
+    "ms": "aiutato",
+    "fs": "aiutata",
+    "mp": "aiutati",
+    "fp": "aiutate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "amare": {
+   "en": "to love",
+   "presente": [
+    "ami",
+    "ami",
+    "ami",
+    "amiamo",
+    "amiate",
+    "amino"
+   ],
+   "imperfetto": [
+    "amassi",
+    "amassi",
+    "amasse",
+    "amassimo",
+    "amaste",
+    "amassero"
+   ],
+   "aux": "avere",
+   "part": "amato",
+   "partForms": {
+    "ms": "amato",
+    "fs": "amata",
+    "mp": "amati",
+    "fp": "amate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "andare": {
+   "en": "to go",
+   "presente": [
+    "vada",
+    "vada",
+    "vada",
+    "andiamo",
+    "andiate",
+    "vadano"
+   ],
+   "imperfetto": [
+    "andassi",
+    "andassi",
+    "andasse",
+    "andassimo",
+    "andaste",
+    "andassero"
+   ],
+   "aux": "essere",
+   "part": "andato",
+   "partForms": {
+    "ms": "andato",
+    "fs": "andata",
+    "mp": "andati",
+    "fp": "andate"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "aprire": {
+   "en": "to open",
+   "presente": [
+    "apra",
+    "apra",
+    "apra",
+    "apriamo",
+    "apriate",
+    "aprano"
+   ],
+   "imperfetto": [
+    "aprissi",
+    "aprissi",
+    "aprisse",
+    "aprissimo",
+    "apriste",
+    "aprissero"
+   ],
+   "aux": "avere",
+   "part": "aperto",
+   "partForms": {
+    "ms": "aperto",
+    "fs": "aperta",
+    "mp": "aperti",
+    "fp": "aperte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "arrivare": {
+   "en": "to arrive",
+   "presente": [
+    "arrivi",
+    "arrivi",
+    "arrivi",
+    "arriviamo",
+    "arriviate",
+    "arrivino"
+   ],
+   "imperfetto": [
+    "arrivassi",
+    "arrivassi",
+    "arrivasse",
+    "arrivassimo",
+    "arrivaste",
+    "arrivassero"
+   ],
+   "aux": "essere",
+   "part": "arrivato",
+   "partForms": {
+    "ms": "arrivato",
+    "fs": "arrivata",
+    "mp": "arrivati",
+    "fp": "arrivate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "ascoltare": {
+   "en": "to listen (to)",
+   "presente": [
+    "ascolti",
+    "ascolti",
+    "ascolti",
+    "ascoltiamo",
+    "ascoltiate",
+    "ascoltino"
+   ],
+   "imperfetto": [
+    "ascoltassi",
+    "ascoltassi",
+    "ascoltasse",
+    "ascoltassimo",
+    "ascoltaste",
+    "ascoltassero"
+   ],
+   "aux": "avere",
+   "part": "ascoltato",
+   "partForms": {
+    "ms": "ascoltato",
+    "fs": "ascoltata",
+    "mp": "ascoltati",
+    "fp": "ascoltate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "ascoltarsi": {
+   "en": "to listen to oneself / to each other",
+   "presente": [
+    "mi ascolti",
+    "ti ascolti",
+    "si ascolti",
+    "ci ascoltiamo",
+    "vi ascoltiate",
+    "si ascoltino"
+   ],
+   "imperfetto": [
+    "mi ascoltassi",
+    "ti ascoltassi",
+    "si ascoltasse",
+    "ci ascoltassimo",
+    "vi ascoltaste",
+    "si ascoltassero"
+   ],
+   "aux": "essere",
+   "part": "ascoltato",
+   "partForms": {
+    "ms": "ascoltato",
+    "fs": "ascoltata",
+    "mp": "ascoltati",
+    "fp": "ascoltate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "aspettare": {
+   "en": "to wait",
+   "presente": [
+    "aspetti",
+    "aspetti",
+    "aspetti",
+    "aspettiamo",
+    "aspettiate",
+    "aspettino"
+   ],
+   "imperfetto": [
+    "aspettassi",
+    "aspettassi",
+    "aspettasse",
+    "aspettassimo",
+    "aspettaste",
+    "aspettassero"
+   ],
+   "aux": "avere",
+   "part": "aspettato",
+   "partForms": {
+    "ms": "aspettato",
+    "fs": "aspettata",
+    "mp": "aspettati",
+    "fp": "aspettate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "aumentare": {
+   "en": "to increase",
+   "presente": [
+    "aumenti",
+    "aumenti",
+    "aumenti",
+    "aumentiamo",
+    "aumentiate",
+    "aumentino"
+   ],
+   "imperfetto": [
+    "aumentassi",
+    "aumentassi",
+    "aumentasse",
+    "aumentassimo",
+    "aumentaste",
+    "aumentassero"
+   ],
+   "aux": [
+    "essere",
+    "avere"
+   ],
+   "part": "aumentato",
+   "partForms": {
+    "ms": "aumentato",
+    "fs": "aumentata",
+    "mp": "aumentati",
+    "fp": "aumentate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "avere": {
+   "en": "to have",
+   "presente": [
+    "abbia",
+    "abbia",
+    "abbia",
+    "abbiamo",
+    "abbiate",
+    "abbiano"
+   ],
+   "imperfetto": [
+    "avessi",
+    "avessi",
+    "avesse",
+    "avessimo",
+    "aveste",
+    "avessero"
+   ],
+   "aux": "avere",
+   "part": "avuto",
+   "partForms": {
+    "ms": "avuto",
+    "fs": "avuta",
+    "mp": "avuti",
+    "fp": "avute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "avvisare": {
+   "en": "to warn, to notify",
+   "presente": [
+    "avvisi",
+    "avvisi",
+    "avvisi",
+    "avvisiamo",
+    "avvisiate",
+    "avvisino"
+   ],
+   "imperfetto": [
+    "avvisassi",
+    "avvisassi",
+    "avvisasse",
+    "avvisassimo",
+    "avvisaste",
+    "avvisassero"
+   ],
+   "aux": "avere",
+   "part": "avvisato",
+   "partForms": {
+    "ms": "avvisato",
+    "fs": "avvisata",
+    "mp": "avvisati",
+    "fp": "avvisate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "cambiare": {
+   "en": "to change",
+   "presente": [
+    "cambi",
+    "cambi",
+    "cambi",
+    "cambiamo",
+    "cambiate",
+    "cambino"
+   ],
+   "imperfetto": [
+    "cambiassi",
+    "cambiassi",
+    "cambiasse",
+    "cambiassimo",
+    "cambiaste",
+    "cambiassero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "cambiato",
+   "partForms": {
+    "ms": "cambiato",
+    "fs": "cambiata",
+    "mp": "cambiati",
+    "fp": "cambiate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "cantare": {
+   "en": "to sing",
+   "presente": [
+    "canti",
+    "canti",
+    "canti",
+    "cantiamo",
+    "cantiate",
+    "cantino"
+   ],
+   "imperfetto": [
+    "cantassi",
+    "cantassi",
+    "cantasse",
+    "cantassimo",
+    "cantaste",
+    "cantassero"
+   ],
+   "aux": "avere",
+   "part": "cantato",
+   "partForms": {
+    "ms": "cantato",
+    "fs": "cantata",
+    "mp": "cantati",
+    "fp": "cantate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "capire": {
+   "en": "to understand",
+   "presente": [
+    "capisca",
+    "capisca",
+    "capisca",
+    "capiamo",
+    "capiate",
+    "capiscano"
+   ],
+   "imperfetto": [
+    "capissi",
+    "capissi",
+    "capisse",
+    "capissimo",
+    "capiste",
+    "capissero"
+   ],
+   "aux": "avere",
+   "part": "capito",
+   "partForms": {
+    "ms": "capito",
+    "fs": "capita",
+    "mp": "capiti",
+    "fp": "capite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "chiamare": {
+   "en": "to call",
+   "presente": [
+    "chiami",
+    "chiami",
+    "chiami",
+    "chiamiamo",
+    "chiamiate",
+    "chiamino"
+   ],
+   "imperfetto": [
+    "chiamassi",
+    "chiamassi",
+    "chiamasse",
+    "chiamassimo",
+    "chiamaste",
+    "chiamassero"
+   ],
+   "aux": "avere",
+   "part": "chiamato",
+   "partForms": {
+    "ms": "chiamato",
+    "fs": "chiamata",
+    "mp": "chiamati",
+    "fp": "chiamate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "chiarire": {
+   "en": "to clarify",
+   "presente": [
+    "chiarisca",
+    "chiarisca",
+    "chiarisca",
+    "chiariamo",
+    "chiariate",
+    "chiariscano"
+   ],
+   "imperfetto": [
+    "chiarissi",
+    "chiarissi",
+    "chiarisse",
+    "chiarissimo",
+    "chiariste",
+    "chiarissero"
+   ],
+   "aux": "avere",
+   "part": "chiarito",
+   "partForms": {
+    "ms": "chiarito",
+    "fs": "chiarita",
+    "mp": "chiariti",
+    "fp": "chiarite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "chiedere": {
+   "en": "to ask",
+   "presente": [
+    "chieda",
+    "chieda",
+    "chieda",
+    "chiediamo",
+    "chiediate",
+    "chiedano"
+   ],
+   "imperfetto": [
+    "chiedessi",
+    "chiedessi",
+    "chiedesse",
+    "chiedessimo",
+    "chiedeste",
+    "chiedessero"
+   ],
+   "aux": "avere",
+   "part": "chiesto",
+   "partForms": {
+    "ms": "chiesto",
+    "fs": "chiesta",
+    "mp": "chiesti",
+    "fp": "chieste"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "cominciare": {
+   "en": "to begin",
+   "presente": [
+    "cominci",
+    "cominci",
+    "cominci",
+    "cominciamo",
+    "cominciate",
+    "comincino"
+   ],
+   "imperfetto": [
+    "cominciassi",
+    "cominciassi",
+    "cominciasse",
+    "cominciassimo",
+    "cominciaste",
+    "cominciassero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "cominciato",
+   "partForms": {
+    "ms": "cominciato",
+    "fs": "cominciata",
+    "mp": "cominciati",
+    "fp": "cominciate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "comportarsi": {
+   "en": "to behave",
+   "presente": [
+    "mi comporti",
+    "ti comporti",
+    "si comporti",
+    "ci comportiamo",
+    "vi comportiate",
+    "si comportino"
+   ],
+   "imperfetto": [
+    "mi comportassi",
+    "ti comportassi",
+    "si comportasse",
+    "ci comportassimo",
+    "vi comportaste",
+    "si comportassero"
+   ],
+   "aux": "essere",
+   "part": "comportato",
+   "partForms": {
+    "ms": "comportato",
+    "fs": "comportata",
+    "mp": "comportati",
+    "fp": "comportate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "comprare": {
+   "en": "to buy",
+   "presente": [
+    "compri",
+    "compri",
+    "compri",
+    "compriamo",
+    "compriate",
+    "comprino"
+   ],
+   "imperfetto": [
+    "comprassi",
+    "comprassi",
+    "comprasse",
+    "comprassimo",
+    "compraste",
+    "comprassero"
+   ],
+   "aux": "avere",
+   "part": "comprato",
+   "partForms": {
+    "ms": "comprato",
+    "fs": "comprata",
+    "mp": "comprati",
+    "fp": "comprate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "conoscere": {
+   "en": "to know (person/place)",
+   "presente": [
+    "conosca",
+    "conosca",
+    "conosca",
+    "conosciamo",
+    "conosciate",
+    "conoscano"
+   ],
+   "imperfetto": [
+    "conoscessi",
+    "conoscessi",
+    "conoscesse",
+    "conoscessimo",
+    "conosceste",
+    "conoscessero"
+   ],
+   "aux": "avere",
+   "part": "conosciuto",
+   "partForms": {
+    "ms": "conosciuto",
+    "fs": "conosciuta",
+    "mp": "conosciuti",
+    "fp": "conosciute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "continuare": {
+   "en": "to continue",
+   "presente": [
+    "continui",
+    "continui",
+    "continui",
+    "continuiamo",
+    "continuiate",
+    "continuino"
+   ],
+   "imperfetto": [
+    "continuassi",
+    "continuassi",
+    "continuasse",
+    "continuassimo",
+    "continuaste",
+    "continuassero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "continuato",
+   "partForms": {
+    "ms": "continuato",
+    "fs": "continuata",
+    "mp": "continuati",
+    "fp": "continuate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "controllare": {
+   "en": "to check, to control",
+   "presente": [
+    "controlli",
+    "controlli",
+    "controlli",
+    "controlliamo",
+    "controlliate",
+    "controllino"
+   ],
+   "imperfetto": [
+    "controllassi",
+    "controllassi",
+    "controllasse",
+    "controllassimo",
+    "controllaste",
+    "controllassero"
+   ],
+   "aux": "avere",
+   "part": "controllato",
+   "partForms": {
+    "ms": "controllato",
+    "fs": "controllata",
+    "mp": "controllati",
+    "fp": "controllate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "coprire": {
+   "en": "to cover",
+   "presente": [
+    "copra",
+    "copra",
+    "copra",
+    "copriamo",
+    "copriate",
+    "coprano"
+   ],
+   "imperfetto": [
+    "coprissi",
+    "coprissi",
+    "coprisse",
+    "coprissimo",
+    "copriste",
+    "coprissero"
+   ],
+   "aux": "avere",
+   "part": "coperto",
+   "partForms": {
+    "ms": "coperto",
+    "fs": "coperta",
+    "mp": "coperti",
+    "fp": "coperte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "credere": {
+   "en": "to believe",
+   "presente": [
+    "creda",
+    "creda",
+    "creda",
+    "crediamo",
+    "crediate",
+    "credano"
+   ],
+   "imperfetto": [
+    "credessi",
+    "credessi",
+    "credesse",
+    "credessimo",
+    "credeste",
+    "credessero"
+   ],
+   "aux": "avere",
+   "part": "creduto",
+   "partForms": {
+    "ms": "creduto",
+    "fs": "creduta",
+    "mp": "creduti",
+    "fp": "credute"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "dare": {
+   "en": "to give",
+   "presente": [
+    "dia",
+    "dia",
+    "dia",
+    "diamo",
+    "diate",
+    "diano"
+   ],
+   "imperfetto": [
+    "dessi",
+    "dessi",
+    "desse",
+    "dessimo",
+    "deste",
+    "dessero"
+   ],
+   "aux": "avere",
+   "part": "dato",
+   "partForms": {
+    "ms": "dato",
+    "fs": "data",
+    "mp": "dati",
+    "fp": "date"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "decidere": {
+   "en": "to decide",
+   "presente": [
+    "decida",
+    "decida",
+    "decida",
+    "decidiamo",
+    "decidiate",
+    "decidano"
+   ],
+   "imperfetto": [
+    "decidessi",
+    "decidessi",
+    "decidesse",
+    "decidessimo",
+    "decideste",
+    "decidessero"
+   ],
+   "aux": "avere",
+   "part": "deciso",
+   "partForms": {
+    "ms": "deciso",
+    "fs": "decisa",
+    "mp": "decisi",
+    "fp": "decise"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "dire": {
+   "en": "to say",
+   "presente": [
+    "dica",
+    "dica",
+    "dica",
+    "diciamo",
+    "diciate",
+    "dicano"
+   ],
+   "imperfetto": [
+    "dicessi",
+    "dicessi",
+    "dicesse",
+    "dicessimo",
+    "diceste",
+    "dicessero"
+   ],
+   "aux": "avere",
+   "part": "detto",
+   "partForms": {
+    "ms": "detto",
+    "fs": "detta",
+    "mp": "detti",
+    "fp": "dette"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "discutere": {
+   "en": "to discuss",
+   "presente": [
+    "discuta",
+    "discuta",
+    "discuta",
+    "discutiamo",
+    "discutiate",
+    "discutano"
+   ],
+   "imperfetto": [
+    "discutessi",
+    "discutessi",
+    "discutesse",
+    "discutessimo",
+    "discuteste",
+    "discutessero"
+   ],
+   "aux": "avere",
+   "part": "discusso",
+   "partForms": {
+    "ms": "discusso",
+    "fs": "discussa",
+    "mp": "discussi",
+    "fp": "discusse"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "dormire": {
+   "en": "to sleep",
+   "presente": [
+    "dorma",
+    "dorma",
+    "dorma",
+    "dormiamo",
+    "dormiate",
+    "dormano"
+   ],
+   "imperfetto": [
+    "dormissi",
+    "dormissi",
+    "dormisse",
+    "dormissimo",
+    "dormiste",
+    "dormissero"
+   ],
+   "aux": "avere",
+   "part": "dormito",
+   "partForms": {
+    "ms": "dormito",
+    "fs": "dormita",
+    "mp": "dormiti",
+    "fp": "dormite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "dovere": {
+   "en": "to have to",
+   "presente": [
+    "debba",
+    "debba",
+    "debba",
+    "dobbiamo",
+    "dobbiate",
+    "debbano"
+   ],
+   "imperfetto": [
+    "dovessi",
+    "dovessi",
+    "dovesse",
+    "dovessimo",
+    "doveste",
+    "dovessero"
+   ],
+   "aux": "avere",
+   "part": "dovuto",
+   "partForms": {
+    "ms": "dovuto",
+    "fs": "dovuta",
+    "mp": "dovuti",
+    "fp": "dovute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "entrare": {
+   "en": "to enter, to go in",
+   "presente": [
+    "entri",
+    "entri",
+    "entri",
+    "entriamo",
+    "entriate",
+    "entrino"
+   ],
+   "imperfetto": [
+    "entrassi",
+    "entrassi",
+    "entrasse",
+    "entrassimo",
+    "entraste",
+    "entrassero"
+   ],
+   "aux": "essere",
+   "part": "entrato",
+   "partForms": {
+    "ms": "entrato",
+    "fs": "entrata",
+    "mp": "entrati",
+    "fp": "entrate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "essere": {
+   "en": "to be",
+   "presente": [
+    "sia",
+    "sia",
+    "sia",
+    "siamo",
+    "siate",
+    "siano"
+   ],
+   "imperfetto": [
+    "fossi",
+    "fossi",
+    "fosse",
+    "fossimo",
+    "foste",
+    "fossero"
+   ],
+   "aux": "essere",
+   "part": "stato",
+   "partForms": {
+    "ms": "stato",
+    "fs": "stata",
+    "mp": "stati",
+    "fp": "state"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "evolversi": {
+   "en": "to evolve",
+   "presente": [
+    "mi evolva",
+    "ti evolva",
+    "si evolva",
+    "ci evolviamo",
+    "vi evolviate",
+    "si evolvano"
+   ],
+   "imperfetto": [
+    "mi evolvessi",
+    "ti evolvessi",
+    "si evolvesse",
+    "ci evolvessimo",
+    "vi evolveste",
+    "si evolvessero"
+   ],
+   "aux": "essere",
+   "part": "evoluto",
+   "partForms": {
+    "ms": "evoluto",
+    "fs": "evoluta",
+    "mp": "evoluti",
+    "fp": "evolute"
+   },
+   "reflexive": true,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "fare": {
+   "en": "to do / make",
+   "presente": [
+    "faccia",
+    "faccia",
+    "faccia",
+    "facciamo",
+    "facciate",
+    "facciano"
+   ],
+   "imperfetto": [
+    "facessi",
+    "facessi",
+    "facesse",
+    "facessimo",
+    "faceste",
+    "facessero"
+   ],
+   "aux": "avere",
+   "part": "fatto",
+   "partForms": {
+    "ms": "fatto",
+    "fs": "fatta",
+    "mp": "fatti",
+    "fp": "fatte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "fermarsi": {
+   "en": "to stop (oneself)",
+   "presente": [
+    "mi fermi",
+    "ti fermi",
+    "si fermi",
+    "ci fermiamo",
+    "vi fermiate",
+    "si fermino"
+   ],
+   "imperfetto": [
+    "mi fermassi",
+    "ti fermassi",
+    "si fermasse",
+    "ci fermassimo",
+    "vi fermaste",
+    "si fermassero"
+   ],
+   "aux": "essere",
+   "part": "fermato",
+   "partForms": {
+    "ms": "fermato",
+    "fs": "fermata",
+    "mp": "fermati",
+    "fp": "fermate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "finire": {
+   "en": "to finish",
+   "presente": [
+    "finisca",
+    "finisca",
+    "finisca",
+    "finiamo",
+    "finiate",
+    "finiscano"
+   ],
+   "imperfetto": [
+    "finissi",
+    "finissi",
+    "finisse",
+    "finissimo",
+    "finiste",
+    "finissero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "finito",
+   "partForms": {
+    "ms": "finito",
+    "fs": "finita",
+    "mp": "finiti",
+    "fp": "finite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "firmare": {
+   "en": "to sign",
+   "presente": [
+    "firmi",
+    "firmi",
+    "firmi",
+    "firmiamo",
+    "firmiate",
+    "firmino"
+   ],
+   "imperfetto": [
+    "firmassi",
+    "firmassi",
+    "firmasse",
+    "firmassimo",
+    "firmaste",
+    "firmassero"
+   ],
+   "aux": "avere",
+   "part": "firmato",
+   "partForms": {
+    "ms": "firmato",
+    "fs": "firmata",
+    "mp": "firmati",
+    "fp": "firmate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "funzionare": {
+   "en": "to work, to function",
+   "presente": [
+    "funzioni",
+    "funzioni",
+    "funzioni",
+    "funzioniamo",
+    "funzioniate",
+    "funzionino"
+   ],
+   "imperfetto": [
+    "funzionassi",
+    "funzionassi",
+    "funzionasse",
+    "funzionassimo",
+    "funzionaste",
+    "funzionassero"
+   ],
+   "aux": "avere",
+   "part": "funzionato",
+   "partForms": {
+    "ms": "funzionato",
+    "fs": "funzionata",
+    "mp": "funzionati",
+    "fp": "funzionate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "giudicare": {
+   "en": "to judge",
+   "presente": [
+    "giudichi",
+    "giudichi",
+    "giudichi",
+    "giudichiamo",
+    "giudichiate",
+    "giudichino"
+   ],
+   "imperfetto": [
+    "giudicassi",
+    "giudicassi",
+    "giudicasse",
+    "giudicassimo",
+    "giudicaste",
+    "giudicassero"
+   ],
+   "aux": "avere",
+   "part": "giudicato",
+   "partForms": {
+    "ms": "giudicato",
+    "fs": "giudicata",
+    "mp": "giudicati",
+    "fp": "giudicate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "guardare": {
+   "en": "to watch / look",
+   "presente": [
+    "guardi",
+    "guardi",
+    "guardi",
+    "guardiamo",
+    "guardiate",
+    "guardino"
+   ],
+   "imperfetto": [
+    "guardassi",
+    "guardassi",
+    "guardasse",
+    "guardassimo",
+    "guardaste",
+    "guardassero"
+   ],
+   "aux": "avere",
+   "part": "guardato",
+   "partForms": {
+    "ms": "guardato",
+    "fs": "guardata",
+    "mp": "guardati",
+    "fp": "guardate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "imparare": {
+   "en": "to learn",
+   "presente": [
+    "impari",
+    "impari",
+    "impari",
+    "impariamo",
+    "impariate",
+    "imparino"
+   ],
+   "imperfetto": [
+    "imparassi",
+    "imparassi",
+    "imparasse",
+    "imparassimo",
+    "imparaste",
+    "imparassero"
+   ],
+   "aux": "avere",
+   "part": "imparato",
+   "partForms": {
+    "ms": "imparato",
+    "fs": "imparata",
+    "mp": "imparati",
+    "fp": "imparate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "imporre": {
+   "en": "to impose",
+   "presente": [
+    "imponga",
+    "imponga",
+    "imponga",
+    "imponiamo",
+    "imponiate",
+    "impongano"
+   ],
+   "imperfetto": [
+    "imponessi",
+    "imponessi",
+    "imponesse",
+    "imponessimo",
+    "imponeste",
+    "imponessero"
+   ],
+   "aux": "avere",
+   "part": "imposto",
+   "partForms": {
+    "ms": "imposto",
+    "fs": "imposta",
+    "mp": "imposti",
+    "fp": "imposte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "influenzare": {
+   "en": "to influence",
+   "presente": [
+    "influenzi",
+    "influenzi",
+    "influenzi",
+    "influenziamo",
+    "influenziate",
+    "influenzino"
+   ],
+   "imperfetto": [
+    "influenzassi",
+    "influenzassi",
+    "influenzasse",
+    "influenzassimo",
+    "influenzaste",
+    "influenzassero"
+   ],
+   "aux": "avere",
+   "part": "influenzato",
+   "partForms": {
+    "ms": "influenzato",
+    "fs": "influenzata",
+    "mp": "influenzati",
+    "fp": "influenzate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "interrompere": {
+   "en": "to interrupt",
+   "presente": [
+    "interrompa",
+    "interrompa",
+    "interrompa",
+    "interrompiamo",
+    "interrompiate",
+    "interrompano"
+   ],
+   "imperfetto": [
+    "interrompessi",
+    "interrompessi",
+    "interrompesse",
+    "interrompessimo",
+    "interrompeste",
+    "interrompessero"
+   ],
+   "aux": "avere",
+   "part": "interrotto",
+   "partForms": {
+    "ms": "interrotto",
+    "fs": "interrotta",
+    "mp": "interrotti",
+    "fp": "interrotte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "intervenire": {
+   "en": "to intervene, to step in",
+   "presente": [
+    "intervenga",
+    "intervenga",
+    "intervenga",
+    "interveniamo",
+    "interveniate",
+    "intervengano"
+   ],
+   "imperfetto": [
+    "intervenissi",
+    "intervenissi",
+    "intervenisse",
+    "intervenissimo",
+    "interveniste",
+    "intervenissero"
+   ],
+   "aux": "essere",
+   "part": "intervenuto",
+   "partForms": {
+    "ms": "intervenuto",
+    "fs": "intervenuta",
+    "mp": "intervenuti",
+    "fp": "intervenute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "irrigidirsi": {
+   "en": "to stiffen, to tense up",
+   "presente": [
+    "mi irrigidisca",
+    "ti irrigidisca",
+    "si irrigidisca",
+    "ci irrigidiamo",
+    "vi irrigidiate",
+    "si irrigidiscano"
+   ],
+   "imperfetto": [
+    "mi irrigidissi",
+    "ti irrigidissi",
+    "si irrigidisse",
+    "ci irrigidissimo",
+    "vi irrigidiste",
+    "si irrigidissero"
+   ],
+   "aux": "essere",
+   "part": "irrigidito",
+   "partForms": {
+    "ms": "irrigidito",
+    "fs": "irrigidita",
+    "mp": "irrigiditi",
+    "fp": "irrigidite"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "lavorare": {
+   "en": "to work",
+   "presente": [
+    "lavori",
+    "lavori",
+    "lavori",
+    "lavoriamo",
+    "lavoriate",
+    "lavorino"
+   ],
+   "imperfetto": [
+    "lavorassi",
+    "lavorassi",
+    "lavorasse",
+    "lavorassimo",
+    "lavoraste",
+    "lavorassero"
+   ],
+   "aux": "avere",
+   "part": "lavorato",
+   "partForms": {
+    "ms": "lavorato",
+    "fs": "lavorata",
+    "mp": "lavorati",
+    "fp": "lavorate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "leggere": {
+   "en": "to read",
+   "presente": [
+    "legga",
+    "legga",
+    "legga",
+    "leggiamo",
+    "leggiate",
+    "leggano"
+   ],
+   "imperfetto": [
+    "leggessi",
+    "leggessi",
+    "leggesse",
+    "leggessimo",
+    "leggeste",
+    "leggessero"
+   ],
+   "aux": "avere",
+   "part": "letto",
+   "partForms": {
+    "ms": "letto",
+    "fs": "letta",
+    "mp": "letti",
+    "fp": "lette"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "mandare": {
+   "en": "to send",
+   "presente": [
+    "mandi",
+    "mandi",
+    "mandi",
+    "mandiamo",
+    "mandiate",
+    "mandino"
+   ],
+   "imperfetto": [
+    "mandassi",
+    "mandassi",
+    "mandasse",
+    "mandassimo",
+    "mandaste",
+    "mandassero"
+   ],
+   "aux": "avere",
+   "part": "mandato",
+   "partForms": {
+    "ms": "mandato",
+    "fs": "mandata",
+    "mp": "mandati",
+    "fp": "mandate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "mangiare": {
+   "en": "to eat",
+   "presente": [
+    "mangi",
+    "mangi",
+    "mangi",
+    "mangiamo",
+    "mangiate",
+    "mangino"
+   ],
+   "imperfetto": [
+    "mangiassi",
+    "mangiassi",
+    "mangiasse",
+    "mangiassimo",
+    "mangiaste",
+    "mangiassero"
+   ],
+   "aux": "avere",
+   "part": "mangiato",
+   "partForms": {
+    "ms": "mangiato",
+    "fs": "mangiata",
+    "mp": "mangiati",
+    "fp": "mangiate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "mettere": {
+   "en": "to put",
+   "presente": [
+    "metta",
+    "metta",
+    "metta",
+    "mettiamo",
+    "mettiate",
+    "mettano"
+   ],
+   "imperfetto": [
+    "mettessi",
+    "mettessi",
+    "mettesse",
+    "mettessimo",
+    "metteste",
+    "mettessero"
+   ],
+   "aux": "avere",
+   "part": "messo",
+   "partForms": {
+    "ms": "messo",
+    "fs": "messa",
+    "mp": "messi",
+    "fp": "messe"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "modificare": {
+   "en": "to modify",
+   "presente": [
+    "modifichi",
+    "modifichi",
+    "modifichi",
+    "modifichiamo",
+    "modifichiate",
+    "modifichino"
+   ],
+   "imperfetto": [
+    "modificassi",
+    "modificassi",
+    "modificasse",
+    "modificassimo",
+    "modificaste",
+    "modificassero"
+   ],
+   "aux": "avere",
+   "part": "modificato",
+   "partForms": {
+    "ms": "modificato",
+    "fs": "modificata",
+    "mp": "modificati",
+    "fp": "modificate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "offendere": {
+   "en": "to offend",
+   "presente": [
+    "offenda",
+    "offenda",
+    "offenda",
+    "offendiamo",
+    "offendiate",
+    "offendano"
+   ],
+   "imperfetto": [
+    "offendessi",
+    "offendessi",
+    "offendesse",
+    "offendessimo",
+    "offendeste",
+    "offendessero"
+   ],
+   "aux": "avere",
+   "part": "offeso",
+   "partForms": {
+    "ms": "offeso",
+    "fs": "offesa",
+    "mp": "offesi",
+    "fp": "offese"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "organizzarsi": {
+   "en": "to get organised",
+   "presente": [
+    "mi organizzi",
+    "ti organizzi",
+    "si organizzi",
+    "ci organizziamo",
+    "vi organizziate",
+    "si organizzino"
+   ],
+   "imperfetto": [
+    "mi organizzassi",
+    "ti organizzassi",
+    "si organizzasse",
+    "ci organizzassimo",
+    "vi organizzaste",
+    "si organizzassero"
+   ],
+   "aux": "essere",
+   "part": "organizzato",
+   "partForms": {
+    "ms": "organizzato",
+    "fs": "organizzata",
+    "mp": "organizzati",
+    "fp": "organizzate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "parlare": {
+   "en": "to speak",
+   "presente": [
+    "parli",
+    "parli",
+    "parli",
+    "parliamo",
+    "parliate",
+    "parlino"
+   ],
+   "imperfetto": [
+    "parlassi",
+    "parlassi",
+    "parlasse",
+    "parlassimo",
+    "parlaste",
+    "parlassero"
+   ],
+   "aux": "avere",
+   "part": "parlato",
+   "partForms": {
+    "ms": "parlato",
+    "fs": "parlata",
+    "mp": "parlati",
+    "fp": "parlate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "partecipare": {
+   "en": "to take part, to participate",
+   "presente": [
+    "partecipi",
+    "partecipi",
+    "partecipi",
+    "partecipiamo",
+    "partecipiate",
+    "partecipino"
+   ],
+   "imperfetto": [
+    "partecipassi",
+    "partecipassi",
+    "partecipasse",
+    "partecipassimo",
+    "partecipaste",
+    "partecipassero"
+   ],
+   "aux": "avere",
+   "part": "partecipato",
+   "partForms": {
+    "ms": "partecipato",
+    "fs": "partecipata",
+    "mp": "partecipati",
+    "fp": "partecipate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "partire": {
+   "en": "to leave",
+   "presente": [
+    "parta",
+    "parta",
+    "parta",
+    "partiamo",
+    "partiate",
+    "partano"
+   ],
+   "imperfetto": [
+    "partissi",
+    "partissi",
+    "partisse",
+    "partissimo",
+    "partiste",
+    "partissero"
+   ],
+   "aux": "essere",
+   "part": "partito",
+   "partForms": {
+    "ms": "partito",
+    "fs": "partita",
+    "mp": "partiti",
+    "fp": "partite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "pensare": {
+   "en": "to think",
+   "presente": [
+    "pensi",
+    "pensi",
+    "pensi",
+    "pensiamo",
+    "pensiate",
+    "pensino"
+   ],
+   "imperfetto": [
+    "pensassi",
+    "pensassi",
+    "pensasse",
+    "pensassimo",
+    "pensaste",
+    "pensassero"
+   ],
+   "aux": "avere",
+   "part": "pensato",
+   "partForms": {
+    "ms": "pensato",
+    "fs": "pensata",
+    "mp": "pensati",
+    "fp": "pensate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "piacere": {
+   "en": "to be pleasing, to like",
+   "presente": [
+    "piaccia",
+    "piaccia",
+    "piaccia",
+    "piacciamo",
+    "piacciate",
+    "piacciano"
+   ],
+   "imperfetto": [
+    "piacessi",
+    "piacessi",
+    "piacesse",
+    "piacessimo",
+    "piaceste",
+    "piacessero"
+   ],
+   "aux": "essere",
+   "part": "piaciuto",
+   "partForms": {
+    "ms": "piaciuto",
+    "fs": "piaciuta",
+    "mp": "piaciuti",
+    "fp": "piaciute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "portare": {
+   "en": "to bring / carry",
+   "presente": [
+    "porti",
+    "porti",
+    "porti",
+    "portiamo",
+    "portiate",
+    "portino"
+   ],
+   "imperfetto": [
+    "portassi",
+    "portassi",
+    "portasse",
+    "portassimo",
+    "portaste",
+    "portassero"
+   ],
+   "aux": "avere",
+   "part": "portato",
+   "partForms": {
+    "ms": "portato",
+    "fs": "portata",
+    "mp": "portati",
+    "fp": "portate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "potere": {
+   "en": "to be able to",
+   "presente": [
+    "possa",
+    "possa",
+    "possa",
+    "possiamo",
+    "possiate",
+    "possano"
+   ],
+   "imperfetto": [
+    "potessi",
+    "potessi",
+    "potesse",
+    "potessimo",
+    "poteste",
+    "potessero"
+   ],
+   "aux": "avere",
+   "part": "potuto",
+   "partForms": {
+    "ms": "potuto",
+    "fs": "potuta",
+    "mp": "potuti",
+    "fp": "potute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "prendere": {
+   "en": "to take",
+   "presente": [
+    "prenda",
+    "prenda",
+    "prenda",
+    "prendiamo",
+    "prendiate",
+    "prendano"
+   ],
+   "imperfetto": [
+    "prendessi",
+    "prendessi",
+    "prendesse",
+    "prendessimo",
+    "prendeste",
+    "prendessero"
+   ],
+   "aux": "avere",
+   "part": "preso",
+   "partForms": {
+    "ms": "preso",
+    "fs": "presa",
+    "mp": "presi",
+    "fp": "prese"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "prepararsi": {
+   "en": "to get ready",
+   "presente": [
+    "mi prepari",
+    "ti prepari",
+    "si prepari",
+    "ci prepariamo",
+    "vi prepariate",
+    "si preparino"
+   ],
+   "imperfetto": [
+    "mi preparassi",
+    "ti preparassi",
+    "si preparasse",
+    "ci preparassimo",
+    "vi preparaste",
+    "si preparassero"
+   ],
+   "aux": "essere",
+   "part": "preparato",
+   "partForms": {
+    "ms": "preparato",
+    "fs": "preparata",
+    "mp": "preparati",
+    "fp": "preparate"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "provare": {
+   "en": "to try",
+   "presente": [
+    "provi",
+    "provi",
+    "provi",
+    "proviamo",
+    "proviate",
+    "provino"
+   ],
+   "imperfetto": [
+    "provassi",
+    "provassi",
+    "provasse",
+    "provassimo",
+    "provaste",
+    "provassero"
+   ],
+   "aux": "avere",
+   "part": "provato",
+   "partForms": {
+    "ms": "provato",
+    "fs": "provata",
+    "mp": "provati",
+    "fp": "provate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "raccontare": {
+   "en": "to tell, to recount",
+   "presente": [
+    "racconti",
+    "racconti",
+    "racconti",
+    "raccontiamo",
+    "raccontiate",
+    "raccontino"
+   ],
+   "imperfetto": [
+    "raccontassi",
+    "raccontassi",
+    "raccontasse",
+    "raccontassimo",
+    "raccontaste",
+    "raccontassero"
+   ],
+   "aux": "avere",
+   "part": "raccontato",
+   "partForms": {
+    "ms": "raccontato",
+    "fs": "raccontata",
+    "mp": "raccontati",
+    "fp": "raccontate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "rallentare": {
+   "en": "to slow down",
+   "presente": [
+    "rallenti",
+    "rallenti",
+    "rallenti",
+    "rallentiamo",
+    "rallentiate",
+    "rallentino"
+   ],
+   "imperfetto": [
+    "rallentassi",
+    "rallentassi",
+    "rallentasse",
+    "rallentassimo",
+    "rallentaste",
+    "rallentassero"
+   ],
+   "aux": "avere",
+   "part": "rallentato",
+   "partForms": {
+    "ms": "rallentato",
+    "fs": "rallentata",
+    "mp": "rallentati",
+    "fp": "rallentate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "reagire": {
+   "en": "to react",
+   "presente": [
+    "reagisca",
+    "reagisca",
+    "reagisca",
+    "reagiamo",
+    "reagiate",
+    "reagiscano"
+   ],
+   "imperfetto": [
+    "reagissi",
+    "reagissi",
+    "reagisse",
+    "reagissimo",
+    "reagiste",
+    "reagissero"
+   ],
+   "aux": "avere",
+   "part": "reagito",
+   "partForms": {
+    "ms": "reagito",
+    "fs": "reagita",
+    "mp": "reagiti",
+    "fp": "reagite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "regolare": {
+   "en": "to regulate, to adjust",
+   "presente": [
+    "regoli",
+    "regoli",
+    "regoli",
+    "regoliamo",
+    "regoliate",
+    "regolino"
+   ],
+   "imperfetto": [
+    "regolassi",
+    "regolassi",
+    "regolasse",
+    "regolassimo",
+    "regolaste",
+    "regolassero"
+   ],
+   "aux": "avere",
+   "part": "regolato",
+   "partForms": {
+    "ms": "regolato",
+    "fs": "regolata",
+    "mp": "regolati",
+    "fp": "regolate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high",
+   "review": "also a very common adjective (\"regular\"); in Italian text the adjective is more frequent than the verb \"to regulate\". Check the source sentences before putting it in the drill."
+  },
+  "respirare": {
+   "en": "to breathe",
+   "presente": [
+    "respiri",
+    "respiri",
+    "respiri",
+    "respiriamo",
+    "respiriate",
+    "respirino"
+   ],
+   "imperfetto": [
+    "respirassi",
+    "respirassi",
+    "respirasse",
+    "respirassimo",
+    "respiraste",
+    "respirassero"
+   ],
+   "aux": "avere",
+   "part": "respirato",
+   "partForms": {
+    "ms": "respirato",
+    "fs": "respirata",
+    "mp": "respirati",
+    "fp": "respirate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "restare": {
+   "en": "to stay, to remain",
+   "presente": [
+    "resti",
+    "resti",
+    "resti",
+    "restiamo",
+    "restiate",
+    "restino"
+   ],
+   "imperfetto": [
+    "restassi",
+    "restassi",
+    "restasse",
+    "restassimo",
+    "restaste",
+    "restassero"
+   ],
+   "aux": "essere",
+   "part": "restato",
+   "partForms": {
+    "ms": "restato",
+    "fs": "restata",
+    "mp": "restati",
+    "fp": "restate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "ricominciare": {
+   "en": "to start again",
+   "presente": [
+    "ricominci",
+    "ricominci",
+    "ricominci",
+    "ricominciamo",
+    "ricominciate",
+    "ricomincino"
+   ],
+   "imperfetto": [
+    "ricominciassi",
+    "ricominciassi",
+    "ricominciasse",
+    "ricominciassimo",
+    "ricominciaste",
+    "ricominciassero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "ricominciato",
+   "partForms": {
+    "ms": "ricominciato",
+    "fs": "ricominciata",
+    "mp": "ricominciati",
+    "fp": "ricominciate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "rimanere": {
+   "en": "to remain",
+   "presente": [
+    "rimanga",
+    "rimanga",
+    "rimanga",
+    "rimaniamo",
+    "rimaniate",
+    "rimangano"
+   ],
+   "imperfetto": [
+    "rimanessi",
+    "rimanessi",
+    "rimanesse",
+    "rimanessimo",
+    "rimaneste",
+    "rimanessero"
+   ],
+   "aux": "essere",
+   "part": "rimasto",
+   "partForms": {
+    "ms": "rimasto",
+    "fs": "rimasta",
+    "mp": "rimasti",
+    "fp": "rimaste"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "rinunciare": {
+   "en": "to give up, to renounce",
+   "presente": [
+    "rinunci",
+    "rinunci",
+    "rinunci",
+    "rinunciamo",
+    "rinunciate",
+    "rinuncino"
+   ],
+   "imperfetto": [
+    "rinunciassi",
+    "rinunciassi",
+    "rinunciasse",
+    "rinunciassimo",
+    "rinunciaste",
+    "rinunciassero"
+   ],
+   "aux": "avere",
+   "part": "rinunciato",
+   "partForms": {
+    "ms": "rinunciato",
+    "fs": "rinunciata",
+    "mp": "rinunciati",
+    "fp": "rinunciate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "ripartire": {
+   "en": "to set off again, to leave again",
+   "presente": [
+    "riparta",
+    "riparta",
+    "riparta",
+    "ripartiamo",
+    "ripartiate",
+    "ripartano"
+   ],
+   "imperfetto": [
+    "ripartissi",
+    "ripartissi",
+    "ripartisse",
+    "ripartissimo",
+    "ripartiste",
+    "ripartissero"
+   ],
+   "aux": "essere",
+   "part": "ripartito",
+   "partForms": {
+    "ms": "ripartito",
+    "fs": "ripartita",
+    "mp": "ripartiti",
+    "fp": "ripartite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "ripetere": {
+   "en": "to repeat",
+   "presente": [
+    "ripeta",
+    "ripeta",
+    "ripeta",
+    "ripetiamo",
+    "ripetiate",
+    "ripetano"
+   ],
+   "imperfetto": [
+    "ripetessi",
+    "ripetessi",
+    "ripetesse",
+    "ripetessimo",
+    "ripeteste",
+    "ripetessero"
+   ],
+   "aux": "avere",
+   "part": "ripetuto",
+   "partForms": {
+    "ms": "ripetuto",
+    "fs": "ripetuta",
+    "mp": "ripetuti",
+    "fp": "ripetute"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "riposare": {
+   "en": "to rest",
+   "presente": [
+    "riposi",
+    "riposi",
+    "riposi",
+    "riposiamo",
+    "riposiate",
+    "riposino"
+   ],
+   "imperfetto": [
+    "riposassi",
+    "riposassi",
+    "riposasse",
+    "riposassimo",
+    "riposaste",
+    "riposassero"
+   ],
+   "aux": "avere",
+   "part": "riposato",
+   "partForms": {
+    "ms": "riposato",
+    "fs": "riposata",
+    "mp": "riposati",
+    "fp": "riposate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "risolvere": {
+   "en": "to solve, to resolve",
+   "presente": [
+    "risolva",
+    "risolva",
+    "risolva",
+    "risolviamo",
+    "risolviate",
+    "risolvano"
+   ],
+   "imperfetto": [
+    "risolvessi",
+    "risolvessi",
+    "risolvesse",
+    "risolvessimo",
+    "risolveste",
+    "risolvessero"
+   ],
+   "aux": "avere",
+   "part": "risolto",
+   "partForms": {
+    "ms": "risolto",
+    "fs": "risolta",
+    "mp": "risolti",
+    "fp": "risolte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "risparmiare": {
+   "en": "to save (money, effort)",
+   "presente": [
+    "risparmi",
+    "risparmi",
+    "risparmi",
+    "risparmiamo",
+    "risparmiate",
+    "risparmino"
+   ],
+   "imperfetto": [
+    "risparmiassi",
+    "risparmiassi",
+    "risparmiasse",
+    "risparmiassimo",
+    "risparmiaste",
+    "risparmiassero"
+   ],
+   "aux": "avere",
+   "part": "risparmiato",
+   "partForms": {
+    "ms": "risparmiato",
+    "fs": "risparmiata",
+    "mp": "risparmiati",
+    "fp": "risparmiate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "rispettare": {
+   "en": "to respect",
+   "presente": [
+    "rispetti",
+    "rispetti",
+    "rispetti",
+    "rispettiamo",
+    "rispettiate",
+    "rispettino"
+   ],
+   "imperfetto": [
+    "rispettassi",
+    "rispettassi",
+    "rispettasse",
+    "rispettassimo",
+    "rispettaste",
+    "rispettassero"
+   ],
+   "aux": "avere",
+   "part": "rispettato",
+   "partForms": {
+    "ms": "rispettato",
+    "fs": "rispettata",
+    "mp": "rispettati",
+    "fp": "rispettate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "rispondere": {
+   "en": "to answer",
+   "presente": [
+    "risponda",
+    "risponda",
+    "risponda",
+    "rispondiamo",
+    "rispondiate",
+    "rispondano"
+   ],
+   "imperfetto": [
+    "rispondessi",
+    "rispondessi",
+    "rispondesse",
+    "rispondessimo",
+    "rispondeste",
+    "rispondessero"
+   ],
+   "aux": "avere",
+   "part": "risposto",
+   "partForms": {
+    "ms": "risposto",
+    "fs": "risposta",
+    "mp": "risposti",
+    "fp": "risposte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "riuscire": {
+   "en": "to manage, to succeed",
+   "presente": [
+    "riesca",
+    "riesca",
+    "riesca",
+    "riusciamo",
+    "riusciate",
+    "riescano"
+   ],
+   "imperfetto": [
+    "riuscissi",
+    "riuscissi",
+    "riuscisse",
+    "riuscissimo",
+    "riusciste",
+    "riuscissero"
+   ],
+   "aux": "essere",
+   "part": "riuscito",
+   "partForms": {
+    "ms": "riuscito",
+    "fs": "riuscita",
+    "mp": "riusciti",
+    "fp": "riuscite"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "salutare": {
+   "en": "to greet, to say hello",
+   "presente": [
+    "saluti",
+    "saluti",
+    "saluti",
+    "salutiamo",
+    "salutiate",
+    "salutino"
+   ],
+   "imperfetto": [
+    "salutassi",
+    "salutassi",
+    "salutasse",
+    "salutassimo",
+    "salutaste",
+    "salutassero"
+   ],
+   "aux": "avere",
+   "part": "salutato",
+   "partForms": {
+    "ms": "salutato",
+    "fs": "salutata",
+    "mp": "salutati",
+    "fp": "salutate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "salvare": {
+   "en": "to save, to rescue",
+   "presente": [
+    "salvi",
+    "salvi",
+    "salvi",
+    "salviamo",
+    "salviate",
+    "salvino"
+   ],
+   "imperfetto": [
+    "salvassi",
+    "salvassi",
+    "salvasse",
+    "salvassimo",
+    "salvaste",
+    "salvassero"
+   ],
+   "aux": "avere",
+   "part": "salvato",
+   "partForms": {
+    "ms": "salvato",
+    "fs": "salvata",
+    "mp": "salvati",
+    "fp": "salvate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sapere": {
+   "en": "to know",
+   "presente": [
+    "sappia",
+    "sappia",
+    "sappia",
+    "sappiamo",
+    "sappiate",
+    "sappiano"
+   ],
+   "imperfetto": [
+    "sapessi",
+    "sapessi",
+    "sapesse",
+    "sapessimo",
+    "sapeste",
+    "sapessero"
+   ],
+   "aux": "avere",
+   "part": "saputo",
+   "partForms": {
+    "ms": "saputo",
+    "fs": "saputa",
+    "mp": "saputi",
+    "fp": "sapute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "scegliere": {
+   "en": "to choose",
+   "presente": [
+    "scelga",
+    "scelga",
+    "scelga",
+    "scegliamo",
+    "scegliate",
+    "scelgano"
+   ],
+   "imperfetto": [
+    "scegliessi",
+    "scegliessi",
+    "scegliesse",
+    "scegliessimo",
+    "sceglieste",
+    "scegliessero"
+   ],
+   "aux": "avere",
+   "part": "scelto",
+   "partForms": {
+    "ms": "scelto",
+    "fs": "scelta",
+    "mp": "scelti",
+    "fp": "scelte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "scrivere": {
+   "en": "to write",
+   "presente": [
+    "scriva",
+    "scriva",
+    "scriva",
+    "scriviamo",
+    "scriviate",
+    "scrivano"
+   ],
+   "imperfetto": [
+    "scrivessi",
+    "scrivessi",
+    "scrivesse",
+    "scrivessimo",
+    "scriveste",
+    "scrivessero"
+   ],
+   "aux": "avere",
+   "part": "scritto",
+   "partForms": {
+    "ms": "scritto",
+    "fs": "scritta",
+    "mp": "scritti",
+    "fp": "scritte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "seguire": {
+   "en": "to follow",
+   "presente": [
+    "segua",
+    "segua",
+    "segua",
+    "seguiamo",
+    "seguiate",
+    "seguano"
+   ],
+   "imperfetto": [
+    "seguissi",
+    "seguissi",
+    "seguisse",
+    "seguissimo",
+    "seguiste",
+    "seguissero"
+   ],
+   "aux": "avere",
+   "part": "seguito",
+   "partForms": {
+    "ms": "seguito",
+    "fs": "seguita",
+    "mp": "seguiti",
+    "fp": "seguite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sembrare": {
+   "en": "to seem",
+   "presente": [
+    "sembri",
+    "sembri",
+    "sembri",
+    "sembriamo",
+    "sembriate",
+    "sembrino"
+   ],
+   "imperfetto": [
+    "sembrassi",
+    "sembrassi",
+    "sembrasse",
+    "sembrassimo",
+    "sembraste",
+    "sembrassero"
+   ],
+   "aux": "essere",
+   "part": "sembrato",
+   "partForms": {
+    "ms": "sembrato",
+    "fs": "sembrata",
+    "mp": "sembrati",
+    "fp": "sembrate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sentire": {
+   "en": "to feel / hear",
+   "presente": [
+    "senta",
+    "senta",
+    "senta",
+    "sentiamo",
+    "sentiate",
+    "sentano"
+   ],
+   "imperfetto": [
+    "sentissi",
+    "sentissi",
+    "sentisse",
+    "sentissimo",
+    "sentiste",
+    "sentissero"
+   ],
+   "aux": "avere",
+   "part": "sentito",
+   "partForms": {
+    "ms": "sentito",
+    "fs": "sentita",
+    "mp": "sentiti",
+    "fp": "sentite"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sentirsi": {
+   "en": "to feel",
+   "presente": [
+    "mi senta",
+    "ti senta",
+    "si senta",
+    "ci sentiamo",
+    "vi sentiate",
+    "si sentano"
+   ],
+   "imperfetto": [
+    "mi sentissi",
+    "ti sentissi",
+    "si sentisse",
+    "ci sentissimo",
+    "vi sentiste",
+    "si sentissero"
+   ],
+   "aux": "essere",
+   "part": "sentito",
+   "partForms": {
+    "ms": "sentito",
+    "fs": "sentita",
+    "mp": "sentiti",
+    "fp": "sentite"
+   },
+   "reflexive": true,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sopportare": {
+   "en": "to bear, to put up with",
+   "presente": [
+    "sopporti",
+    "sopporti",
+    "sopporti",
+    "sopportiamo",
+    "sopportiate",
+    "sopportino"
+   ],
+   "imperfetto": [
+    "sopportassi",
+    "sopportassi",
+    "sopportasse",
+    "sopportassimo",
+    "sopportaste",
+    "sopportassero"
+   ],
+   "aux": "avere",
+   "part": "sopportato",
+   "partForms": {
+    "ms": "sopportato",
+    "fs": "sopportata",
+    "mp": "sopportati",
+    "fp": "sopportate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sperare": {
+   "en": "to hope",
+   "presente": [
+    "speri",
+    "speri",
+    "speri",
+    "speriamo",
+    "speriate",
+    "sperino"
+   ],
+   "imperfetto": [
+    "sperassi",
+    "sperassi",
+    "sperasse",
+    "sperassimo",
+    "speraste",
+    "sperassero"
+   ],
+   "aux": "avere",
+   "part": "sperato",
+   "partForms": {
+    "ms": "sperato",
+    "fs": "sperata",
+    "mp": "sperati",
+    "fp": "sperate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "sperimentare": {
+   "en": "to experiment, to try out",
+   "presente": [
+    "sperimenti",
+    "sperimenti",
+    "sperimenti",
+    "sperimentiamo",
+    "sperimentiate",
+    "sperimentino"
+   ],
+   "imperfetto": [
+    "sperimentassi",
+    "sperimentassi",
+    "sperimentasse",
+    "sperimentassimo",
+    "sperimentaste",
+    "sperimentassero"
+   ],
+   "aux": "avere",
+   "part": "sperimentato",
+   "partForms": {
+    "ms": "sperimentato",
+    "fs": "sperimentata",
+    "mp": "sperimentati",
+    "fp": "sperimentate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "spiegare": {
+   "en": "to explain",
+   "presente": [
+    "spieghi",
+    "spieghi",
+    "spieghi",
+    "spieghiamo",
+    "spieghiate",
+    "spieghino"
+   ],
+   "imperfetto": [
+    "spiegassi",
+    "spiegassi",
+    "spiegasse",
+    "spiegassimo",
+    "spiegaste",
+    "spiegassero"
+   ],
+   "aux": "avere",
+   "part": "spiegato",
+   "partForms": {
+    "ms": "spiegato",
+    "fs": "spiegata",
+    "mp": "spiegati",
+    "fp": "spiegate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "spingere": {
+   "en": "to push",
+   "presente": [
+    "spinga",
+    "spinga",
+    "spinga",
+    "spingiamo",
+    "spingiate",
+    "spingano"
+   ],
+   "imperfetto": [
+    "spingessi",
+    "spingessi",
+    "spingesse",
+    "spingessimo",
+    "spingeste",
+    "spingessero"
+   ],
+   "aux": "avere",
+   "part": "spinto",
+   "partForms": {
+    "ms": "spinto",
+    "fs": "spinta",
+    "mp": "spinti",
+    "fp": "spinte"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "stare": {
+   "en": "to stay / be",
+   "presente": [
+    "stia",
+    "stia",
+    "stia",
+    "stiamo",
+    "stiate",
+    "stiano"
+   ],
+   "imperfetto": [
+    "stessi",
+    "stessi",
+    "stesse",
+    "stessimo",
+    "steste",
+    "stessero"
+   ],
+   "aux": "essere",
+   "part": "stato",
+   "partForms": {
+    "ms": "stato",
+    "fs": "stata",
+    "mp": "stati",
+    "fp": "state"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "studiare": {
+   "en": "to study",
+   "presente": [
+    "studi",
+    "studi",
+    "studi",
+    "studiamo",
+    "studiate",
+    "studino"
+   ],
+   "imperfetto": [
+    "studiassi",
+    "studiassi",
+    "studiasse",
+    "studiassimo",
+    "studiaste",
+    "studiassero"
+   ],
+   "aux": "avere",
+   "part": "studiato",
+   "partForms": {
+    "ms": "studiato",
+    "fs": "studiata",
+    "mp": "studiati",
+    "fp": "studiate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "telefonare": {
+   "en": "to phone",
+   "presente": [
+    "telefoni",
+    "telefoni",
+    "telefoni",
+    "telefoniamo",
+    "telefoniate",
+    "telefonino"
+   ],
+   "imperfetto": [
+    "telefonassi",
+    "telefonassi",
+    "telefonasse",
+    "telefonassimo",
+    "telefonaste",
+    "telefonassero"
+   ],
+   "aux": "avere",
+   "part": "telefonato",
+   "partForms": {
+    "ms": "telefonato",
+    "fs": "telefonata",
+    "mp": "telefonati",
+    "fp": "telefonate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "tenere": {
+   "en": "to hold, to keep",
+   "presente": [
+    "tenga",
+    "tenga",
+    "tenga",
+    "teniamo",
+    "teniate",
+    "tengano"
+   ],
+   "imperfetto": [
+    "tenessi",
+    "tenessi",
+    "tenesse",
+    "tenessimo",
+    "teneste",
+    "tenessero"
+   ],
+   "aux": "avere",
+   "part": "tenuto",
+   "partForms": {
+    "ms": "tenuto",
+    "fs": "tenuta",
+    "mp": "tenuti",
+    "fp": "tenute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "tornare": {
+   "en": "to return, to go back",
+   "presente": [
+    "torni",
+    "torni",
+    "torni",
+    "torniamo",
+    "torniate",
+    "tornino"
+   ],
+   "imperfetto": [
+    "tornassi",
+    "tornassi",
+    "tornasse",
+    "tornassimo",
+    "tornaste",
+    "tornassero"
+   ],
+   "aux": "essere",
+   "part": "tornato",
+   "partForms": {
+    "ms": "tornato",
+    "fs": "tornata",
+    "mp": "tornati",
+    "fp": "tornate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "trovare": {
+   "en": "to find",
+   "presente": [
+    "trovi",
+    "trovi",
+    "trovi",
+    "troviamo",
+    "troviate",
+    "trovino"
+   ],
+   "imperfetto": [
+    "trovassi",
+    "trovassi",
+    "trovasse",
+    "trovassimo",
+    "trovaste",
+    "trovassero"
+   ],
+   "aux": "avere",
+   "part": "trovato",
+   "partForms": {
+    "ms": "trovato",
+    "fs": "trovata",
+    "mp": "trovati",
+    "fp": "trovate"
+   },
+   "reflexive": false,
+   "irregular": false,
+   "confidence": "high"
+  },
+  "uscire": {
+   "en": "to go out",
+   "presente": [
+    "esca",
+    "esca",
+    "esca",
+    "usciamo",
+    "usciate",
+    "escano"
+   ],
+   "imperfetto": [
+    "uscissi",
+    "uscissi",
+    "uscisse",
+    "uscissimo",
+    "usciste",
+    "uscissero"
+   ],
+   "aux": "essere",
+   "part": "uscito",
+   "partForms": {
+    "ms": "uscito",
+    "fs": "uscita",
+    "mp": "usciti",
+    "fp": "uscite"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "vedere": {
+   "en": "to see",
+   "presente": [
+    "veda",
+    "veda",
+    "veda",
+    "vediamo",
+    "vediate",
+    "vedano"
+   ],
+   "imperfetto": [
+    "vedessi",
+    "vedessi",
+    "vedesse",
+    "vedessimo",
+    "vedeste",
+    "vedessero"
+   ],
+   "aux": "avere",
+   "part": "visto",
+   "partForms": {
+    "ms": "visto",
+    "fs": "vista",
+    "mp": "visti",
+    "fp": "viste"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "venire": {
+   "en": "to come",
+   "presente": [
+    "venga",
+    "venga",
+    "venga",
+    "veniamo",
+    "veniate",
+    "vengano"
+   ],
+   "imperfetto": [
+    "venissi",
+    "venissi",
+    "venisse",
+    "venissimo",
+    "veniste",
+    "venissero"
+   ],
+   "aux": "essere",
+   "part": "venuto",
+   "partForms": {
+    "ms": "venuto",
+    "fs": "venuta",
+    "mp": "venuti",
+    "fp": "venute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "vivere": {
+   "en": "to live",
+   "presente": [
+    "viva",
+    "viva",
+    "viva",
+    "viviamo",
+    "viviate",
+    "vivano"
+   ],
+   "imperfetto": [
+    "vivessi",
+    "vivessi",
+    "vivesse",
+    "vivessimo",
+    "viveste",
+    "vivessero"
+   ],
+   "aux": [
+    "avere",
+    "essere"
+   ],
+   "part": "vissuto",
+   "partForms": {
+    "ms": "vissuto",
+    "fs": "vissuta",
+    "mp": "vissuti",
+    "fp": "vissute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  },
+  "volere": {
+   "en": "to want",
+   "presente": [
+    "voglia",
+    "voglia",
+    "voglia",
+    "vogliamo",
+    "vogliate",
+    "vogliano"
+   ],
+   "imperfetto": [
+    "volessi",
+    "volessi",
+    "volesse",
+    "volessimo",
+    "voleste",
+    "volessero"
+   ],
+   "aux": "avere",
+   "part": "voluto",
+   "partForms": {
+    "ms": "voluto",
+    "fs": "voluta",
+    "mp": "voluti",
+    "fp": "volute"
+   },
+   "reflexive": false,
+   "irregular": true,
+   "confidence": "high"
+  }
+ }
+}

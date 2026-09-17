@@ -1,0 +1,181 @@
+{
+  "pass": {
+    "handlers": true,
+    "studyResume": true,
+    "studyStop": true,
+    "verbStart": true,
+    "verbPause": true,
+    "verbStop": true,
+    "genStart": true,
+    "genPause": true,
+    "genResume": true,
+    "genStop": true
+  },
+  "result": {
+    "registered": [
+      "play",
+      "pause",
+      "stop"
+    ],
+    "studyPaused": {
+      "main": [
+        true,
+        true
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": "main",
+      "state": "paused"
+    },
+    "studyResumed": {
+      "main": [
+        true,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": "main",
+      "state": "playing"
+    },
+    "studyStopped": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": null,
+      "state": "none"
+    },
+    "verbStarted": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        true,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": "verb",
+      "state": "playing"
+    },
+    "verbPaused": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        true,
+        true
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": "verb",
+      "state": "paused"
+    },
+    "verbStopped": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": null,
+      "state": "none"
+    },
+    "genStarted": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        true,
+        false
+      ],
+      "context": "gen",
+      "state": "playing"
+    },
+    "genPaused": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        true,
+        true
+      ],
+      "context": "gen",
+      "state": "paused"
+    },
+    "genResumed": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        true,
+        false
+      ],
+      "context": "gen",
+      "state": "playing"
+    },
+    "genStopped": {
+      "main": [
+        false,
+        false
+      ],
+      "verb": [
+        false,
+        false
+      ],
+      "gen": [
+        false,
+        false
+      ],
+      "context": null,
+      "state": "none"
+    }
+  }
+}

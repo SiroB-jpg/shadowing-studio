@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
+<meta name="referrer" content="no-referrer">
+<meta name="app-version" content="1.12.0">
+<title>Italian Shadowing Studio — v1.12.0</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="description" content="Offline-first Italian shadowing practice with sentence libraries, verb drills, configurable playback, and optional generated exercises.">
+<meta name="theme-color" content="#1e2b20">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Italian Studio">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<script src="boot.js"></script>
+</head>
+<body data-screen="study">
+<div id="versionWarning" class="version-warning hidden" role="alert"></div>
+<div id="updateNotice" class="update-notice hidden" role="status" aria-live="polite"><span>A new version is ready.</span><button id="applyUpdate" class="secondary">Update now</button></div>
+<header>
+  <div class="header-inner">
+    <div class="header-brand">
+      <span id="headerMark"></span>
+    <div class="header-text">
+      <h1>Italian Shadowing Studio</h1>
+      <p class="header-sub">v1.12.0 — an About page, and quieter pauses.</p>
+    </div>
+    </div>
+    <label class="theme-toggle" title="Toggle dark mode">
+      <input type="checkbox" id="themeToggle" role="switch" aria-label="Use dark theme">
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="toggle-label">Dark mode</span>
+    </label>
+  </div>
+</header>
+
+<main>
+  <aside id="libraryPanel">
+    <div class="side-head">
+      <h2 class="nomargin">Library</h2>
+      <button id="libCollapse" class="icon ghost" title="Hide library" aria-label="Hide library"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M16.6 9.6L14 12l2.6 2.4"/></svg></button>
+    </div>
+    <div id="sideArt" class="side-art"></div>
+    <input id="search" type="search" placeholder="Search the library…" aria-label="Search the library">
+    <div id="tree" class="tree" role="navigation" aria-label="Library hierarchy"></div>
+    <div class="row mt"><button id="prevGroup" class="light">← Group</button><button id="nextGroup" class="light">Group →</button></div>
+    <hr>
+    <div class="row"><button id="showBookmarks" class="light">★ Bookmarked</button><button id="showAll" class="light">All sentences</button></div>
+    <div id="reviewView" class="review"></div>
+    <div id="stats" class="stats"></div>
+    <button id="openManage" class="secondary wide mt">Manage library</button>
+  </aside>
+
+  <section>
+    <div class="tabs desktop-tabs" role="tablist" aria-label="Application sections">
+      <button id="libShow" class="icon ghost hidden" title="Show library" aria-label="Show library"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M9.5 4.5v15"/><path d="M14 9.6L16.6 12 14 14.4"/></svg></button>
+      <button id="studyTab" class="tab active" data-panel="study" role="tab" aria-selected="true" aria-controls="study" tabindex="0">Study</button>
+      <button id="verbsTab" class="tab" data-panel="verbs" role="tab" aria-selected="false" aria-controls="verbs" tabindex="-1">Verb drill</button>
+      <button id="generateTab" class="tab" data-panel="generate" role="tab" aria-selected="false" aria-controls="generate" tabindex="-1">Generate</button>
+      <button id="settingsTab" class="tab" data-panel="settings" role="tab" aria-selected="false" aria-controls="settings" tabindex="-1">Settings</button>
+      <button id="aboutTab" class="tab" data-panel="about" role="tab" aria-selected="false" aria-controls="about" tabindex="-1">About</button>
+    </div>
+
+    <div id="study" class="panel" role="tabpanel" aria-labelledby="studyTab">
+      <div class="panel-head">
+        <div class="panel-art"></div>
+        <nav id="crumb" class="crumb" aria-label="Current position"></nav>
+        <span class="voice-chip mobile-only">Voice: <strong id="voiceChipLabel">ElevenLabs</strong></span>
+        <button class="icon ghost mobile-only" id="goToSettings" title="Settings" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.1"/><path d="M19.4 12h2.2M4.6 12H2.4M12 4.6V2.4M12 19.4v2.2M17.23 6.77l1.56-1.56M5.21 18.79l1.56-1.56M17.23 17.23l1.56 1.56M5.21 5.21l1.56 1.56"/></svg></button>
+      </div>
+
+      <p id="speechNotice" class="notice-warn hidden" role="status"></p>
+
+      <div id="viewer" class="sentences" role="region" aria-label="Study sentences"></div>
+
+      <div id="playbar" class="playbar" role="group" aria-label="Playback">
+        <button id="mainToggle" class="primary pb-start">Start</button>
+        <button id="openFocus" class="icon light pb-alt" title="Focus mode" aria-label="Focus mode"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 9V5.5A1.5 1.5 0 015.5 4H9"/><path d="M15 4h3.5A1.5 1.5 0 0120 5.5V9"/><path d="M20 15v3.5a1.5 1.5 0 01-1.5 1.5H15"/><path d="M9 20H5.5A1.5 1.5 0 014 18.5V15"/><circle cx="12" cy="12" r="2.4"/></svg></button>
+        <button id="prevSentence" class="icon light pb-prev" title="Previous sentence" aria-label="Previous sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
+        <button id="nextSentence" class="icon light pb-next" title="Next sentence" aria-label="Next sentence"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
+        <span class="playbar-fields">
+          <label class="field"><span>Repeat</span><select id="repeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+          <label class="field"><span>Speed</span><select id="rate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1.0×</option></select></label>
+          <label class="field"><span>Pause</span><select id="pause"><option value="0">none</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></label>
+          <label class="field"><span>Mode</span><select id="playMode"><option value="current">this sentence</option><option value="group" selected>this group</option><option value="chapter">this chapter</option><option value="loop-current">loop sentence</option><option value="loop-group">loop group</option><option value="loop-chapter">loop chapter</option></select></label>
+        </span>
+        <button id="studyMore" class="icon light pb-more" title="More options" aria-label="More options" aria-expanded="false" aria-controls="studyMoreMenu"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
+        <div id="studyMoreMenu" class="menu hidden">
+          <label class="field" id="displayModeField"><span>Display</span><select id="displayMode"><option value="group">group of ten</option><option value="single">one sentence</option></select></label>
+          <label class="field"><span>Translation</span><select id="showEnglish"><option value="show">show English</option><option value="hide">hide English</option></select></label>
+          <button id="hardReset" class="danger wide mt">Reset audio</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="verbs" class="panel hidden" role="tabpanel" aria-labelledby="verbsTab">
+      <div class="pane-head">
+        <div class="panel-art"></div>
+        <div class="pane-head-text">
+          <nav id="verbCrumb" class="crumb" aria-label="What you are drilling"></nav>
+        </div>
+      </div>
+
+      <div class="verb-pick">
+        <label class="field"><span>Verbs from</span><select id="verbScope"><option value="group">the current group</option><option value="chapter" selected>the current chapter</option><option value="book">the current book</option><option value="all">the whole library</option></select></label>
+        <label class="field"><span>Verb</span><select id="verbSel"></select></label>
+      </div>
+
+      <div id="verbView"></div>
+      <div id="detected" class="status" role="status" aria-live="polite" aria-atomic="true"></div>
+
+      <div id="verbBar" class="playbar" role="group" aria-label="Verb drill playback">
+        <button id="verbToggle" class="primary pb-start">Start</button>
+        <button id="prevTense" class="light pb-prev tense-btn" title="Previous tense"><span aria-hidden="true">‹</span> Tense</button>
+        <button id="nextTense" class="light pb-next tense-btn" title="Next tense">Tense <span aria-hidden="true">›</span></button>
+        <span class="playbar-fields">
+          <label class="field"><span>Repeat</span><select id="verbRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option value="infinite">∞ loop</option></select></label>
+          <label class="field"><span>Speed</span><select id="verbRate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1.0×</option></select></label>
+          <label class="field"><span>Pause</span><select id="verbPause"><option value="0">none</option><option value="800" selected>short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></label>
+          <label class="field"><span>Mode</span><select id="verbMode"><option value="once">this tense</option><option value="looptense">loop this tense</option><option value="loopverb">this whole verb</option><option value="nextverb">on through the verbs</option><option value="loopverbs">loop the verbs</option></select></label>
+        </span>
+        <button id="verbMore" class="icon light pb-more" title="More options" aria-label="More options" aria-expanded="false" aria-controls="verbMoreMenu"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="currentColor" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="5.2" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.8" cy="12" r="1.5"/></svg></button>
+        <div id="verbMoreMenu" class="menu hidden">
+          <p class="small nomargin">Download the conjugation audio for every detected verb, so the drill runs without the network.</p>
+          <button id="verbPreloadBtn" class="ok wide mt">Pre-download verb audio</button>
+          <button id="verbPreloadCancel" class="danger wide mt hidden">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="generate" class="panel hidden" role="tabpanel" aria-labelledby="generateTab">
+      <div class="pane-head">
+        <div id="genArt" class="gen-art"></div>
+        <div class="pane-head-text">
+      <h2>Generate sentences</h2>
+      <p class="small">Enter a word or expression you want to shadow. The sentences are written into the standard corpus template — the same columns as your subjunctive and pronominal-verb CSVs — then read back through the ordinary importer, so they behave exactly like hand-made material. Set your generator up under Settings first.</p>
+        </div>
+      </div>
+      <div class="grid">
+        <div><label for="genWord">Target word or expression</label><input id="genWord" placeholder="e.g. farcela, magari, riuscire a"></div>
+        <div><label for="genCount">How many sentences</label><select id="genCount"><option>10</option><option selected>20</option><option>30</option><option>50</option></select></div>
+        <div><label for="genTense">Tense / mood</label><select id="genTense">
+          <option value="mixed" selected>mixed — natural spread</option>
+          <option value="presente indicativo">presente indicativo</option>
+          <option value="passato prossimo">passato prossimo</option>
+          <option value="imperfetto indicativo">imperfetto indicativo</option>
+          <option value="futuro semplice">futuro semplice</option>
+          <option value="condizionale presente">condizionale presente</option>
+          <option value="condizionale passato">condizionale passato</option>
+          <option value="congiuntivo presente">congiuntivo presente</option>
+          <option value="congiuntivo passato">congiuntivo passato</option>
+          <option value="congiuntivo imperfetto">congiuntivo imperfetto</option>
+          <option value="congiuntivo trapassato">congiuntivo trapassato</option>
+          <option value="imperativo">imperativo</option>
+          <option value="infinito, gerundio or participio">infinito / gerundio / participio</option>
+        </select></div>
+        <div><label for="genRegister">Register</label><select id="genRegister">
+          <option value="neutral" selected>neutral everyday</option>
+          <option value="colloquial">colloquial spoken</option>
+          <option value="formal">formal / professional</option>
+          <option value="literary">written / literary</option>
+        </select></div>
+        <div><label for="genEnglish">English translations</label><select id="genEnglish"><option value="yes" selected>include</option><option value="no">Italian only</option></select></div>
+        <div><label for="genChapter">Chapter name</label><input id="genChapter" placeholder="defaults to the target word"></div>
+      </div>
+      <div class="controls">
+        <button id="genBtn" class="ok">Generate</button>
+        <button id="genCancel" class="danger hidden">Cancel</button>
+        <button id="genSave">Save to library</button>
+        <button id="genDownload" class="secondary">Download CSV</button>
+      </div>
+      <div class="small">Shadow the set here first, then save the ones worth keeping. Saved sets land in the book <strong>Generated</strong>, one chapter per target word. AI Italian is usually sound but not guaranteed.</div>
+      <div id="genStatus" class="status" role="status" aria-live="polite" aria-atomic="true">Nothing generated yet.</div>
+
+      <div id="genPlayback" class="hidden">
+        <hr>
+        <div class="small">Playback uses the same bar as Study, at the foot of this panel — one repeat count, one speed, one pause, wherever you are. A generated set is one flat set rather than a book of chapters, so <strong>this group</strong> plays the current ten and <strong>this whole set</strong> plays them all. Tap a sentence to jump to it. ✕ Drop removes one from the set before saving.</div>
+      </div>
+      <div id="genCards" role="region" aria-label="Generated sentences"></div>
+    </div>
+
+    <div id="settings" class="panel hidden" role="tabpanel" aria-labelledby="settingsTab">
+      <div class="pane-head">
+        <div class="panel-art"></div>
+        <div class="pane-head-text"><h2>Settings</h2></div>
+      </div>
+      <div class="status mt" id="relaySection">
+        <h3>Relay connection</h3>
+        <p class="small">One address and one passphrase power <strong>both</strong> the ElevenLabs voice and the sentence generator. Set them here once and both work. Leave them empty and both fall back: sentences play in the system voice, and Generate is unavailable. No provider key is ever stored in this browser.</p>
+        <p id="relayState" class="notice-warn" role="status"></p>
+        <div class="grid">
+          <div><label for="relayUrl">Relay address</label><input id="relayUrl" type="url" inputmode="url" autocomplete="url" autocapitalize="none" spellcheck="false" placeholder="https://…workers.dev"></div>
+          <div><label for="relayToken">Passphrase</label><input id="relayToken" type="password" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+          <div><label for="saveAi">Remember address</label><select id="saveAi"><option value="no">do not save</option><option value="yes">save address on this device</option></select></div>
+        </div>
+        <label class="checkline" for="rememberToken"><input type="checkbox" id="rememberToken"> <span>Remember the passphrase on this device</span></label>
+        <p class="small nomargin">Leave this unticked on a shared or public computer: the passphrase then lasts only until you close the tab. Tick it on your own phone, tablet or laptop, or you will have to type it again every time the app is launched from the Home Screen.</p>
+        <div class="row mt"><button id="saveAiBtn" class="ok">Save</button><button id="testRelayBtn" class="secondary">Test connection</button><button id="clearAiBtn" class="danger">Clear</button></div>
+      </div>
+
+      <label for="voiceMode">Voice</label>
+      <select id="voiceMode"><option value="system" selected>System voice: Alice</option><option value="eleven">ElevenLabs</option></select>
+      <div id="elevenPanel" class="status mt">
+        <h3>ElevenLabs voice</h3>
+        <p id="premiumNotice" class="notice-warn hidden" role="status"></p>
+        <div class="grid">
+          <div><label for="voiceId">Voice ID</label><input id="voiceId" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
+          <div><label for="model">Model</label><select id="model"><option value="eleven_multilingual_v2">eleven_multilingual_v2</option><option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option></select></div>
+        </div>
+        <div class="row mt"><button id="saveElevenBtn" class="secondary">Save voice settings</button><button id="clearElevenBtn" class="danger">Clear voice settings</button></div>
+        <hr>
+        <h3>Pre-download audio</h3>
+        <p class="small">Records the chosen sentences once so they play instantly and work offline. Large scopes take a while — the relay is rate limited, so downloads are paced deliberately.</p>
+        <div class="preloadRow"><div><label for="preloadScope">Scope</label><select id="preloadScope"><option value="group">current group</option><option value="chapter" selected>current chapter</option><option value="book">current book</option><option value="all">whole library</option></select></div><div class="preloadBtns"><button id="preloadBtn" class="ok">Pre-download audio</button><button id="preloadCancel" class="danger hidden">Cancel</button></div></div>
+      </div>
+      <div class="status mt">
+        <h3>Sentence generator</h3>
+        <p class="small">Generate builds new sentences around a word you choose. Your app asks your own relay, and the relay asks Google. It uses the same relay address and passphrase set above; there is nothing further to configure here. No Google key is ever stored in this browser.</p>
+      </div>
+    </div>
+
+
+    <div id="about" class="panel hidden" role="tabpanel" aria-labelledby="aboutTab">
+      <div class="pane-head">
+        <div class="panel-art"></div>
+        <div class="pane-head-text">
+          <h2>About Italian Shadowing Studio</h2>
+        </div>
+      </div>
+
+      <div class="prose">
+        <h3>What is shadowing?</h3>
+        <p>Shadowing is a way of practising spoken language by listening closely to a model and speaking along with it, following just behind the speaker.</p>
+        <p>Rather than simply listening to a sentence and repeating it afterwards, you try to reproduce what you hear as you hear it: the words, sounds, stress, rhythm, phrasing and intonation.</p>
+        <p>This brings listening and speaking together. You train your ear to hear Italian accurately while training your voice to produce it.</p>
+
+        <h3>From knowing Italian to speaking Italian</h3>
+        <p>Understanding a language and being able to speak it freely are not quite the same skill.</p>
+        <p>You may know a word or grammatical structure perfectly well, yet still have to stop and think before you can use it. Shadowing helps turn things you know into things you can do.</p>
+        <p>Through repeated listening and speaking, words, phrases and grammatical structures become increasingly familiar. Instead of having to build every sentence consciously, common patterns begin to come to you more readily.</p>
+        <p>The aim is to internalise the language: to absorb its sounds, structures and patterns until producing them becomes increasingly natural and automatic.</p>
+
+        <h3>Practise language like a musician</h3>
+        <p>There is a close parallel between shadowing and the way a musician practises.</p>
+        <p>A musician does not learn a difficult passage simply by understanding the notes. The passage has to be repeated. It may be slowed down, broken into smaller parts and practised again and again.</p>
+        <p>Gradually, something changes. What first required intense concentration becomes easier. The music is absorbed by the brain and the body. The fingers learn the movements, the ear anticipates the sounds, and eventually the passage can flow without every action having to be consciously directed.</p>
+        <p>Shadowing approaches spoken language in much the same way.</p>
+        <p>A new Italian structure may at first feel awkward and require conscious thought. Through repeated listening and speaking, its words, sounds and patterns become increasingly absorbed by the brain and body. The mouth becomes accustomed to producing them, the ear becomes accustomed to hearing them, and the structure itself becomes familiar.</p>
+        <p>With enough good practice, thought becomes action, and action becomes flow.</p>
+
+        <h3>Why this app?</h3>
+        <p>Italian Shadowing Studio is designed as a practice room for spoken Italian.</p>
+        <p>It lets you work with small, useful pieces of language: slowing them down, repeating them, adding pauses and returning to them until they become comfortable.</p>
+        <p>The purpose is not to memorise hundreds of sentences. The sentences are models through which you practise the building blocks of the language. As words and structures recur in different combinations, they become more deeply internalised and increasingly available when you want to speak for yourself.</p>
+        <p>Like musical practice, repetition should not be mindless. Listen carefully. Notice what is difficult. Slow it down when necessary. Repeat it. Then try it again at a natural pace.</p>
+
+        <h3>Where does shadowing come from?</h3>
+        <p>Shadowing has its roots in research into speech and in interpreter training, where listening and speaking at the same time are essential skills. It was later developed as a method for second-language learning and has been particularly influential in language teaching in Japan.</p>
+        <p>Today, shadowing is used to develop closer listening, clearer pronunciation, more natural rhythm and greater ease in producing spoken language.</p>
+
+        <p class="motto-lead">The philosophy behind Italian Shadowing Studio can be summed up simply:</p>
+        <p class="motto">Listen. Understand. Imitate. Repeat. Internalise. Flow.</p>
+        <p>The goal is not to become good at repeating recordings.</p>
+        <p>The goal is to practise Italian until its sounds and structures become part of you, and increasingly available when you speak.</p>
+      </div>
+    </div>
+
+    <div id="status" class="status" role="status" aria-live="polite" aria-atomic="true">Ready.</div>
+  </section>
+</main>
+
+<nav class="mobile-nav" aria-label="Main navigation">
+  <button class="mobile-nav-btn" data-screen="library" aria-label="Library"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3.5" y="4.5" width="4.5" height="15" rx="1"/><rect x="9.5" y="4.5" width="4.5" height="15" rx="1"/><path d="M16.4 6.1l3.6 13.1"/></svg><span>Library</span></button>
+  <button class="mobile-nav-btn active" data-screen="study" aria-label="Study" aria-current="page"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 14.5V12a8 8 0 0116 0v2.5"/><rect x="3" y="14" width="4.2" height="6" rx="2"/><rect x="16.8" y="14" width="4.2" height="6" rx="2"/></svg><span>Study</span></button>
+  <button class="mobile-nav-btn" data-screen="verbs" aria-label="Verbs"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="4.5" width="18" height="15" rx="2.5"/><path d="M3 10h18M9.5 10v9.5"/></svg><span>Verbs</span></button>
+  <button class="mobile-nav-btn" data-screen="generate" aria-label="Generate sentences"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M11 4l1.7 4.3L17 10l-4.3 1.7L11 16l-1.7-4.3L5 10l4.3-1.7z"/><path d="M17.5 14.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"/></svg><span>Generate</span></button>
+  <button class="mobile-nav-btn" data-screen="settings" aria-label="Settings"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="7.4"/><circle cx="12" cy="12" r="3.1"/><path d="M19.4 12h2.2M4.6 12H2.4M12 4.6V2.4M12 19.4v2.2M17.23 6.77l1.56-1.56M5.21 18.79l1.56-1.56M17.23 17.23l1.56 1.56M5.21 5.21l1.56 1.56"/></svg><span>Settings</span></button>
+  <button class="mobile-nav-btn" data-screen="about" aria-label="About shadowing"><svg class="ic" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5"/><path d="M12 7.6v.9"/></svg><span>About</span></button>
+</nav>
+
+
+<div id="focus" class="focus hidden" role="dialog" aria-modal="true" aria-label="Focus mode" aria-hidden="true">
+  <header class="focus-head">
+    <div class="focus-where"><span id="focusCrumb"></span></div>
+    <div class="focus-pos"><span id="focusPos"></span></div>
+    <button id="closeFocus" class="focus-exit" title="Leave focus mode"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.4 6.4l11.2 11.2M17.6 6.4L6.4 17.6"/></svg><span>Exit</span></button>
+  </header>
+
+  <div class="focus-body" role="document">
+    <p id="focusNum" class="focus-num"></p>
+    <p id="focusItalian" class="focus-italian"></p>
+    <p id="focusEnglish" class="focus-english"></p>
+  </div>
+
+  <div class="focus-reps" role="status" aria-live="polite" aria-atomic="true">
+    <span id="focusRepLabel" class="focus-rep-label"></span>
+    <span id="focusDots" class="focus-dots" aria-hidden="true"></span>
+  </div>
+
+  <div class="focus-controls">
+    <button id="focusPrev" class="focus-side" title="Previous sentence" aria-label="Previous sentence"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.5 5.5v13"/><path d="M19 6.2v11.6L10 12z"/></svg></button>
+    <button id="focusToggle" class="focus-play" aria-label="Play"><svg class="ic" viewBox="0 0 24 24" width="40" height="40" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M8 5.2v13.6L19 12z"/></svg></button>
+    <button id="focusNext" class="focus-side" title="Next sentence" aria-label="Next sentence"><svg class="ic" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17.5 5.5v13"/><path d="M5 6.2v11.6L14 12z"/></svg></button>
+  </div>
+
+  <footer class="focus-foot">
+    <label class="field"><span>Speed</span><select id="focusRate"><option value="0.5">0.5×</option><option value="0.6">0.6×</option><option value="0.7">0.7×</option><option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1">1.0×</option></select></label>
+    <label class="field"><span>Pause</span><select id="focusPause"><option value="0">none</option><option value="800">short</option><option value="1800">medium</option><option value="3200">long</option><option value="5000">extra long</option></select></label>
+    <label class="field"><span>Repeat</span><select id="focusRepeat"><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></label>
+    <label class="field"><span>Translation</span><select id="focusEnglishMode"><option value="show">show</option><option value="hide">hide</option></select></label>
+  </footer>
+</div>
+
+<div id="manageModal" class="modalwrap" role="dialog" aria-modal="true" aria-labelledby="manageTitle" aria-hidden="true">
+  <div class="modal">
+    <div class="row"><h2 id="manageTitle" class="nomargin" tabindex="-1">Manage library</h2><button id="closeManage" class="secondary close">Close</button></div>
+    <p class="small">Importing, exporting and naming. None of this belongs on the study screen, so it lives here.</p>
+    <hr>
+    <h3>Books</h3>
+    <p class="small">Your corpus files number the books but do not name them. Give them names and they appear in the heading above every group.</p>
+    <div id="bookTitles"></div>
+    <hr>
+    <h3>Import and export</h3>
+    <div class="row"><button id="openImport" class="ok">Import CSV</button><button id="exportCsv" class="secondary">Export CSV</button></div>
+    <p class="small mt">CSV is useful for corpus editing, but it does not preserve every app preference or hierarchy title.</p>
+    <div class="row mt"><button id="backupJson" class="ok">Download complete backup</button><button id="restoreJson" class="secondary">Restore backup</button></div>
+    <div id="backupStatus" class="status" role="status" aria-live="polite" aria-atomic="true">No backup operation in progress.</div>
+    <input id="restoreFile" class="visually-hidden" type="file" accept=".json,application/json" aria-label="Choose a Shadowing Studio backup file">
+    <p class="small mt">A complete backup includes sentences, bookmarks, notes, book and chapter titles, and non-secret preferences. It excludes relay passphrases, provider keys, and replaceable cached audio.</p>
+    <p class="small mt">Already have these sentences and only want their chapter names? Use <strong>Update chapter names</strong> inside the import screen — it reads the titles without adding anything.</p>
+    <hr>
+    <h3>Tidying up</h3>
+    <p class="small">If a corpus file was imported twice, every sentence appears twice and playback speaks both. This finds them and keeps one of each — including the harder case, where two files numbered their groups differently and the same sentence is filed twice under two different group numbers. That one shows up as a chapter with twice as many groups as it should have.</p>
+    <button id="dedupe" class="secondary">Remove duplicated sentences</button>
+    <hr>
+    <h3>Danger zone</h3>
+    <p class="small">Deletes every sentence, bookmark, note, hierarchy title, and cached recording on this device. There is no undo. Download a complete backup first if you may need this data again.</p>
+    <label for="clearConfirm">Type <strong>DELETE ALL</strong> to enable deletion</label>
+    <input id="clearConfirm" autocomplete="off" autocapitalize="characters" spellcheck="false">
+    <button id="clearAll" class="danger mt" disabled>Clear all local data</button>
+  </div>
+</div>
+
+<div id="importModal" class="modalwrap" role="dialog" aria-modal="true" aria-labelledby="importTitle" aria-hidden="true">
+  <div class="modal">
+    <div class="row"><h2 id="importTitle" class="nomargin" tabindex="-1">Import CSV</h2><button id="closeImport" class="secondary close">Close</button></div>
+    <p class="small">Use CSV columns: <strong>book, chapter, order, italian, english</strong>. Analyse first, then import.</p>
+    <div class="grid"><div><label for="csvFile">Choose CSV</label><input id="csvFile" type="file" accept=".csv,text/csv"></div><div><label for="defaultBook">Default book</label><input id="defaultBook" value="Italian Subjunctive Corpus"></div><div><label for="defaultChapter">Default chapter</label><input id="defaultChapter" value="Imported Chapter"></div><div><label for="pasteCsv">Paste CSV instead</label><textarea id="pasteCsv" placeholder="book,chapter,order,italian,english"></textarea></div></div>
+    <div class="row mt"><button id="analyseFile" class="ok">Analyse file</button><button id="analysePaste" class="ok">Analyse pasted CSV</button><button id="importPreviewed">Import previewed sentences</button></div>
+    <div class="row mt"><button id="titlesOnly" class="secondary">Update chapter names only</button></div>
+    <p class="small">"Update chapter names only" reads the BookTitle and ChapterTitle columns from the chosen file and applies them to sentences you already have. Nothing is added or duplicated.</p>
+    <hr>
+    <div id="importSummary" class="status" role="status" aria-live="polite" aria-atomic="true">No CSV analysed yet.</div>
+    <div id="importPreview" class="preview"></div>
+  </div>
+</div>
+
+<div id="editModal" class="modalwrap" role="dialog" aria-modal="true" aria-labelledby="editTitle" aria-hidden="true">
+  <div class="modal editModalBox">
+    <div class="row"><h2 id="editTitle" class="nomargin" tabindex="-1">Edit sentence</h2><button id="closeEdit" class="secondary close">Close</button></div>
+    <p class="small">Edit the Italian sentence and/or its English translation, then save.</p>
+    <label for="editItalian">Italian</label><textarea id="editItalian"></textarea>
+    <label for="editEnglish">English translation</label><textarea id="editEnglish"></textarea>
+    <div class="row mt"><button id="saveEdit" class="ok">Save sentence</button><button id="closeEditBottom" class="secondary">Cancel</button></div>
+  </div>
+</div>
+
+
+<script src="app.js"></script>
+</body>
+</html>

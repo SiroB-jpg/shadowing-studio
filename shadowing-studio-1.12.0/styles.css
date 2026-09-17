@@ -1,0 +1,641 @@
+:root{
+  --bg:#eef1ed;--panel:#f5f7f4;--ink:#1e2b20;--muted:#546953;
+  --accent:#2a5c44;--accent-button:#2a5c44;--on-accent:#fff;--soft:#d4dbd3;--active:#fefce8;--active-border:#8d7620;
+  --border:#d4dbd3;--danger:#a72020;--danger-button:#a72020;--ok:#176333;--ok-button:#176333;--warning:#765018;--focus:#0b63ce;
+  --header-bg:#1e2b20;--header-sub:#8faa8f;
+  --status-bg:#e4ebe4;--card-bg:#f5f7f4;
+  --tree-hover:#dde8dc;--tree-active-bg:#cce0cc;
+  --terracotta:#c25a44;
+  --glass-0:rgba(245,247,244,.10);--glass-1:rgba(245,247,244,.86);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+  --nav-h:58px;
+
+  /* ── Scale tokens ────────────────────────────────────────────────────────
+     One scale per dimension, so a value gets chosen rather than invented.
+     Spacing sits on a 4px grid; --space-2xs at 6px is the single deliberate
+     exception, kept because the sentence-row rhythm is tight on purpose.
+
+     Breakpoints are NOT tokens: custom properties do not work inside @media
+     queries. The breakpoints in use are 480 / 481 / 700 / 1024px. */
+
+  /* Spacing */
+  --space-3xs:.25rem;    /*  4px */
+  --space-2xs:.375rem;   /*  6px */
+  --space-xs:.5rem;      /*  8px */
+  --space-sm:.75rem;     /* 12px */
+  --space-md:1rem;       /* 16px */
+  --space-lg:1.5rem;     /* 24px */
+  --space-xl:2rem;       /* 32px */
+  --space-2xl:3rem;      /* 48px */
+
+  /* Type. --text-base is also the iOS floor: form fields below 16px make
+     Safari zoom the page on focus, so never set a field smaller. */
+  --text-2xs:.6875rem;   /* 11px */
+  --text-xs:.8125rem;    /* 13px */
+  --text-sm:.875rem;     /* 14px */
+  --text-base:1rem;      /* 16px */
+  --text-md:1.125rem;    /* 18px */
+  --text-lg:1.25rem;     /* 20px */
+  --text-xl:1.5rem;      /* 24px */
+
+  --lh-tight:1.25;--lh-normal:1.45;--lh-loose:1.65;
+  --weight-normal:400;--weight-medium:600;--weight-bold:700;--weight-heavy:800;
+
+  /* Radius */
+  --radius-sm:8px;--radius-md:10px;--radius-lg:14px;
+  --radius-pill:999px;--radius-round:50%;
+
+  /* Elevation. Values match what the stylesheet already used, so this is a
+     no-op today. In dark mode these are near-invisible against a near-black
+     ground — see the commented block in the dark theme below. */
+  --shadow-sm:0 2px 8px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.14);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.16);
+  --shadow-up:0 -2px 10px rgba(0,0,0,.05);
+
+  /* Motion */
+  --motion-fast:120ms;--motion-base:200ms;--ease:cubic-bezier(.4,0,.2,1);
+
+  /* Interaction. --tap-min is the WCAG 2.5.5 floor for a touch target. */
+  --tap-min:44px;
+  --focus-ring:3px;
+  --focus-offset:2px;
+  --disabled-opacity:.5;
+  --secondary-button:#5c5854;
+
+  --css-version:"1.12.0";
+}
+:root[data-theme="dark"]{
+  --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
+  --accent:#e2b84b;--accent-button:#795600;--on-accent:#fff;--soft:#2e2a22;--active:#302814;--active-border:#d0a62d;
+  --border:#454037;--danger:#ff9696;--danger-button:#922828;--ok:#8ed9a2;--ok-button:#256338;--warning:#e6bd68;--focus:#78b7ff;
+  --header-bg:#111110;--header-sub:#a09890;
+  --status-bg:#252420;--card-bg:#252220;
+  --tree-hover:#252420;--tree-active-bg:#2e2a22;
+  --terracotta:#c9805f;
+  --glass-0:rgba(32,31,28,.22);--glass-1:rgba(32,31,28,.88);
+  --secondary-button:#5c5854;
+
+  /* Shadows currently carry over from :root unchanged, which is why panels
+     lose their edge separation on a near-black ground. Uncomment to fix —
+     it is a visible change to the dark theme, so eyeball it before shipping.
+  --shadow-sm:0 2px 8px rgba(0,0,0,.34);
+  --shadow-md:0 4px 16px rgba(0,0,0,.50);
+  --shadow-lg:0 8px 24px rgba(0,0,0,.60);
+  --shadow-up:0 -2px 10px rgba(0,0,0,.40);
+  */
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--header-bg);color:white;padding:.9rem 1.25rem}
+.header-inner{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.header-text h1{margin:0;font-size:1.4rem}
+.header-text .header-sub{margin:.2rem 0 0;color:var(--header-sub);font-size:.85rem}
+.theme-toggle{display:flex;align-items:center;gap:.5rem;min-height:44px;padding:.25rem;cursor:pointer;color:rgba(255,255,255,.82);font-size:.82rem;user-select:none;flex-shrink:0;white-space:nowrap}
+.theme-toggle input{position:absolute;opacity:0;width:0;height:0}
+.toggle-track{width:40px;height:22px;background:rgba(255,255,255,.22);border-radius:999px;position:relative;flex-shrink:0;transition:background .2s}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:16px;height:16px;background:white;border-radius:50%;transition:transform .2s}
+.theme-toggle input:checked + .toggle-track{background:#795600}
+.theme-toggle input:focus-visible + .toggle-track{outline:3px solid var(--focus);outline-offset:3px}
+.theme-toggle input:checked + .toggle-track .toggle-thumb{transform:translateX(18px)}
+
+/* ── Desktop layout ─────────────────────────────────────────────────────── */
+main{display:grid;grid-template-columns:290px 1fr;gap:1rem;max-width:1500px;margin:0 auto;padding:1rem}
+aside,section{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+h2,h3{margin-top:0}.nomargin{margin:0}
+hr{border:0;border-top:1px solid var(--border);margin:.85rem 0}
+label{display:block;font-weight:700;font-size:.85rem;color:var(--muted);margin:.5rem 0 .2rem}
+input,select,textarea,button{font:inherit;border-radius:var(--radius-md)}
+input,select,textarea{width:100%;border:1px solid var(--border);padding:.5rem;background:var(--panel);color:var(--ink)}
+textarea{min-height:110px;resize:vertical}
+button{touch-action:manipulation;border:0;background:var(--accent-button);color:var(--on-accent);padding:var(--space-xs) var(--space-sm);font-weight:var(--weight-bold);cursor:pointer;min-height:var(--tap-min)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--focus-ring) solid var(--focus);outline-offset:var(--focus-offset)}
+button.secondary{background:var(--secondary-button);color:var(--on-accent)}
+button.light{background:var(--soft);color:var(--ink)}
+button.danger{background:var(--danger-button);color:var(--on-accent)}button.ok{background:var(--ok-button);color:var(--on-accent)}
+button:disabled{opacity:var(--disabled-opacity);cursor:not-allowed}
+.row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}.row>*{flex:1}
+.mt{margin-top:.5rem}.wide{width:100%}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:.65rem}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.5rem;margin:.85rem 0}
+.small{font-size:.86rem;color:var(--muted)}
+.status{background:var(--status-bg);border-radius:10px;padding:.65rem;color:var(--muted);margin-top:.65rem}
+.oktxt{color:var(--ok)}.warntxt{color:var(--warning)}.dangertxt{color:var(--danger)}
+.tabs{display:flex;gap:.4rem;margin-bottom:.85rem;flex-wrap:wrap;align-items:center}
+/* Show library sits in the tab row, not inside Study. Put away the library from
+   Study, switch to Verb drill, and the only way back used to be switching back
+   to Study first — which is not a way back anybody would find. */
+.tabs #libShow{margin-right:.35rem}
+.tab{background:var(--soft);color:var(--ink)}.tab.active{background:var(--accent-button);color:var(--on-accent)}
+.hidden{display:none!important}
+.tree{max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:12px;padding:.4rem;background:var(--card-bg)}
+.tree button{display:flex;width:100%;min-height:var(--tap-min);padding:var(--space-2xs) var(--space-xs);border:0;border-radius:var(--radius-sm);
+  background:transparent;color:inherit;text-align:left;font:inherit;align-items:flex-start;justify-content:flex-start}
+.tree button:hover{background:var(--tree-hover)}
+.tree button:focus-visible{outline:var(--focus-ring) solid var(--focus);outline-offset:1px}
+.tree .active{background:var(--tree-active-bg);outline:1px solid var(--accent)}
+.book{font-weight:800}.chapter{padding-left:1rem!important;font-weight:650}.groupItem{padding-left:2rem!important;color:var(--muted)}
+.card{touch-action:manipulation;border:1px solid var(--border);border-radius:14px;padding:.85rem;margin-bottom:.55rem;background:var(--card-bg);cursor:pointer}
+.card.active{background:var(--active);border-color:var(--active-border)}
+.italian{font-size:1.4rem;line-height:1.45;margin:.2rem 0}
+.english{color:var(--muted)}
+.pill{display:inline-block;background:var(--soft);border-radius:999px;padding:.15rem .5rem;font-size:.8rem;margin:.1rem .15rem .2rem 0;color:var(--muted)}
+.cardTools{display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;margin-top:.55rem}
+.mini{padding:var(--space-2xs) var(--space-xs);font-size:var(--text-sm);min-height:var(--tap-min)}
+.modalwrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:999;align-items:center;justify-content:center;padding:1rem}
+.modal{background:var(--panel);border-radius:16px;border:1px solid var(--border);padding:1rem;max-width:1050px;width:100%;max-height:92vh;overflow:auto}
+.close{max-width:120px}
+.confirmBox{max-width:520px}
+.visually-hidden{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.preview{max-height:300px;overflow:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel);padding:.6rem}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+td,th{border-bottom:1px solid var(--border);padding:.4rem;text-align:left;vertical-align:top}th{color:var(--muted)}
+.tenseGrid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem}
+.tenseCard{border:1px solid var(--border);border-radius:12px;padding:.75rem;background:var(--card-bg)}
+.tenseCard.active{background:var(--active);border-color:var(--active-border)}
+.formsLine{font-size:1.2rem;line-height:1.45}
+.review{margin-top:.75rem}
+.preloadRow{display:grid;grid-template-columns:1fr auto;gap:.65rem;align-items:flex-end;margin-top:.5rem}
+.preloadBtns{display:flex;gap:.5rem}
+.voice-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem;padding:.5rem .65rem;background:var(--status-bg);border-radius:10px}
+.mobile-nav{display:none}
+.mobile-only{display:none}
+
+/* ── iPad compact (481 – 1024px) ─────────────────────────────────────────── */
+@media(min-width:481px) and (max-width:1024px){
+  main{grid-template-columns:210px 1fr;gap:.75rem;padding:.75rem}
+  aside,section{padding:.75rem;border-radius:12px}
+  .grid{grid-template-columns:1fr 1fr}
+  .controls{grid-template-columns:1fr 1fr}
+  .italian{font-size:1.25rem}
+  .tree{max-height:260px}
+  h2{font-size:1.1rem}h3{font-size:1rem}
+}
+
+/* ── iPhone (≤480px) ─────────────────────────────────────────────────────── */
+@media(max-width:480px){
+  body{padding-bottom:var(--nav-h)}
+  main{display:block;padding:0}
+  aside,section{display:none;border-radius:0;border-left:0;border-right:0;border-top:0;box-shadow:none;padding:.75rem;min-height:60vh}
+  body[data-screen="library"] aside{display:block}
+  body[data-screen="study"] section,
+  body[data-screen="verbs"] section,
+  body[data-screen="generate"] section,
+  body[data-screen="settings"] section,
+  body[data-screen="about"] section{display:block}
+  .desktop-tabs{display:none}
+  .mobile-only{display:flex}
+  .mobile-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    height:var(--nav-h);background:var(--header-bg);
+    border-top:1px solid rgba(255,255,255,.1);z-index:200;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .mobile-nav-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;background:none;border:0;color:rgba(255,255,255,.72);
+    min-height:0;font-size:10px;font-weight:600;padding:6px 0;letter-spacing:.02em;
+    min-width:0;
+  }
+  .mobile-nav-btn span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  
+  .mobile-nav-btn.active{color:white}
+  
+  .header-text h1{font-size:1.1rem}
+  .header-text .header-sub{font-size:.75rem}
+  .toggle-label{display:none}
+  .grid{grid-template-columns:1fr}
+  .controls{grid-template-columns:1fr 1fr;gap:.4rem}
+  .controls button:last-child{grid-column:span 2}
+  .tenseGrid{grid-template-columns:1fr}
+  .cardTools{grid-template-columns:repeat(3,1fr)}
+  .italian{font-size:1.2rem}
+  .tabs button{flex:1 1 auto;font-size:var(--text-xs);min-height:var(--tap-min)}
+  .tree{max-height:200px}
+  .preloadRow{grid-template-columns:1fr;gap:.5rem}
+  .preloadBtns{flex-wrap:wrap}
+  select,input{font-size:16px}
+  .row>*{flex:1 1 45%}
+  button{min-height:var(--tap-min)}.mini{min-height:var(--tap-min)}
+  .modal{padding:.75rem;border-radius:12px}
+  .formsLine{font-size:1.05rem}
+  h2{font-size:1.1rem}h3{font-size:1rem}
+}
+
+
+/* ── v1.5.0 — calmer study screen ─────────────────────────────────────────── */
+button.mobile-only,span.mobile-only{display:none}
+.side-head{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.6rem}
+#search{margin-bottom:.6rem}
+.stats{color:var(--muted);font-size:.82rem;line-height:1.5;margin-top:.6rem}
+.tree .book,.tree .chapter{display:flex;flex-direction:column;gap:1px;align-items:stretch}
+.tree-title{font-weight:400;font-size:.78rem;color:var(--muted);line-height:1.25}
+.tree .active .tree-title{color:var(--accent)}
+
+button.icon{min-width:var(--tap-min);padding:var(--space-xs);display:inline-flex;align-items:center;justify-content:center}
+button.ghost{background:transparent;color:var(--ink)}
+button.ghost:hover{background:var(--soft);color:var(--ink)}
+button.primary{background:var(--accent-button);color:var(--on-accent);min-width:112px}
+/* Icons were 20px in --muted — legible on a desktop monitor at arm's length
+   and not much else. The row buttons that sit at the end of a sentence are
+   the ones people actually miss, so they get the larger step. */
+.icon .ic,.rowbtn .ic{display:block;width:24px;height:24px}
+.rowbtn .ic{width:26px;height:26px}
+.mobile-nav-btn .ic{width:24px;height:24px}
+.focus-side .ic{width:30px;height:30px}
+.focus-play .ic{width:44px;height:44px}
+.mobile-nav-btn .ic{margin-bottom:1px}
+
+.panel-head{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.crumb{display:flex;align-items:baseline;gap:.4rem;flex-wrap:wrap;flex:1;min-width:0}
+.crumb-part{display:inline-flex;align-items:baseline;gap:.4rem;flex-wrap:wrap}
+.crumb-label{font-weight:700;color:var(--muted);font-size:.95rem;white-space:nowrap}
+.crumb-title{color:var(--ink);font-size:1.02rem}
+.crumb-part.here .crumb-label{color:var(--accent)}
+.crumb-sep{color:var(--border);font-size:1rem}
+.crumb-empty{color:var(--muted);font-size:.9rem}
+.voice-chip{font-size:.8rem;color:var(--muted)}
+/* It is a chip, so give it a chip's ground. That is also what lets it stay
+   readable where it now sits — over the illustration, on a phone. */
+.voice-chip{background:var(--panel);color:var(--ink);border:1px solid var(--border);
+  border-radius:999px;padding:.15rem .6rem;white-space:nowrap}
+
+/* Sentence rows: dividers and whitespace rather than cards inside cards */
+.sentences{border-top:1px solid var(--border);min-height:380px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:.35rem;
+  padding:.35rem .4rem .35rem .25rem;border-bottom:1px solid var(--border);
+  border-left:3px solid transparent;touch-action:manipulation;position:relative}
+.srow:hover{background:var(--tree-hover)}
+.srow.active{background:var(--active);border-left-color:var(--accent)}
+.srow.active .italian{font-weight:600}
+.srow-select{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:start;gap:.85rem;
+  width:100%;min-height:44px;padding:.45rem .35rem .45rem .35rem;border:0;border-radius:9px;
+  background:transparent;color:inherit;text-align:left;font:inherit}
+.srow-select:hover{background:transparent}
+.srow-select:focus-visible{outline:3px solid var(--focus);outline-offset:1px}
+.srow-num{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.82rem;
+  min-width:2.1rem;text-align:right;padding-top:.28rem}
+.srow-text{display:block;min-width:0}
+.srow-text>span{display:block}
+.srow-context{font-size:.75rem;color:var(--muted);margin-bottom:.15rem}
+.srow-actions{display:flex;gap:.2rem;align-items:center}
+.rowbtn{background:transparent;color:var(--ink);min-height:var(--tap-min);min-width:var(--tap-min);padding:var(--space-2xs);
+  display:inline-flex;align-items:center;justify-content:center;border-radius:var(--radius-sm)}
+.rowbtn:hover{background:var(--soft);color:var(--ink)}
+.rowbtn.on{color:var(--accent)}
+
+.srow-playing{position:absolute;left:-2px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:13px}
+.listnote{color:var(--muted);font-size:.84rem;padding:.6rem .85rem;border-bottom:1px solid var(--border)}
+.empty{padding:2.2rem 1rem;text-align:center;color:var(--muted)}
+.empty h2{margin:0 0 .35rem;color:var(--ink)}
+
+/* Persistent playback bar */
+.playbar{position:sticky;bottom:0;z-index:40;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
+  margin-top:.9rem;padding:.65rem;background:var(--panel);border:1px solid var(--border);
+  border-radius:12px;box-shadow:0 -2px 10px rgba(0,0,0,.05)}
+.playbar-fields{display:flex;gap:.5rem;flex:1;flex-wrap:wrap;min-width:0}
+.field{display:flex;flex-direction:column;gap:2px;margin:0;min-width:96px;flex:1}
+.field>span{font-size:.7rem;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.field select{padding:.35rem .4rem;font-size:.88rem}
+.menu{position:absolute;right:.6rem;bottom:calc(100% + .5rem);width:250px;background:var(--panel);
+  border:1px solid var(--border);border-radius:12px;padding:.75rem;box-shadow:0 8px 24px rgba(0,0,0,.16);z-index:60}
+.menu .field{min-width:0;margin-bottom:.55rem}
+.bookrow{display:grid;grid-template-columns:120px 1fr auto;gap:.6rem;align-items:center;margin-bottom:.5rem}
+.bookrow label{margin:0}
+
+/* Collapsible library on wide screens */
+body.lib-collapsed main{grid-template-columns:1fr}
+body.lib-collapsed #libraryPanel{display:none}
+
+@media(max-width:480px){
+  button.mobile-only{display:inline-flex}
+  span.mobile-only{display:inline}
+  /* At phone width the bar cannot hold transport and four settings on one
+     line — the fields collapsed to a chevron and the labels overlapped.
+     Transport on the first row, settings in a two-column grid beneath. */
+  .playbar{
+    position:sticky;bottom:0;border-radius:10px;
+    display:grid;grid-template-columns:1fr auto auto auto auto;
+    grid-template-areas:"start focus prev next more" "fields fields fields fields fields";
+    gap:.5rem;align-items:center;
+  }
+  /* Every child needs a named area. An unplaced one is auto-placed into an
+     implicit third row below the settings, where it is off the foot of the
+     screen — which is what happened to the Focus button in v1.7.0. Slots are
+     named by class rather than by id so a second bar (the verb drill's) cannot
+     reintroduce that bug simply by using different ids. */
+  .playbar>.pb-start{grid-area:start;min-width:0}
+  .playbar>.pb-alt{grid-area:focus}
+  .playbar>.pb-prev{grid-area:prev}
+  .playbar>.pb-next{grid-area:next}
+  .playbar>.pb-more{grid-area:more}
+  .playbar-fields{grid-area:fields;display:grid;grid-template-columns:1fr 1fr;gap:.5rem;width:100%}
+  .field{min-width:0}
+  .field select{width:100%}
+  .menu{right:.4rem;left:.4rem;width:auto}
+  .bookrow{grid-template-columns:1fr}
+  .srow{grid-template-columns:auto 1fr;gap:.6rem;padding:.7rem .5rem}
+  .srow-actions{grid-column:2;margin-top:.35rem}
+  body.lib-collapsed #libraryPanel{display:none}
+  body[data-screen="library"].lib-collapsed #libraryPanel{display:block}
+}
+
+
+/* ── v1.7.0 — focus mode ──────────────────────────────────────────────────── */
+.italian,.focus-italian{font-family:var(--serif)}
+body.focus-open,body.modal-open{overflow:hidden}
+.focus{
+  position:fixed;inset:0;z-index:900;background:var(--bg);color:var(--ink);
+  display:flex;flex-direction:column;padding:1rem 1.25rem 1.25rem;
+  padding-bottom:calc(1.25rem + env(safe-area-inset-bottom));
+}
+.focus-head{display:flex;align-items:center;gap:1rem;flex-shrink:0}
+/* The exit used to be a faint 20px "x" in --muted. On a dark ground that is a
+   smudge, not a control, and it is the only way out of a full-screen mode.
+   It is now a named button that meets the tap target on its own. */
+.focus-exit{
+  flex:0 0 auto;min-height:var(--tap-min);padding:.5rem 1.1rem;
+  background:var(--soft);color:var(--ink);border:1px solid var(--border);
+  border-radius:var(--radius-sm);font-size:1rem;font-weight:700;cursor:pointer;
+  display:inline-flex;align-items:center;gap:.4rem;
+}
+.focus-exit:hover{background:var(--accent-button);color:var(--on-accent);border-color:var(--accent-button)}
+.focus-exit .ic{width:18px;height:18px}
+.focus-where{flex:1;min-width:0;color:var(--ink);font-size:1rem;font-weight:600;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.focus-where .csep{margin:0 .45rem;opacity:.7}
+.focus-pos{color:var(--ink);font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums;
+  background:var(--soft);border-radius:999px;padding:.25rem .8rem}
+.focus-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:1rem;padding:1rem 0;min-height:0}
+.focus-num{margin:0;color:var(--ink);font-size:.95rem;font-weight:600;opacity:.85}
+.focus-italian{margin:0;font-size:clamp(1.9rem,4.6vw,3.5rem);line-height:1.25;
+  max-width:22ch;font-weight:500;color:var(--ink)}
+.focus-english{margin:0;color:var(--ink);opacity:.88;font-size:clamp(1rem,1.6vw,1.3rem);
+  max-width:34ch;line-height:1.45}
+.focus-reps{display:flex;flex-direction:column;align-items:center;gap:.5rem;flex-shrink:0;min-height:2.6rem}
+.focus-rep-label{color:var(--ink);opacity:.85;font-size:.9rem}
+.focus-dots{display:flex;gap:.4rem}
+.focus-dots .dot{width:10px;height:10px;border-radius:50%;background:var(--soft);
+  border:1px solid var(--border);display:inline-block}
+.focus-dots .dot.done{background:var(--accent);border-color:var(--accent)}
+.focus-dots .dot.now{background:transparent;border:2px solid var(--accent);
+  width:12px;height:12px;transform:translateY(-1px)}
+.focus-controls{display:flex;align-items:center;justify-content:center;gap:2rem;
+  padding:1.2rem 0 .8rem;flex-shrink:0}
+.focus-play{width:88px;height:88px;border-radius:50%;background:var(--accent);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;padding:0;
+  box-shadow:0 4px 16px rgba(0,0,0,.14)}
+.focus-play .ic{margin-left:3px}
+.focus-play[aria-label="Pause"] .ic{margin-left:0}
+.focus-side{width:60px;height:60px;border-radius:50%;background:var(--soft);color:var(--ink);
+  display:inline-flex;align-items:center;justify-content:center;padding:0}
+.focus-foot{display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;flex-shrink:0;
+  border-top:1px solid var(--border);padding-top:.85rem}
+.focus-foot .field{min-width:118px;max-width:170px;flex:0 1 auto}
+
+@media(max-width:480px){
+  .focus{padding:.85rem .85rem 1rem}
+  /* On a phone the heading drops the book — you know which book you opened —
+     and wraps onto a second line so the chapter name survives in full. */
+  .focus-where{white-space:normal;font-size:.78rem;line-height:1.3}
+  .focus-where .cpart:first-child,
+  .focus-where .cpart:first-child + .csep{display:none}
+  .focus-where .csep{margin:0 .3rem}
+  .focus-italian{max-width:100%}
+  .focus-controls{gap:1.4rem;padding:.9rem 0 .6rem}
+  .focus-play{width:76px;height:76px}
+  .focus-side{width:54px;height:54px}
+  .focus-foot{gap:.5rem}
+  .focus-foot .field{min-width:calc(50% - .25rem);max-width:none;flex:1 1 calc(50% - .25rem)}
+}
+
+
+/* ── v1.8.1 — logo and book illustration ─────────────────────────────────── */
+/* Siro's own artwork, embedded as data. Placement follows the handover even
+   though the subject does not: one image at a time, never behind text. */
+.art-plate{margin:0}
+.art-img{display:block;width:100%;height:auto;border-radius:8px;
+  border:1px solid var(--border);user-select:none}
+/* A pale watercolour on a charcoal page is a lamp. Settle it down in the dark
+   theme rather than keeping a second copy of the picture. */
+:root[data-theme="dark"] .art-img{filter:brightness(.82) saturate(.85);opacity:.9}
+
+/* In the library: one image, for the book you are in, above the tree. */
+.side-art{padding:.9rem 0 .2rem;border-bottom:1px solid var(--border);margin-bottom:.7rem}
+.side-art .art-plate{max-width:190px;margin:0 auto}
+
+/* In the empty state: larger, and above the words rather than behind them. */
+.empty .art-plate{max-width:118px;margin:0 auto 1.2rem}
+
+/* The identity mark in the header. Reserve its footprint before JavaScript injects the image. */
+.header-inner #headerMark{display:block;width:38px;height:45px;flex:0 0 38px}
+.header-inner .art-mark{display:block;width:38px;height:auto;flex:0 0 38px;
+  border-radius:6px;user-select:none}
+.header-brand{display:flex;align-items:center;gap:.8rem;min-width:0}
+
+@media(max-width:480px){
+  .side-art{display:none}
+  .header-inner #headerMark{width:32px;height:38px;flex-basis:32px}
+  .header-inner .art-mark{width:32px;flex-basis:32px}
+}
+
+/* Generate wears the arcade rather than the villa, so the tab that invents new
+   material reads differently from the library. The library's image steps aside
+   while this tab is open — still one illustration on screen at a time. */
+.pane-head{display:flex;gap:1.1rem;align-items:flex-start;margin-bottom:.4rem}
+.pane-head-text{min-width:0;flex:1}
+.pane-head h2{margin-top:0}
+.gen-art{flex:0 0 118px;max-width:118px}
+.gen-art .art-img{border-radius:10px}
+
+/* When the library is put away it takes its picture with it, so the picture
+   comes back here — the same corner Generate uses — on Study, Verb drill and
+   Settings. Open the library again and this one steps aside: one at a time,
+   wherever it happens to be. */
+.panel-art{flex:0 0 104px;max-width:104px;display:none;align-self:center}
+body.lib-collapsed .panel-art{display:block}
+.panel-art .art-img{border-radius:10px}
+#study .panel-head{align-items:center}
+
+@media(max-width:700px){
+  .pane-head{gap:.8rem}
+  .gen-art{flex-basis:82px;max-width:82px}
+  .panel-art{flex-basis:82px;max-width:82px}
+}
+@media(max-width:480px){
+  .gen-art,.panel-art{display:none}
+  body.lib-collapsed .panel-art{display:none}
+}
+
+/* ── v1.8.5 — the phone backdrop ──────────────────────────────────────────────
+   A phone has no room for the illustration beside the text, so it goes behind
+   it — but not behind the sentences. The panel surface is nearly clear at the
+   top of the screen, where only the heading sits, and is solid again by the
+   time the first sentence arrives. So the villa reads plainly where there is
+   nothing to read, and fades to paper where there is.
+
+   This relaxes the handover's "never behind text" rule at Siro's request, and
+   only for the heading. What the rule protects is contrast, so contrast is now
+   measured rather than assumed: the tests hide the text, photograph the ground
+   underneath it, and check the worst point behind every heading, Italian and
+   English line still clears WCAG AA. Raise these numbers too far and the suite
+   fails. */
+@media(max-width:480px){
+  /* Geometry matters more than opacity here. The picture is square and the
+     screen is tall: sized to cover the whole viewport it scales up until only
+     a narrow vertical strip of sky shows through the one band that is
+     translucent — which is why v1.8.5 looked like nothing at all. It is now a
+     band across the top, positioned so the villa and the cypresses land in the
+     part of the screen you can actually see through.
+     No mask: the panel gradient below does the fading, and one less exotic
+     property is one less thing to behave differently on iOS. */
+  body::before{
+    content:"";position:fixed;top:0;left:0;right:0;height:300px;
+    z-index:-1;pointer-events:none;
+    background-image:var(--backdrop,none);background-repeat:no-repeat;
+    background-size:100% auto;background-position:center 62%;
+    opacity:.55;filter:saturate(.9);
+  }
+  :root[data-theme="dark"] body::before{opacity:.85;filter:saturate(.75) brightness(.55)}
+
+  /* Clear at the top, paper by the time the list starts. */
+  aside,section{
+    /* The clear zone is as deep as that screen's heading and no deeper. Study
+       has a heading and then sentences, so it can afford a generous one. The
+       verb drill packs a heading, two selectors and a reference line into the
+       same space, and a deep zone put all of it on the picture where it could
+       not hold contrast. One gradient, one number changed per screen. */
+    background:linear-gradient(180deg,
+      var(--glass-0) 0px, var(--glass-0) 42px,
+      var(--glass-1) var(--glass-mid,215px), var(--panel) var(--glass-end,300px));
+  }
+  /* The heading sits on the picture, so it stops being quiet grey and becomes
+     ink. Strengthening the text is what buys the picture its visibility —
+     without this the wash has to stay so faint it is not worth having. */
+  /* Every heading that sits on the wash, not just Study's — the verb drill has
+     one too since v1.9.0, and it inherited none of this by being a different id. */
+  .crumb .crumb-label{color:var(--ink);font-weight:650}
+  /* Including the current step, which is accent-coloured elsewhere and outranks
+     the rule above. Amber on a pale watercolour is 2.27:1 — on the wash the
+     current step is marked by weight instead of by colour. */
+  .crumb .crumb-part.here .crumb-label{color:var(--ink);font-weight:800}
+  .crumb .crumb-title{color:var(--ink)}
+  .crumb .crumb-sep{opacity:.5}
+  .verb-pick .field>span,.verb-ref{color:var(--ink)}
+  body[data-screen="verbs"] section{--glass-mid:105px;--glass-end:160px}
+  /* The playback bar stays opaque. It is sticky, so anything translucent there
+     shows the list sliding underneath it — a rendering fault, not a wash. */
+  .playbar{background:var(--panel)}
+}
+
+/* ── v1.9.0 — the verb drill ──────────────────────────────────────────────────
+   Release 5. The same treatment Study had in Releases 1 and 2: the eight-field
+   control grid becomes one compact bar at the foot, the pre-download moves into
+   an overflow menu because it is an exceptional action, and the heading says
+   what you are drilling instead of the word "Verb drill".
+
+   The bar reuses the .playbar class rather than a copy of its rules, so the two
+   cannot drift apart visually. It keeps its own values, because "repeat each
+   tense" and "repeat each sentence" are not the same setting — that separation
+   was deliberate in v1.6.0 and is still tested. */
+#verbCrumb{margin-bottom:.15rem}
+.verb-pick{display:flex;gap:.6rem;flex-wrap:wrap;margin:.9rem 0 1rem}
+/* One box fewer: the name and the gloss are in the heading now, so the
+   reference form is a line of small print rather than a panel of its own. */
+.verb-ref{margin:0 0 .7rem;color:var(--muted);font-size:.86rem}
+.verb-ref strong{color:var(--ink);font-family:var(--serif);font-size:1.05rem}
+.verb-pick .field{flex:1 1 220px;min-width:0}
+#verbBar{margin-top:.9rem}
+/* Named, not iconic. Study's transport moves between sentences you can see, so
+   an arrow is self-explanatory there. Nothing on this screen tells you that a
+   bare arrow moves the tense, so the word stays. */
+.tense-btn{display:inline-flex;align-items:center;gap:.3rem;white-space:nowrap;
+  padding:.55rem .7rem;font-weight:650}
+.tense-btn span{font-size:1.15rem;line-height:1}
+#verbMoreMenu{width:290px}
+#verbMoreMenu .small{color:var(--muted)}
+
+/* The active tense, made unmistakable the way the active sentence is. */
+.tenseCard{border-left:4px solid transparent}
+.tenseCard.active{border-left-color:var(--accent)}
+
+.verb-gloss{color:var(--muted);font-size:.95rem}
+@media(max-width:480px){
+  .verb-pick{gap:.5rem}
+  .tense-btn{padding:.5rem .5rem;font-size:.9rem}
+  .verb-pick .field{flex:1 1 100%}
+  .tenseGrid{grid-template-columns:1fr}
+}
+
+/* ── v1.9.2 — mismatched-file warning ─────────────────────────────────────────
+   The six files are uploaded by hand, one folder among many with the same six
+   names. Upload app.js from the wrong folder and the app half-works or does not
+   start at all, with nothing on screen to say why. Each file now carries its
+   version and the app checks they agree. */
+.version-warning{background:var(--danger);color:#fff;padding:.85rem 1rem;
+  font-size:.95rem;line-height:1.45;text-align:center}
+.update-notice{display:flex;align-items:center;justify-content:center;gap:.75rem;flex-wrap:wrap;background:var(--status-bg);color:var(--ink);border-bottom:1px solid var(--border);padding:.65rem 1rem;font-weight:700}
+.update-notice button{min-width:120px}
+.version-warning strong{font-weight:800}
+.version-warning code{background:rgba(255,255,255,.18);border-radius:5px;
+  padding:.05rem .35rem;font-size:.92em}
+
+
+/* ── v1.11.0 — About panel ───────────────────────────────────────────────────
+   Long-form reading inside a panel built for controls. The measure is capped
+   near 62 characters because prose set to the full width of a desktop panel
+   is tiring to read, and everything else here inherits the app's tokens so
+   the page follows the theme without a second palette. */
+.prose{max-width:62ch;line-height:1.65}
+.prose h3{margin:1.7rem 0 .35rem;font-size:1.02rem;color:var(--accent)}
+.prose > h3:first-child{margin-top:1rem}
+.prose p{margin:.55rem 0}
+.prose strong{font-weight:700}
+.motto-lead{margin-top:var(--space-lg)}
+.motto{
+  font-family:var(--serif);font-size:var(--text-lg);line-height:var(--lh-tight);
+  color:var(--accent);margin:var(--space-xs) 0 var(--space-lg);
+  padding-left:var(--space-sm);border-left:3px solid var(--terracotta);
+  text-wrap:balance;
+}
+@media(max-width:480px){
+  .prose{max-width:none}
+  .prose h3{margin-top:1.4rem}
+}
+
+
+/* ── v1.11.2 — standing settings notice ─────────────────────────────────────
+   Not a toast. It stays until the condition it describes is resolved. */
+.notice-warn,.notice-ok{
+  margin:var(--space-xs) 0 var(--space-sm);
+  padding:var(--space-sm);
+  border-left:3px solid var(--warning);
+  border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  background:var(--panel);
+  color:var(--ink);
+  font-size:var(--text-sm);
+  line-height:var(--lh-normal);
+}
+.notice-ok{border-left-color:var(--ok)}
+
+/* An action inside a sentence of prose. A real button, styled as the link the
+   sentence reads like. */
+.linklike{
+  background:none;border:0;padding:0;margin:0;min-height:0;
+  color:var(--accent);font:inherit;font-weight:700;
+  text-decoration:underline;text-underline-offset:2px;cursor:pointer;
+}
+.linklike:hover{color:var(--ink)}
+
+/* A checkbox and its wording on one line. The bare `label` rule is built for
+   a field caption above an input, which is the wrong shape here. */
+.checkline{
+  display:flex;align-items:flex-start;gap:.55rem;
+  margin:var(--space-sm) 0 var(--space-2xs);
+  font-weight:600;font-size:var(--text-sm);color:var(--ink);
+  cursor:pointer;line-height:var(--lh-normal);
+}
+.checkline input[type="checkbox"]{
+  width:22px;height:22px;flex:0 0 auto;margin:0;accent-color:var(--accent);cursor:pointer;
+}

@@ -48,7 +48,7 @@ const SecureConfig={
 
 const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
-const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,1);r.onupgradeneeded=e=>{let d=e.target.result;if(!d.objectStoreNames.contains(SS))d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
+const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,2);r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
 Storage.replaceSentences=function(items){return new Promise((resolve,reject)=>{let transaction=App.db.transaction(SS,"readwrite"),store=transaction.objectStore(SS);store.clear();items.forEach(item=>store.put(item));transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error||new Error("Restore was cancelled."));});};
 
@@ -106,7 +106,82 @@ const Titles={
   }
 };
 
-const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){let rows=this.rows(text);if(!rows.length)return[];let heads=rows[0].map(x=>x.trim().toLowerCase()),has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),data=has?rows.slice(1):rows,idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},bi=idx(["book"]),ci=idx(["chapter","lesson","unit"]),oi=idx(["order","number","no","#"]),gi=idx(["group"]),ti=idx(["item"]),ii=idx(["italian","sentence","text","it","italiano"]),ei=idx(["english","translation","meaning","en"]);const ord=(r,i)=>{if(has&&gi>=0&&ti>=0){let g=Number(Util.clean(r[gi])),it=Number(Util.clean(r[ti]));if(g>0&&it>0)return(g-1)*10+it;}return Number(Util.clean(has&&oi>=0?r[oi]:i+1))||i+1;};return data.map((r,i)=>{let italian="",english="";if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}else if(r.length>=5){italian=r[3];english=r[4];}else if(r.length>=2){italian=r[0];english=r[1];}else italian=r[0];return{book:Util.clean(has&&bi>=0?r[bi]:defs.book),chapter:Util.clean(has&&ci>=0?r[ci]:defs.chapter),order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),bookmarked:false,difficult:false,notes:""};}).filter(x=>x.italian);},chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
+/* The closed list of column names the importer accepts.
+   One canonical name per purpose, plus the alternatives the existing modules
+   already use. It is a fixed list on purpose: a module that invents a new name
+   is reported on the Analyse screen rather than silently mis-imported. */
+const CSVCols={
+  italian:["italian","sentence","text","it","italiano"],
+  english:["english","translation","meaning","en"],
+  book:["book","book_number","booknumber"],
+  chapter:["chapter","lesson","unit","chapter_number","chapternumber","chapter_id","chapterid"],
+  group:["group","group_number","groupnumber","group_id","groupid"],
+  item:["item","item_number","itemnumber","sequence"],
+  order:["order","number","no","#"],
+  sentenceId:["sentence_id","sentenceid","line_id","lineid","record_id","recordid","id"],
+  rowType:["record_type","recordtype","item_type","itemtype"],
+  bookTitle:["booktitle","book_title"],
+  chapterTitle:["chaptertitle","chapter_title"],
+  /* Row kinds that are content but not a sentence the learner shadows. */
+  skipRowTypes:["chapter_explainer","explainer","group_header","chapter_header","recognition","recognition_item","counterpart","exchange","parked","note","heading"]
+};
+
+const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){
+    let rows=this.rows(text);if(!rows.length)return[];
+    let heads=rows[0].map(x=>x.trim().toLowerCase()),
+        has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),
+        data=has?rows.slice(1):rows,
+        idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},
+        bi=idx(CSVCols.book),ci=idx(CSVCols.chapter),oi=idx(CSVCols.order),
+        gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),
+        ii=idx(CSVCols.italian),ei=idx(CSVCols.english);
+    let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
+    /* A row the file itself marks as something other than a shadowable sentence —
+       a chapter explainer, a recognition line — is held back rather than imported.
+       An unrecognised value is imported, so a new row type is never silently lost. */
+    let kept=has&&ri>=0?data.filter(r=>!CSVCols.skipRowTypes.includes(cell(r,ri).toLowerCase())):data;
+    let held=data.length-kept.length;
+    /* Position. A plain positive whole-numbered group keeps the original
+       arithmetic exactly, so every file that imports correctly today still does.
+       A labelled group — 1.1, TR1.1, A2.2.0 — is numbered by the order its label
+       first appears within its own book and chapter. That makes a grounding group
+       ending in .0 an ordinary group rather than a value the old test rejected. */
+    let plain=v=>/^\d+$/.test(v)&&Number(v)>0,
+        SEP="|~|",labels=new Map(),runs=new Map();
+    if(has&&gi>=0)kept.forEach(r=>{
+      let g=cell(r,gi);if(!g||plain(g))return;
+      let scope=cell(r,bi)+SEP+cell(r,ci);
+      if(!labels.has(scope))labels.set(scope,[]);
+      let list=labels.get(scope);if(!list.includes(g))list.push(g);
+    });
+    const ord=(r,i)=>{
+      if(has&&gi>=0){
+        let g=cell(r,gi),it=Number(cell(r,ti));
+        if(plain(g)&&it>0)return(Number(g)-1)*10+it;
+        if(g){
+          let scope=cell(r,bi)+SEP+cell(r,ci),n=labels.get(scope).indexOf(g)+1,key=scope+SEP+g;
+          runs.set(key,(runs.get(key)||0)+1);
+          return(n-1)*10+(it>0?it:runs.get(key));
+        }
+      }
+      return Number(cell(r,has&&oi>=0?oi:-1))||i+1;
+    };
+    let placed=has&&(bi>=0||ci>=0||gi>=0||ti>=0||oi>=0);
+    this.lastReport={headerFound:has,placementFound:placed,rowsHeldBack:held,columns:has?heads.filter(h=>h).length:0};
+    return kept.map((r,i)=>{
+      let italian="",english="";
+      if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}
+      else if(r.length>=5){italian=r[3];english=r[4];}
+      else if(r.length>=2){italian=r[0];english=r[1];}
+      else italian=r[0];
+      let s={book:has&&bi>=0?cell(r,bi):Util.clean(defs.book),
+             chapter:has&&ci>=0?cell(r,ci):Util.clean(defs.chapter),
+             order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),
+             bookmarked:false,difficult:false,notes:""};
+      let id=has?cell(r,si):"";if(id)s.sentenceId=id;
+      return s;
+    }).filter(x=>x.italian);
+  },chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
 
 /* One sentence row, shared by Study and Generate. */
 /* One sentence row, shared by Study and Generate.
@@ -1007,21 +1082,37 @@ const Importer={
      again must not give you two. Same place, different words is a correction:
      it belongs in that slot, replacing what is there, not beside it. */
   slot(s){return [String(s.book),String(s.chapter),String(s.order)].join("|");},
+  /* A sentence_id, when the file carries one, is a name that survives the sentence
+     moving. Position is kept as the fallback so a hand-made two-column CSV, which
+     has no ids at all, behaves exactly as it always has. */
+  idKey(s){return s.sentenceId?"id|"+String(s.sentenceId):"";},
   words(s){return String(s.italian||"").trim().replace(/\s+/g," ").toLowerCase();},
   split(items){
-    let held=new Map();App.sentences.forEach(s=>held.set(this.slot(s),s));
+    /* Held sentences are findable by name and by position, so a library imported
+       before ids existed still matches a file that now carries them. */
+    let held=new Map(),byId=new Map();
+    App.sentences.forEach(s=>{held.set(this.slot(s),s);let k=this.idKey(s);if(k)byId.set(k,s);});
     let seen=new Set(),fresh=[],dupes=[],changed=[];
     items.forEach(s=>{
-      let k=this.slot(s);
+      let ik=this.idKey(s),k=ik||this.slot(s);
       if(seen.has(k)){dupes.push(s);return;}
       seen.add(k);
-      let was=held.get(k);
+      let was=(ik&&byId.get(ik))||held.get(this.slot(s));
       if(!was){fresh.push(s);return;}
-      if(this.words(was)===this.words(s)&&
-         String(was.english||"").trim()===String(s.english||"").trim()){dupes.push(s);return;}
-      /* Keep the learner's own marks; only the corpus columns are replaced. */
-      changed.push({...was,italian:s.italian,english:s.english,
-        audioText:s.audioText!==undefined?s.audioText:was.audioText});
+      let sameId=String(was.sentenceId||"")===String(s.sentenceId||"");
+      if(sameId&&this.words(was)===this.words(s)&&
+         String(was.english||"").trim()===String(s.english||"").trim()&&
+         String(was.book)===String(s.book)&&String(was.chapter)===String(s.chapter)&&
+         Number(was.order)===Number(s.order)){dupes.push(s);return;}
+      /* Keep the learner's own marks; only the corpus columns are replaced.
+         A named sentence also carries its place with it, so a repair that moved
+         an item updates that item rather than overwriting whatever now sits in
+         the slot it used to occupy. */
+      let next={...was,italian:s.italian,english:s.english,
+        audioText:s.audioText!==undefined?s.audioText:was.audioText};
+      if(s.sentenceId)next.sentenceId=s.sentenceId;
+      if(ik&&byId.get(ik)){next.book=s.book;next.chapter=s.chapter;next.order=s.order;}
+      changed.push(next);
     });
     return {fresh,dupes,changed};},
   open(){App.analysed=[];this.text="";$("importSummary").textContent="No CSV analysed yet.";$("importSummary").className="status";$("importPreview").innerHTML="";$("importPreviewed").disabled=false;$("importPreviewed").textContent="Import";$("importModal").style.display="flex";DialogManager.open($("importModal"),$("importTitle"),()=>this.close());},
@@ -1040,6 +1131,20 @@ const Importer={
       if(changed.length)parts.push(`${changed.length} ${changed.length===1?"has":"have"} changed since you imported them and will be updated in place.`);
       parts.push(fresh.length?`${fresh.length} ${fresh.length===1?"is":"are"} new and will be added.`:"Nothing new will be added.");
       msg=parts.join(" ");cls=fresh.length||changed.length?"warntxt":"warntxt";
+    }
+    /* A file can look perfectly healthy and still be unplaceable: the app finds a
+       header row, finds no column telling it which book, chapter or position a
+       sentence belongs to, and quietly drops everything into the defaults. Say so
+       here, before anything is imported, rather than after. */
+    let rep=Library.lastReport||{};
+    if(items.length&&rep.headerFound&&!rep.placementFound){
+      msg="This file has a header row but no column naming the book, chapter, group, item or order. "+
+          "Every sentence will go into the default book and chapter, numbered by its position in the file. "+
+          "Add one of: book, chapter (or chapter_id), group (or group_id), item (or sequence).";
+      cls="dangertxt";
+      $("importPreviewed").disabled=true;
+    }else if(rep.rowsHeldBack){
+      msg+=` ${rep.rowsHeldBack} row(s) marked as something other than a sentence were left out.`;
     }
     $("importSummary").textContent=msg;
     $("importSummary").className="status "+cls;
@@ -1652,7 +1757,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.11.7",
+  VERSION:"1.12.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");

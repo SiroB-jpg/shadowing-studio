@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.12.0 — the importer learns where a sentence goes
+
+Three of the newest and largest modules could not be *placed* by the app. Not imported without their extras — placed. Essential Spoken Italian (1,500 sentences), Travel Italian (360) and the Core A0–B2 corpus export (2,310) name a sentence's book, chapter and position with columns the importer had never heard of: `book_number`, `chapter_number`, `chapter_id`, `group_number`, `group_id`, `item_number`, `sequence`. **4,170 sentences would have landed in a single undifferentiated chapter, numbered by their line in the file** — and the app said nothing, because it found the word `italian` in the header and assumed the rest.
+
+**The accepted column names are now a written, closed list.** `CSVCols` at the top of `app.js` holds one canonical name per purpose plus the alternatives the existing modules already use. A closed list is the point: a module that invents a new name is reported rather than quietly mis-imported.
+
+**Position no longer assumes the group is a number.** The old rule was `(group − 1) × 10 + item`, and it only ran when both were above zero. Group identifiers in the corpus are labels — `1.1`, `TR1.1`, `A2.2.0` — so the arithmetic gave nonsense or fell through to line order. Worse, **grounding groups end in `.0` by design**, and `group > 0` rejected every one of them. A labelled group is now numbered by the order its label first appears within its own book and chapter. A plain positive whole number keeps the original arithmetic exactly, so every file that imported correctly before this release imports identically now — proved by fixtures taken from Verb Foundations and the Pronouns corpus.
+
+**A file may hold rows that are not sentences.** Essential Spoken Italian's 1,525 rows are 1,500 sentences and 25 chapter explainers, told apart by a `record_type` column nothing read. They were dropped by luck — their Italian field happens to be empty — while still shifting the numbering of everything after them. `record_type` and `item_type` are now read, known non-sentence kinds are held back and counted on the Analyse screen, and an *unrecognised* kind is imported rather than discarded, so a new row type is never silently lost.
+
+**A sentence can now have a name.** `sentence_id`, where the file supplies one, is the sentence's identity ahead of its position. This matters because 744 logged repairs have moved items within groups, and the app identified a sentence by `book | chapter | position`: when item 4 was replaced and the rest shifted down, the importer carried the learner's bookmark and note onto a *different sentence*. A named sentence now carries its place with it. Position remains the fallback, so a hand-made two-column CSV behaves exactly as it always has, and a library imported before ids existed is still matched by position and gains its id on the next import.
+
+**The app says when it cannot place a file.** A header row with no recognised placement column now stops the import and names the columns to add, instead of dropping everything into the defaults.
+
+**Database version 1 → 2.** Adds a `sentenceId` index. No existing data is rewritten and no sentence is required to have an id.
+
+Eleven suites, **474 checks** — 45 new, every fixture a slice of a real module file with its header row untouched.
+
 ## v1.11.7 — the relay is not the one in this repository
 
 The pre-download stopped after one sentence, as v1.11.5 intended, and reported what the relay said: **"No target word supplied."** That sentence appears exactly once in `worker.js`, in `validateRequest` — the *sentence generator's* validation. A speech request was answered by the generation code path.

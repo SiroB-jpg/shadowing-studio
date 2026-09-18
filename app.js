@@ -49,7 +49,48 @@ const SecureConfig={
 
 const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
-const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,3);r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
+/* Opening the database.
+
+   A database version bump cannot proceed while another tab still holds the
+   old version open. The browser does not fail that request — it waits, in
+   silence, for as long as the other tab lives. Because App.db = await
+   Storage.open() is the first line of start-up, a silent wait stops the app
+   before it has drawn anything: the shell renders and the library looks
+   empty, though nothing has been touched.
+
+   So this handles both ends of that situation. A tab whose upgrade is blocked
+   says so on the page and keeps waiting, and finishes starting the moment the
+   other tab lets go. A tab holding an old connection closes it when a newer
+   tab asks to upgrade, and says it needs a reload. Between them the deadlock
+   resolves itself. */
+const Storage={
+  banner(text,action){
+    let el=document.getElementById("dbBanner");
+    if(!el){el=document.createElement("div");el.id="dbBanner";el.className="db-banner";document.body.insertBefore(el,document.body.firstChild);}
+    el.innerHTML="";
+    let p=document.createElement("span");p.textContent=text;el.appendChild(p);
+    if(action){let b=document.createElement("button");b.type="button";b.className="db-banner-btn";b.textContent=action;b.onclick=()=>location.reload();el.appendChild(b);}
+    el.hidden=false;
+  },
+  clearBanner(){let el=document.getElementById("dbBanner");if(el)el.remove();},
+  open(){return new Promise((res,rej)=>{
+    let r=indexedDB.open(DB,3),settled=false;
+    r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});};
+    /* Do not reject here. The other tab may yet close, and then this same
+       request succeeds on its own. Rejecting would throw away a start-up
+       that is still going to work. */
+    r.onblocked=()=>{if(!settled)this.banner("Another tab has this app open on an older version. Close the other tabs and this page will carry on by itself. Nothing has been lost.");};
+    r.onsuccess=e=>{
+      settled=true;this.clearBanner();
+      let d=e.target.result;
+      d.onversionchange=()=>{try{d.close();}catch(x){}Storage.banner("A newer version of the app is open in another tab. Reload this page to catch up.","Reload");};
+      res(d);
+    };
+    r.onerror=e=>{settled=true;rej(e.target.error);};
+    /* If neither success, error nor blocked has arrived, something is wrong
+       that none of the three covers. Say something rather than nothing. */
+    setTimeout(()=>{if(!settled&&!document.getElementById("dbBanner"))this.banner("The app is still waiting for its database. If this does not clear, close every tab of this app and open one fresh.");},8000);
+  });},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
 Storage.replaceSentences=function(items){return new Promise((resolve,reject)=>{let transaction=App.db.transaction(SS,"readwrite"),store=transaction.objectStore(SS);store.clear();items.forEach(item=>store.put(item));transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error||new Error("Restore was cancelled."));});};
 
@@ -1924,7 +1965,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.14.0",
+  VERSION:"1.14.1",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2240,4 +2281,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";App.db=await Storage.open();Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();
+(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";try{App.db=await Storage.open();}catch(err){Storage.banner("The app could not open its database: "+(err&&err.message?err.message:String(err))+" Your sentences are still stored on this device.","Reload");return;}Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();

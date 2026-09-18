@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.14.0";
+  --css-version:"1.14.1";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -675,3 +675,18 @@ body.lib-collapsed .panel-art{display:block}
 .checkline input[type="checkbox"]{
   width:22px;height:22px;flex:0 0 auto;margin:0;accent-color:var(--accent);cursor:pointer;
 }
+
+/* The database banner. It has to be legible before any of the app's own
+   wiring has run, so it depends on nothing but these rules — and it sets its
+   own colours rather than borrowing the theme accent, which in dark mode gave
+   white text on gold. */
+.db-banner{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;
+  padding:.75rem 1rem;background:#24402f;color:#ffffff;
+  font:500 0.95rem/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;
+  text-align:left;}
+.db-banner-btn{border:1px solid rgba(255,255,255,.65);background:transparent;
+  color:inherit;border-radius:6px;padding:.3rem .8rem;font:inherit;cursor:pointer;}
+.db-banner-btn:hover{background:rgba(255,255,255,.16);}
+:root[data-theme="dark"] .db-banner{background:#f2d98d;color:#241d05;}
+:root[data-theme="dark"] .db-banner-btn{border-color:rgba(36,29,5,.55);}
+:root[data-theme="dark"] .db-banner-btn:hover{background:rgba(36,29,5,.12);}

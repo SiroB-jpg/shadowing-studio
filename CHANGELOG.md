@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.14.1 — two tabs no longer stop each other
+
+**A second tab could stop the app from starting at all, and it looked like the library had been wiped.**
+
+1.14.0 moved the database from version 2 to version 3 to add the explainer store. A browser will not perform that move while another tab still holds the old version open — it waits, in silence, for as long as that tab lives. And `App.db = await Storage.open()` is the very first line of start-up, so a silent wait stopped everything after it: no binding, no library, no sentences. The page drew its shell and looked empty.
+
+**Nothing was ever lost.** The upgrade step never ran, so nothing was written; and the upgrade step only ever creates missing stores — it has never deleted or cleared anything.
+
+**Both ends of the deadlock now resolve themselves.** A tab whose upgrade is blocked says so on the page, keeps waiting, and finishes starting the moment the other tab lets go. A tab holding an older connection closes it when a newer tab asks to upgrade, and offers a Reload button. If neither success, failure nor blocking arrives within eight seconds, the page says that too, rather than nothing.
+
+**And a failure to open the database is now reported instead of swallowed.** Start-up used to let the error escape and stop, leaving a blank shell and a clean console.
+
+**The README was stale at v1.11.3** while the app shipped 1.14.0, because `set-version.mjs` did not know about it — and the README heading is the first thing anyone opening the repository reads. It is now on the list and moves with every release.
+
+Fourteen suites, **574 checks** — 24 new, including a genuine two-tab test. (The first version of that test used a separate browser context per tab, so the two tabs never shared a database and it passed without testing anything. Caught and rewritten.)
+
 ## v1.14.0 — notes on the chapter, when you want them
 
 The corpus has carried a chapter explainer for every one of its 231 groups since corpus v1.65.0 — the one place in this method where grammar is explained in words rather than shown by example. The app has never read a line of it.

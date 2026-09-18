@@ -1,5 +1,23 @@
 # Changelog
 
+## v1.14.0 — notes on the chapter, when you want them
+
+The corpus has carried a chapter explainer for every one of its 231 groups since corpus v1.65.0 — the one place in this method where grammar is explained in words rather than shown by example. The app has never read a line of it.
+
+**Study now has an "In this chapter" button** beside the breadcrumb. It opens the notes for the chapter you are in: the chapter's opening, then each group's section in order, then its closing. **The button only appears when there is something behind it**, so a chapter with no notes shows nothing rather than an empty panel.
+
+**Read after practice, not before it.** That is the design, and the panel says so under its title. Nothing opens by itself, and nothing interrupts a session.
+
+**Explainers import as their own kind of file.** They are not sentences — no Italian, no audio, no learner marks — so they go to their own store, keyed by group, and importing simply replaces the notes for the chapters in the file. The Analyse screen recognises which sort of file it has been given and says which it is going to import.
+
+**And the corpus importer now refuses an explainer file outright.** It used to accept one: finding no `italian` column, it fell back to reading by column position and produced eleven sentences out of headings and body text. Caught by a test written for exactly that, not in the field.
+
+**A very small Markdown reader** handles what the explainer bodies actually use — italics, pipe tables, bullet lists, blank-line paragraphs — and nothing else. Every value is escaped before any markup is applied, so text arriving from a spreadsheet can never become HTML.
+
+**Database version 2 → 3.** Adds the `explainers` store. Sentences, audio cache and learner marks are untouched.
+
+Thirteen suites, **550 checks** — 34 new, including the escaping and the file-recognition both ways.
+
 ## v1.13.1 — the structure line is now the learner's to ask for
 
 v1.13.0 shipped the gloss switched on. That was wrong against a design decision already taken: **the structural gloss is opt-in**, used only where it adds something the natural English does not already give, with no clutter. It arrived as neither — always on, with no way to turn it off.

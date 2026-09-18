@@ -1,6 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
-const DB="ISS_V08", SS="sentences", AS="audioCache";
+/* ES holds chapter explainers, one row per group, joined to a sentence by its group. */
+const DB="ISS_V08", SS="sentences", AS="audioCache", ES="explainers";
 const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,audioSuspended:false,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
 
 /* The passphrase authenticates BOTH premium speech and Generate. It was
@@ -48,7 +49,7 @@ const SecureConfig={
 
 const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
 
-const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,2);r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
+const Storage={open(){return new Promise((res,rej)=>{let r=indexedDB.open(DB,3);r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});};r.onsuccess=e=>res(e.target.result);r.onerror=e=>rej(e.target.error);});},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
 Storage.replaceSentences=function(items){return new Promise((resolve,reject)=>{let transaction=App.db.transaction(SS,"readwrite"),store=transaction.objectStore(SS);store.clear();items.forEach(item=>store.put(item));transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error||new Error("Restore was cancelled."));});};
 
@@ -130,6 +131,10 @@ const CSVCols={
 
 const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){
     let rows=this.rows(text);if(!rows.length)return[];
+    /* An explainer file contains no Italian. Without this, the headerless fallback
+       further down would take whatever sits in columns four and five and import it
+       as sentences. */
+    if(this.looksLikeExplainers(text))return[];
     let heads=rows[0].map(x=>x.trim().toLowerCase()),
         has=heads.includes("italian")||heads.includes("sentence")||heads.includes("english"),
         data=has?rows.slice(1):rows,
@@ -188,7 +193,32 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
       let a=has?cell(r,ai):"";if(a&&a.toLowerCase()!=="neutral")s.address=a;
       return s;
     }).filter(x=>x.italian);
-  },chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
+  },
+  /* An explainer file is not a sentence file: it has a heading and a body and no
+     Italian at all. Recognised by its own columns so it can never be mistaken for
+     a corpus import, and vice versa. */
+  looksLikeExplainers(text){
+    let rows=this.rows(text);if(!rows.length)return false;
+    let h=rows[0].map(x=>x.trim().toLowerCase());
+    return (h.includes("body_markdown")||h.includes("body"))&&(h.includes("group_id")||h.includes("group"))&&!h.includes("italian");
+  },
+  parseExplainers(text){
+    let rows=this.rows(text);if(rows.length<2)return[];
+    let h=rows[0].map(x=>x.trim().toLowerCase()),
+        idx=names=>{for(let n of names){let i=h.indexOf(n);if(i>=0)return i;}return -1;},
+        gi=idx(["group_id","group"]),ci=idx(["chapter_id","chapter"]),bi=idx(["book","book_number"]),
+        ti=idx(["chapter_title","chaptertitle"]),oi=idx(["section_order","order"]),
+        hi=idx(["heading","title"]),yi=idx(["body_markdown","body"]),
+        pi=idx(["chapter_opening","opening"]),li=idx(["chapter_closing","closing"]),
+        vi=idx(["explainer_version","version"]),si=idx(["example_sentence_ids","examples"]);
+    let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
+    return rows.slice(1).map(r=>({
+      groupId:cell(r,gi),chapter:cell(r,ci),book:cell(r,bi),chapterTitle:cell(r,ti),
+      order:Number(cell(r,oi))||0,heading:cell(r,hi),body:cell(r,yi),
+      opening:cell(r,pi),closing:cell(r,li),version:cell(r,vi),examples:cell(r,si)
+    })).filter(x=>x.groupId&&(x.body||x.heading||x.opening));
+  },
+  chapter(){return App.sentences.filter(s=>s.book==App.cur.book&&s.chapter==App.cur.chapter).sort(Util.sortS);},group(){return this.chapter().filter(s=>Util.gnum(s)==Number(App.cur.group));},groupOf(s){return App.sentences.filter(x=>x.book==s.book&&x.chapter==s.chapter&&Util.gnum(x)==Util.gnum(s)).sort(Util.sortS);},current(){let g=this.group();if(!g.length)return null;App.cur.index=Math.max(0,Math.min(App.cur.index,g.length-1));return g[App.cur.index];},async refresh(){App.sentences=(await Storage.all(SS)).sort(Util.sortS);await Explainer.refresh();if(App.sentences.length&&!App.cur.book){let s=App.sentences[0];App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:0};}UI.normalise();UI.renderAll();}};
 
 /* One sentence row, shared by Study and Generate. */
 /* One sentence row, shared by Study and Generate.
@@ -438,7 +468,10 @@ const Art={
 
 const UI={
   fill(sel,vals,val,label=x=>x){sel.innerHTML="";if(!vals.length){sel.innerHTML="<option>—</option>";return;}vals.forEach(v=>{let o=document.createElement("option");o.value=v;o.textContent=label(v);if(String(v)==String(val))o.selected=true;sel.appendChild(o);});},
-  renderAll(){this.renderCrumb();this.renderSideArt();this.renderTree();this.renderViewer();Verb.render();this.stats();},
+  renderAll(){this.renderCrumb();this.renderSideArt();this.renderTree();this.renderViewer();this.explainerButton();Verb.render();this.stats();},
+  /* The button is only there when there is something behind it. */
+  explainerButton(){let b=$("openExplainer");if(!b)return;
+    b.classList.toggle("hidden",!Explainer.has(App.cur.book,App.cur.chapter));},
 
   /* Book 1 · Present Subjunctive › Chapter 4 · Opinions… › Group 16 */
   renderCrumb(){
@@ -1110,6 +1143,72 @@ const Verb={
 
 const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.italian||"";$("editEnglish").value=s.english||"";$("editModal").style.display="flex";DialogManager.open($("editModal"),$("editItalian"),()=>this.close());},close(){$("editModal").style.display="none";DialogManager.close($("editModal"));this.sentence=null;},async save(){let s=this.sentence;if(!s)return;let it=$("editItalian").value.trim(),en=$("editEnglish").value.trim();if(!it){UI.status("Italian sentence cannot be empty.","dangertxt");$("editItalian").focus();return;}s.italian=it;s.english=en;await Storage.put(SS,s);this.close();await Library.refresh();UI.status("Sentence updated.","oktxt");}};
 
+/* Chapter explainers.
+
+   The explainer is the one place in this app where grammar may be explained in
+   words. Everything else teaches by example: the sentence, its English, and the
+   structure line. So the explainer is deliberately kept out of the way — the
+   learner asks for it, and reads it after practice rather than before.
+
+   It is written per group but read per chapter, which is how it was designed:
+   one sheet at chapter level, assembled from the groups that make it up. */
+const Explainer={
+  all:[],
+  async refresh(){try{this.all=await Storage.all(ES);}catch(e){this.all=[];}UI.explainerButton&&UI.explainerButton();},
+  /* Every section belonging to the chapter the learner is looking at, in order. */
+  forChapter(book,chapter){
+    return this.all
+      .filter(x=>String(x.chapter)===String(chapter)&&(!x.book||String(x.book)===String(book)))
+      .sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
+  },
+  has(book,chapter){return this.forChapter(book,chapter).length>0;},
+
+  /* A very small Markdown reader: the explainer bodies use italics, pipe tables
+     and blank-line paragraphs, and nothing else. Everything is escaped first, so
+     text from a CSV can never become markup. */
+  render(md){
+    let esc=Util.esc(String(md||""));
+    let blocks=esc.split(/\n\s*\n/),out=[];
+    for(let b of blocks){
+      let lines=b.split("\n").map(l=>l.trim()).filter(Boolean);
+      if(!lines.length)continue;
+      if(lines.length>1&&lines[0].startsWith("|")&&/^\|[\s\-:|]+\|$/.test(lines[1]||"")){
+        let cells=l=>l.replace(/^\||\|$/g,"").split("|").map(c=>this.inline(c.trim()));
+        let head=cells(lines[0]),body=lines.slice(2).map(cells);
+        out.push(`<table class="exp-table"><thead><tr>${head.map(c=>`<th>${c}</th>`).join("")}</tr></thead>`+
+                 `<tbody>${body.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
+      }else if(lines.every(l=>/^[-*]\s+/.test(l))){
+        out.push(`<ul>${lines.map(l=>`<li>${this.inline(l.replace(/^[-*]\s+/,""))}</li>`).join("")}</ul>`);
+      }else{
+        out.push(`<p>${lines.map(l=>this.inline(l)).join("<br>")}</p>`);
+      }
+    }
+    return out.join("");
+  },
+  inline(t){return String(t).replace(/\*([^*]+)\*/g,'<em>$1</em>');},
+
+  open(){
+    let book=App.cur.book,chapter=App.cur.chapter,secs=this.forChapter(book,chapter);
+    if(!secs.length)return;
+    let title=secs.find(s=>s.chapterTitle)||{};
+    $("explainerTitle").textContent=title.chapterTitle?`${chapter} — ${title.chapterTitle}`:`Chapter ${chapter}`;
+    let opening=secs.map(s=>s.opening).find(Boolean),closing=secs.map(s=>s.closing).find(Boolean);
+    let html="";
+    if(opening)html+=`<div class="exp-open">${this.render(opening)}</div>`;
+    html+=secs.filter(s=>s.body||s.heading).map(s=>
+      `<section class="exp-sec">`+
+      (s.heading?`<h3>${Util.esc(s.heading)}</h3>`:"")+
+      this.render(s.body)+
+      `</section>`).join("");
+    if(closing)html+=`<div class="exp-close">${this.render(closing)}</div>`;
+    $("explainerBody").innerHTML=html;
+    $("explainerBody").scrollTop=0;
+    $("explainerModal").style.display="flex";
+    DialogManager.open($("explainerModal"),$("explainerTitle"),()=>this.close());
+  },
+  close(){$("explainerModal").style.display="none";DialogManager.close($("explainerModal"),$("openExplainer"));}
+};
+
 const Importer={
   text:"",
   /* A sentence's place in the corpus — book, chapter and position — is its
@@ -1160,8 +1259,24 @@ const Importer={
   close(){$("importModal").style.display="none";DialogManager.close($("importModal"),$("openManage"));},
   defs(){return{book:$("defaultBook").value,chapter:$("defaultChapter").value};},
   async fileText(){let f=$("csvFile").files[0];return f?await f.text():"";},
+  /* Explainer files take a different path: nothing to reconcile, no learner marks
+     to protect, so they simply replace what is held for those groups. */
+  previewExplainers(list,text){
+    App.analysed=[];App.analysedExplainers=list;this.text=text||"";
+    let chapters=new Set(list.map(x=>x.chapter).filter(Boolean));
+    $("importSummary").textContent=list.length
+      ? `Detected ${list.length} explainer section(s) across ${chapters.size} chapter(s). Importing replaces the notes for those chapters.`
+      : "No explainer sections detected.";
+    $("importSummary").className="status "+(list.length?"oktxt":"dangertxt");
+    $("importPreviewed").disabled=!list.length;
+    $("importPreviewed").textContent="Import notes";
+    $("importPreview").innerHTML=list.length
+      ? `<table><thead><tr><th>Chapter</th><th>Group</th><th>Heading</th></tr></thead><tbody>`+
+        list.slice(0,12).map(x=>`<tr><td>${Util.esc(x.chapter)}</td><td>${Util.esc(x.groupId)}</td><td>${Util.esc(x.heading)}</td></tr>`).join("")+
+        `</tbody></table>` : "";
+  },
   preview(items,text){
-    App.analysed=items;this.text=text||"";
+    App.analysed=items;App.analysedExplainers=null;this.text=text||"";
     let {fresh,dupes,changed}=this.split(items);
     let msg,cls;
     if(!items.length){msg="No sentences detected.";cls="dangertxt";}
@@ -1198,6 +1313,17 @@ const Importer={
     $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
   },
   async import(){
+    if(App.analysedExplainers&&App.analysedExplainers.length){
+      let t=App.db.transaction(ES,"readwrite"),st=t.objectStore(ES);
+      App.analysedExplainers.forEach(x=>st.put(x));
+      await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);});
+      await Explainer.refresh();
+      $("importSummary").textContent=`${App.analysedExplainers.length} explainer section(s) imported.`;
+      $("importSummary").className="status oktxt";
+      $("importPreviewed").disabled=true;
+      App.analysedExplainers=null;
+      return;
+    }
     if(!App.analysed.length){alert("Analyse first.");return;}
     let {fresh,dupes,changed}=this.split(App.analysed);
     let learned=this.text?Titles.harvest(this.text,this.defs()):0;
@@ -1798,7 +1924,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.13.1",
+  VERSION:"1.14.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2024,8 +2150,11 @@ function bind(){
 
   $("closeImport").onclick=()=>Importer.close();
   $("importModal").onclick=e=>{if(e.target===$("importModal"))Importer.close();};
-  $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}let t=await f.text();Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
-  $("analysePaste").onclick=()=>{let t=$("pasteCsv").value;Importer.preview(Library.parseCSV(t,Importer.defs()),t);};
+  const analyse=t=>Library.looksLikeExplainers(t)
+    ? Importer.previewExplainers(Library.parseExplainers(t),t)
+    : Importer.preview(Library.parseCSV(t,Importer.defs()),t);
+  $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}analyse(await f.text());};
+  $("analysePaste").onclick=()=>analyse($("pasteCsv").value);
   $("importPreviewed").onclick=()=>Importer.import();
   $("dedupe").onclick=()=>Importer.dedupe();
   $("exportCsv").onclick=()=>download(`italian-shadowing-library-v${Build.VERSION.replaceAll(".","")}.csv`,toCSV(),"text/csv;charset=utf-8");
@@ -2043,6 +2172,8 @@ function bind(){
   $("displayMode").onchange=()=>{Preferences.save();UI.renderViewer();};
   $("showEnglish").onchange=()=>{Preferences.save();UI.renderViewer();if(Generator.items.length)Generator.renderCards();};
   $("showGloss").onchange=()=>{Preferences.save();UI.renderViewer();};
+  $("openExplainer").onclick=()=>Explainer.open();
+  $("explainerClose").onclick=()=>Explainer.close();
   $("playMode").onchange=()=>{Preferences.save();Playbar.restart();};
   $("search").oninput=()=>UI.renderViewer();
   $("search").onsearch=()=>UI.renderViewer();

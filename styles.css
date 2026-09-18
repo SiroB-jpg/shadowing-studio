@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.13.1";
+  --css-version:"1.14.0";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -286,6 +286,30 @@ button.primary{background:var(--accent-button);color:var(--on-accent);min-width:
 /* The address label reports a register. It is deliberately quiet and is not a
    control — nothing here is clickable. */
 /* Focus mode: same treatment as the row, sized for the larger type. */
+/* "In this chapter" — quiet enough to ignore while practising, findable when wanted. */
+.chip-btn{background:var(--soft);color:var(--muted);border:1px solid var(--border);
+  border-radius:999px;padding:.22rem .7rem;font-size:.78rem;font:inherit;font-size:.78rem;
+  cursor:pointer;min-height:var(--tap-min);white-space:nowrap}
+.chip-btn:hover{color:var(--ink);border-color:var(--muted)}
+.chip-btn:focus-visible{outline:var(--focus-ring) solid var(--focus);outline-offset:var(--focus-offset)}
+
+/* The explainer reads like a page, not like a form. */
+/* The heading takes focus when the panel opens so a screen reader starts at the
+   top. That is programmatic focus, not keyboard navigation, so it should not draw
+   a ring — :focus-visible still will if someone tabs to it. */
+#explainerTitle:focus{outline:none}
+.exp-body{max-height:62vh;overflow:auto;padding-right:.4rem;line-height:1.55}
+.exp-body p{margin:.5rem 0}
+.exp-body h3{margin:1.15rem 0 .35rem;font-size:1.02rem}
+.exp-body ul{margin:.45rem 0 .45rem 1.1rem}
+.exp-body em{font-style:italic}
+.exp-open{padding:.1rem 0 .5rem;border-bottom:1px solid var(--border);margin-bottom:.4rem}
+.exp-close{margin-top:1rem;padding-top:.6rem;border-top:1px solid var(--border);color:var(--muted)}
+.exp-sec+.exp-sec{margin-top:.2rem}
+.exp-table{border-collapse:collapse;width:100%;margin:.5rem 0;font-size:var(--text-sm)}
+.exp-table th,.exp-table td{border:1px solid var(--border);padding:.3rem .5rem;text-align:left;vertical-align:top}
+.exp-table th{background:var(--soft);font-weight:600}
+.modal.wide{max-width:720px;width:100%}
 .focus-gloss{color:var(--muted);font-style:italic;opacity:.85;margin-top:.35rem;
   padding-left:.7rem;border-left:2px solid var(--border)}
 .addr{display:block;font-size:.68rem;line-height:1.1;color:var(--muted);

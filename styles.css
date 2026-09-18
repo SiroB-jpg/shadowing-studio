@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.15.0";
+  --css-version:"1.15.1";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;

@@ -158,6 +158,9 @@ const CSVCols={
   book:["book","book_number","booknumber"],
   chapter:["chapter","lesson","unit","chapter_number","chapternumber","chapter_id","chapterid"],
   group:["group","group_number","groupnumber","group_id","groupid"],
+  /* Identity, as opposed to position. Where a file carries both, group_id wins:
+     it is the key Protocol v2.1 section 9.2 binds the explainer on. */
+  groupKey:["group_id","groupid","group_number","groupnumber","group"],
   item:["item","item_number","itemnumber","sequence"],
   order:["order","number","no","#"],
   sentenceId:["sentence_id","sentenceid","line_id","lineid","record_id","recordid","id"],
@@ -184,7 +187,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
         data=has?rows.slice(1):rows,
         idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},
         bi=idx(CSVCols.book),ci=idx(CSVCols.chapter),oi=idx(CSVCols.order),
-        gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),cvi=idx(CSVCols.corpusVersion),
+        gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),cvi=idx(CSVCols.corpusVersion),gki=idx(CSVCols.groupKey),
         li=idx(CSVCols.gloss),ai=idx(CSVCols.address),
         ii=idx(CSVCols.italian),ei=idx(CSVCols.english);
     let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
@@ -235,7 +238,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
       /* The real group identifier, kept verbatim. Protocol v2.1 section 9.2:
          group_id binds the corpus to its explainer, and must never be derived
          from row position or ten-row counting. */
-      let gid=has&&gi>=0?cell(r,gi):"";if(gid)s.groupId=gid;
+      let gid=has&&gki>=0?cell(r,gki):"";if(gid)s.groupId=gid;
       /* The gloss exists only where natural English inverts the Italian, so most
          items have none. Empty stays empty rather than becoming an empty line. */
       let g=has?cell(r,li):"";if(g)s.gloss=g;
@@ -2143,7 +2146,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.15.0",
+  VERSION:"1.15.1",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");

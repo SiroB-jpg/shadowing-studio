@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.15.1 — every module, placed correctly
+
+**A file carrying both `group` and `group_id` was storing the wrong one as its identity.** Travel Italian and Italian through Food carry both: `group` is a plain number, `group_id` is the corpus's own `TR1.1`. `CSVCols` lists `group` first, for the position arithmetic, so v1.15.0 stored the number. Protocol v2.1 §9.2 makes `group_id` the binding key, so identity now prefers it. Position arithmetic is untouched.
+
+**All sixteen Italian module headers are now tested against the importer.** Read from Drive on 18 September: Core, Essential Spoken Italian, Verb Foundations, Advanced Verbs, Pronouns, Prepositions, Subjunctive, Sports, Health, Numbers, Shopping, Italian at Home, Living in Italy, Travel, Italian through Food, Arts and Culture. Every one resolves to a book, a chapter and a group, and none falls back to the import-screen defaults. Capitalisation varies wildly between modules and turns out not to matter — headers are lower-cased before matching.
+
+Sixteen suites, **641 checks** — 7 new.
+
 ## v1.15.0 — one file, everything in it
 
 **A corpus file can now carry its own chapter notes and glossary.** One CSV, a `record_type` column, and three kinds of row: `sentence`, `explainer`, `glossary`. The import screen reads all three, says what it found, and imports them together.

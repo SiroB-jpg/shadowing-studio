@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.15.0 — one file, everything in it
+
+**A corpus file can now carry its own chapter notes and glossary.** One CSV, a `record_type` column, and three kinds of row: `sentence`, `explainer`, `glossary`. The import screen reads all three, says what it found, and imports them together.
+
+Nothing is duplicated. One row per sentence, one per group, one per term — which is what Protocol v2.1 §9.5 actually prohibits when it forbids repeating an explainer body across ten sentence rows. The three remain separate logical tables; they now travel in one file.
+
+**Separate files still work exactly as before.** An explainer-only CSV imports as notes; a corpus-only CSV imports as sentences. Both paths are tested.
+
+**The app keeps the real `group_id`.** It used to derive a group number as `floor((order − 1) / 10) + 1` — the ten-row counting Protocol §9.2 prohibits by name — and store no identifier at all. It now stores `group_id` verbatim from the corpus, and `Explainer.forGroup()` finds a section by it. That closes the §16.6 non-conformance. The positional number survives for ordering only.
+
+**Database version 3 → 4.** Adds the `glossary` store. Sentences, notes, audio cache and learner marks are untouched.
+
+Sixteen suites, **634 checks** — 26 new.
+
 ## v1.14.3 — the chapter notes, as they were written
 
 **Ninety-three of the 231 explainer sections would have rendered with their markup showing.** The bodies use bold in 73 sections, quoted example pairs in 16, ordered lists in 3, and a level banner in 1 — and the reader handled none of them. `**infinitive**` would have appeared on screen with its asterisks. Found by building the validation gates that the Explainer Corpus Integration Protocol v2.0 §11 requires, and running them against the real collection rather than a fixture.

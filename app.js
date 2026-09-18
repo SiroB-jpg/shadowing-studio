@@ -1,7 +1,7 @@
 "use strict";
 const $=id=>document.getElementById(id);
 /* ES holds chapter explainers, one row per group, joined to a sentence by its group. */
-const DB="ISS_V08", SS="sentences", AS="audioCache", ES="explainers";
+const DB="ISS_V08", SS="sentences", AS="audioCache", ES="explainers", GS="glossary";
 const App={db:null,sentences:[],analysed:[],alice:null,currentAudio:null,currentAudioResolve:null,elevenAbort:null,audioSuspended:false,playbackContext:null,cur:{book:"",chapter:"",group:1,index:0},verbTenseIndex:0};
 
 /* The passphrase authenticates BOTH premium speech and Generate. It was
@@ -74,8 +74,8 @@ const Storage={
   },
   clearBanner(){let el=document.getElementById("dbBanner");if(el)el.remove();},
   open(){return new Promise((res,rej)=>{
-    let r=indexedDB.open(DB,3),settled=false;
-    r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});};
+    let r=indexedDB.open(DB,4),settled=false;
+    r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});if(!d.objectStoreNames.contains(GS))d.createObjectStore(GS,{keyPath:"term"});};
     /* Do not reject here. The other tab may yet close, and then this same
        request succeeds on its own. Rejecting would throw away a start-up
        that is still going to work. */
@@ -163,12 +163,14 @@ const CSVCols={
   sentenceId:["sentence_id","sentenceid","line_id","lineid","record_id","recordid","id"],
   rowType:["record_type","recordtype","item_type","itemtype"],
   corpusVersion:["corpus_version","corpusversion"],
+  term:["term"],
+  definition:["definition"],
   gloss:["literal_gloss","literalgloss","gloss","structural_english","structuralenglish"],
   address:["address_system","addresssystem","address_form","addressform"],
   bookTitle:["booktitle","book_title"],
   chapterTitle:["chaptertitle","chapter_title"],
   /* Row kinds that are content but not a sentence the learner shadows. */
-  skipRowTypes:["chapter_explainer","explainer","group_header","chapter_header","recognition","recognition_item","counterpart","exchange","parked","note","heading"]
+  skipRowTypes:["chapter_explainer","explainer","glossary","glossary_term","group_header","chapter_header","recognition","recognition_item","counterpart","exchange","parked","note","heading"]
 };
 
 const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){
@@ -230,6 +232,10 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
              bookmarked:false,difficult:false,notes:""};
       let id=has?cell(r,si):"";if(id)s.sentenceId=id;
       let cv=has?cell(r,cvi):"";if(cv)s.corpusVersion=cv;
+      /* The real group identifier, kept verbatim. Protocol v2.1 section 9.2:
+         group_id binds the corpus to its explainer, and must never be derived
+         from row position or ten-row counting. */
+      let gid=has&&gi>=0?cell(r,gi):"";if(gid)s.groupId=gid;
       /* The gloss exists only where natural English inverts the Italian, so most
          items have none. Empty stays empty rather than becoming an empty line. */
       let g=has?cell(r,li):"";if(g)s.gloss=g;
@@ -245,6 +251,20 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
     let h=rows[0].map(x=>x.trim().toLowerCase());
     return (h.includes("body_markdown")||h.includes("body"))&&(h.includes("group_id")||h.includes("group"))&&!h.includes("italian");
   },
+  /* Every row in a file that is a glossary term. One row per term, never
+     repeated onto a sentence row. */
+  parseGlossary(text){
+    let rows=this.rows(text);if(rows.length<2)return[];
+    let h=rows[0].map(x=>x.trim().toLowerCase()),
+        idx=names=>{for(let n of names){let i=h.indexOf(n);if(i>=0)return i;}return -1;},
+        ti=idx(CSVCols.term),di=idx(CSVCols.definition),ri=idx(CSVCols.rowType);
+    if(ti<0||di<0)return[];
+    let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
+    return rows.slice(1)
+      .filter(r=>ri<0||/^glossary/.test(cell(r,ri).toLowerCase()))
+      .map(r=>({term:cell(r,ti),definition:cell(r,di)}))
+      .filter(x=>x.term&&x.definition);
+  },
   parseExplainers(text){
     let rows=this.rows(text);if(rows.length<2)return[];
     let h=rows[0].map(x=>x.trim().toLowerCase()),
@@ -255,7 +275,11 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
         pi=idx(["chapter_opening","opening"]),li=idx(["chapter_closing","closing"]),
         vi=idx(["explainer_version","version"]),si=idx(["example_sentence_ids","examples"]);
     let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
-    return rows.slice(1).map(r=>({
+    /* A file may hold sentences, explainers and glossary terms together. Where
+       it marks the kind, take only the explainer rows. */
+    let ki=idx(CSVCols.rowType),
+        want=r=>ki<0||/explainer$/.test(cell(r,ki).toLowerCase());
+    return rows.slice(1).filter(want).map(r=>({
       groupId:cell(r,gi),chapter:cell(r,ci),book:cell(r,bi),chapterTitle:cell(r,ti),
       order:Number(cell(r,oi))||0,heading:cell(r,hi),body:cell(r,yi),
       opening:cell(r,pi),closing:cell(r,li),version:cell(r,vi),examples:cell(r,si)
@@ -1204,6 +1228,12 @@ const Explainer={
       .filter(x=>String(x.chapter)===String(chapter)&&(!x.book||String(x.book)===String(book)))
       .sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
   },
+  /* The section belonging to one group, matched on the corpus's own group_id.
+     Protocol v2.1 section 16.6: group_id binds, position never does. */
+  forGroup(groupId){
+    if(!groupId)return null;
+    return this.all.find(x=>String(x.groupId)===String(groupId))||null;
+  },
   has(book,chapter){return this.forChapter(book,chapter).length>0;},
 
   /* A very small Markdown reader: the explainer bodies use italics, pipe tables
@@ -1332,22 +1362,36 @@ const Importer={
   async fileText(){let f=$("csvFile").files[0];return f?await f.text():"";},
   /* Explainer files take a different path: nothing to reconcile, no learner marks
      to protect, so they simply replace what is held for those groups. */
-  previewExplainers(list,text){
-    App.analysed=[];App.analysedExplainers=list;this.text=text||"";
+  previewFile(text){
+    let sentences=Library.parseCSV(text,this.defs()),
+        explainers=Library.parseExplainers(text),
+        glossary=Library.parseGlossary(text);
+    if(!sentences.length&&(explainers.length||glossary.length))
+      return this.previewExplainers(explainers,text,glossary);
+    return this.preview(sentences,text,explainers,glossary);
+  },
+  previewExplainers(list,text,glossary){
+    App.analysed=[];App.analysedExplainers=list;App.analysedGlossary=glossary||[];this.text=text||"";
     let chapters=new Set(list.map(x=>x.chapter).filter(Boolean));
     $("importSummary").textContent=list.length
-      ? `Detected ${list.length} explainer section(s) across ${chapters.size} chapter(s). Importing replaces the notes for those chapters.`
-      : "No explainer sections detected.";
-    $("importSummary").className="status "+(list.length?"oktxt":"dangertxt");
-    $("importPreviewed").disabled=!list.length;
+      ? `Detected ${list.length} explainer section(s) across ${chapters.size} chapter(s)`
+        +(App.analysedGlossary.length?` and ${App.analysedGlossary.length} glossary term(s)`:"")
+        +`. Importing replaces the notes for those chapters.`
+      : (App.analysedGlossary.length?`Detected ${App.analysedGlossary.length} glossary term(s).`:"No explainer sections detected.");
+    let any=list.length||App.analysedGlossary.length;
+    $("importSummary").className="status "+(any?"oktxt":"dangertxt");
+    $("importPreviewed").disabled=!any;
     $("importPreviewed").textContent="Import notes";
     $("importPreview").innerHTML=list.length
       ? `<table><thead><tr><th>Chapter</th><th>Group</th><th>Heading</th></tr></thead><tbody>`+
         list.slice(0,12).map(x=>`<tr><td>${Util.esc(x.chapter)}</td><td>${Util.esc(x.groupId)}</td><td>${Util.esc(x.heading)}</td></tr>`).join("")+
         `</tbody></table>` : "";
   },
-  preview(items,text){
-    App.analysed=items;App.analysedExplainers=null;this.text=text||"";
+  preview(items,text,explainers,glossary){
+    App.analysed=items;
+    App.analysedExplainers=(explainers&&explainers.length)?explainers:null;
+    App.analysedGlossary=glossary||[];
+    this.text=text||"";
     let {fresh,dupes,changed}=this.split(items);
     let msg,cls;
     if(!items.length){msg="No sentences detected.";cls="dangertxt";}
@@ -1363,6 +1407,14 @@ const Importer={
        header row, finds no column telling it which book, chapter or position a
        sentence belongs to, and quietly drops everything into the defaults. Say so
        here, before anything is imported, rather than after. */
+    /* One file may carry all three kinds. Say so, so nobody has to guess
+       whether the notes came across with the sentences. */
+    if(App.analysedExplainers||App.analysedGlossary.length){
+      let extra=[];
+      if(App.analysedExplainers)extra.push(`${App.analysedExplainers.length} explainer section(s)`);
+      if(App.analysedGlossary.length)extra.push(`${App.analysedGlossary.length} glossary term(s)`);
+      msg+=` The file also carries ${extra.join(" and ")}, which will be imported together with the sentences.`;
+    }
     let rep=Library.lastReport||{};
     if(items.length&&rep.headerFound&&!rep.placementFound){
       msg="This file has a header row but no column naming the book, chapter, group, item or order. "+
@@ -1383,23 +1435,42 @@ const Importer={
     let sm=items.slice(0,12);
     $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
   },
+  /* Explainer sections and glossary terms simply replace what is held for the
+     same key; there are no learner marks on them to protect. Sentences are
+     reconciled separately, below. */
+  async putAll(store,items){
+    if(!items||!items.length)return 0;
+    let t=App.db.transaction(store,"readwrite"),st=t.objectStore(store);
+    items.forEach(x=>st.put(x));
+    await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);});
+    return items.length;
+  },
   async import(){
+    let notes=[];
     if(App.analysedExplainers&&App.analysedExplainers.length){
-      let t=App.db.transaction(ES,"readwrite"),st=t.objectStore(ES);
-      App.analysedExplainers.forEach(x=>st.put(x));
-      await new Promise((res,rej)=>{t.oncomplete=res;t.onerror=()=>rej(t.error);});
+      notes.push(`${await this.putAll(ES,App.analysedExplainers)} explainer section(s)`);
       await Explainer.refresh();
-      $("importSummary").textContent=`${App.analysedExplainers.length} explainer section(s) imported.`;
-      $("importSummary").className="status oktxt";
-      $("importPreviewed").disabled=true;
-      App.analysedExplainers=null;
-      return;
     }
-    if(!App.analysed.length){alert("Analyse first.");return;}
+    if(App.analysedGlossary&&App.analysedGlossary.length)
+      notes.push(`${await this.putAll(GS,App.analysedGlossary)} glossary term(s)`);
+    App.analysedExplainers=null;App.analysedGlossary=[];
+    /* A file with no sentences is finished here. */
+    if(!App.analysed.length){
+      if(notes.length){
+        $("importSummary").textContent=notes.join(" and ")+" imported.";
+        $("importSummary").className="status oktxt";
+        $("importPreviewed").disabled=true;
+        Manage.status&&Manage.status();
+        return;
+      }
+      alert("Analyse first.");return;
+    }
+    this.extraNotes=notes;
     let {fresh,dupes,changed}=this.split(App.analysed);
     let learned=this.text?Titles.harvest(this.text,this.defs()):0;
     if(!fresh.length&&!changed.length){
       $("importSummary").textContent="Nothing added — every sentence in that file is already in your library, word for word."
+        +((this.extraNotes&&this.extraNotes.length)?` ${this.extraNotes.join(" and ")} were imported.`:"")
         +(learned?` ${learned} book and chapter name(s) were picked up.`:"");
       $("importSummary").className="status warntxt";
       await Library.refresh();
@@ -1415,8 +1486,10 @@ const Importer={
     UI.status([fresh.length?`Imported ${fresh.length} sentence(s).`:"",
       changed.length?`Updated ${changed.length} that had changed.`:"",
       dupes.length?`Skipped ${dupes.length} already in your library.`:"",
+      (this.extraNotes&&this.extraNotes.length)?`Also imported ${this.extraNotes.join(" and ")}.`:"",
       learned?`${learned} book and chapter name(s) picked up.`:""]
       .filter(Boolean).join(" "),"oktxt");
+    this.extraNotes=[];
   },
   /* Clearing up a library that was imported twice.
 
@@ -2070,7 +2143,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.14.3",
+  VERSION:"1.15.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2296,9 +2369,10 @@ function bind(){
 
   $("closeImport").onclick=()=>Importer.close();
   $("importModal").onclick=e=>{if(e.target===$("importModal"))Importer.close();};
-  const analyse=t=>Library.looksLikeExplainers(t)
-    ? Importer.previewExplainers(Library.parseExplainers(t),t)
-    : Importer.preview(Library.parseCSV(t,Importer.defs()),t);
+  /* A file may hold sentences, explainer sections and glossary terms, in any
+     combination. Read all three and report what is actually there, rather than
+     deciding the file is one kind and discarding the rest. */
+  const analyse=t=>Importer.previewFile(t);
   $("analyseFile").onclick=async()=>{let f=$("csvFile").files[0];if(!f){alert("Choose a CSV first.");return;}analyse(await f.text());};
   $("analysePaste").onclick=()=>analyse($("pasteCsv").value);
   $("importPreviewed").onclick=()=>Importer.import();

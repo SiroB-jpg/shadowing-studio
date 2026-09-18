@@ -13,7 +13,9 @@ const suites = [
   ['Backup, restore and destructive safeguards', 'test-backup.mjs'],
   ['Service worker, updates and offline reloads', 'test-service-worker.mjs'],
   ['Responsive layout and visual flows', 'test-responsive.mjs'],
-  ['Pause, premium fallback and readiness', 'test-playback-pause.mjs']
+  ['Pause, premium fallback and readiness', 'test-playback-pause.mjs'],
+  ['Chapter explainer panel', 'test-explainer.mjs'],
+  ['Counterpart lane', 'test-counterpart.mjs']
 ];
 let failed = 0, total = 0;
 for (const [name, file] of suites) {

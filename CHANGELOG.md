@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.17.0 — the other person speaks
+
+**Counterpart lines now import, and play in the other voice.** Five modules ship the other person's lines — the barista, the ticket clerk, the doctor — and until now the importer silently threw every one of them away (`counterpart` was on the skip list, and the app read nothing from `speaker_role`). Siro's ruling of 18 September: a counterpart line is simply the next sentence down the list; it plays in its turn, in a different voice to signal the change of person, and the learner shadows it if they wish.
+
+A row is a counterpart line when any of `record_type`, `item_type`, `speaker_role`, `voice_lane` or `lane` says `counterpart` — the modules disagree on which column carries it, so all five are read. The row keeps `speaker_label`, and the sentence shows it as a tag: *Ticket clerk*, *Barista*, *Doctor*. Position and identity are untouched, so a module's counterpart block lands exactly where its file puts it.
+
+**A second voice.** Settings → ElevenLabs voice gains *Counterpart voice ID (optional)*. With one set, counterpart lines use it — and the Worker's `ELEVENLABS_VOICE_IDS` allow-list must include it, or the relay refuses. With none set, both parts share the learner's voice. On the system voice, the counterpart takes any other Italian voice the device has; with only one, both parts share it. Cached clips are keyed by voice, so a line recorded in one voice is never played back in the other. Pre-download records each line in the voice it will play in.
+
+**Manage library and the import screen say how many.** *3 sentences (1 counterpart)*; *2 of them are counterpart lines — the other person's words, played in the counterpart voice.*
+
+**Backups now carry the corpus columns.** `sentence_id`, `group_id`, `corpus_version`, the structure line, the address form, and the speaker role and label were being dropped by backup and restore, which would have broken explainer binding on a restored library. All optional, so an older backup still restores.
+
+Twelve suites in the repository, **470 checks** — 20 new, in `tests/test-counterpart.mjs`.
+
+## v1.16.0 — the notes for the group you are in
+
+**The chapter notes now open on the current group.** Until now the panel assembled the whole chapter, so opening it in Group 3 gave every section with Group 3's somewhere in the middle. It now shows the section for the group the learner is in — the chapter's opening on the first group, its closing on the last — exactly as `Chapter_Explainers_Integration_Design_v1.1` specified and the app was never built to. The title line says where you are: *A0.1 — Entering Italian Speech · Group 3 of 6*. A `Group 3 —` prefix on the heading is trimmed inside the panel, since the title already says it; the data is untouched.
+
+**The whole chapter is one tap away.** *Show the whole chapter* at the foot of the panel swaps to every section, with the current group's marked and scrolled into view; *Show this group only* comes back. Siro's ruling of 18 September: group first, chapter available.
+
+**Binding is by `group_id`.** A library imported before the app stored `group_id` falls back to the group's position in the chapter, matched against `section_order` — the only place position is used, and only where nothing better exists.
+
+**Removing a book now removes its chapter notes.** They lived in their own store and survived (`claude/85` §8). Sections that name a book go with that book; sections from an older explainer file that named none go with the book whose chapters they belong to. The preview and the result both say how many.
+
+Eleven suites in the repository, **450 checks** — 21 new, in `tests/test-explainer.mjs`.
+
 ## v1.15.1 — every module, placed correctly
 
 **A file carrying both `group` and `group_id` was storing the wrong one as its identity.** Travel Italian and Italian through Food carry both: `group` is a plain number, `group_id` is the corpus's own `TR1.1`. `CSVCols` lists `group` first, for the position arithmetic, so v1.15.0 stored the number. Protocol v2.1 §9.2 makes `group_id` the binding key, so identity now prefers it. Position arithmetic is untouched.

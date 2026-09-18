@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.15.1";
+  --css-version:"1.17.0";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -699,3 +699,14 @@ body.lib-collapsed .panel-art{display:block}
 .exp-body ol{margin:.5rem 0 .5rem 1.25rem;padding:0}
 .exp-body ol li{margin:.25rem 0}
 .exp-rule{border:0;border-top:1px solid var(--border);margin:1.1rem 0}
+
+/* 1.16.0 — the explainer opens on the current group. In the whole-chapter view
+   the current group's section is marked so the eye lands on it after the scroll. */
+.exp-sec.here{border-left:3px solid var(--accent);background:var(--active)}
+.exp-sec.here h3{color:var(--accent)}
+.exp-switch{margin:1rem 0 .2rem;text-align:right;font-size:var(--text-sm)}
+
+/* 1.17.0 — the counterpart lane. The speaker tag sits with the number and the
+   register, and the row itself is tinted so a block of the other person's lines
+   reads as a block. */
+.role{display:block;font-size:.68rem;line-height:1.1;color:var(--accent);font-weight:600;letter-spacing:.01em}

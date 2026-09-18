@@ -1,0 +1,121 @@
+{
+  "checks": [
+    {
+      "name": "Manage dialog is exposed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Manage initial focus",
+      "pass": true,
+      "detail": "manageTitle"
+    },
+    {
+      "name": "Escape closes Manage",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Manage restores focus",
+      "pass": true,
+      "detail": "openManage"
+    },
+    {
+      "name": "Sentence rows use native selection buttons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Library hierarchy uses native buttons",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Sentence button keyboard selection",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Arrow key activates next tab",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Arrow key focuses next tab",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About tab is selected",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About panel is revealed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About panel is labelled by its tab",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Other panels close when About opens",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About carries the method sections",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About reading measure is capped",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Leaving About restores Study",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Visible mobile buttons meet 44px target",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "About is reachable from the phone nav",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "About phone nav button is current",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "name": "Phone nav labels are not clipped",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "Every action icon renders at 24px or larger",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "name": "The Settings icon is a cog, not a starburst",
+      "pass": true,
+      "detail": "{\"circles\":2,\"teeth\":8}"
+    }
+  ],
+  "axe": {
+    "empty-light": [],
+    "about-light": [],
+    "settings-dark": [],
+    "mobile-settings-light": [],
+    "about-mobile-dark": []
+  }
+}

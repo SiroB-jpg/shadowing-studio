@@ -90,7 +90,7 @@ const Storage={
     /* If neither success, error nor blocked has arrived, something is wrong
        that none of the three covers. Say something rather than nothing. */
     setTimeout(()=>{if(!settled&&!document.getElementById("dbBanner"))this.banner("The app is still waiting for its database. If this does not clear, close every tab of this app and open one fresh.");},8000);
-  });},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
+  });},store(n,m="readonly"){return App.db.transaction(n,m).objectStore(n);},all(n){return new Promise((res,rej)=>{let r=this.store(n).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},get(n,k){return new Promise((res,rej)=>{let r=this.store(n).get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);});},put(n,o){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite");t.objectStore(n).put(o);t.oncomplete=res;t.onerror=()=>rej(t.error);});},addMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.add(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},clear(n){return new Promise((res,rej)=>{let r=this.store(n,"readwrite").clear();r.onsuccess=res;r.onerror=()=>rej(r.error);});},putMany(items){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);items.forEach(x=>s.put(x));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteMany(ids){return new Promise((res,rej)=>{let t=App.db.transaction(SS,"readwrite"),s=t.objectStore(SS);ids.forEach(id=>s.delete(id));t.oncomplete=res;t.onerror=()=>rej(t.error);});},deleteKeys(n,keys){return new Promise((res,rej)=>{let t=App.db.transaction(n,"readwrite"),s=t.objectStore(n);keys.forEach(k=>s.delete(k));t.oncomplete=res;t.onerror=()=>rej(t.error);});}};
 
 Storage.replaceSentences=function(items){return new Promise((resolve,reject)=>{let transaction=App.db.transaction(SS,"readwrite"),store=transaction.objectStore(SS);store.clear();items.forEach(item=>store.put(item));transaction.oncomplete=resolve;transaction.onerror=()=>reject(transaction.error);transaction.onabort=()=>reject(transaction.error||new Error("Restore was cancelled."));});};
 
@@ -172,8 +172,18 @@ const CSVCols={
   address:["address_system","addresssystem","address_form","addressform"],
   bookTitle:["booktitle","book_title"],
   chapterTitle:["chaptertitle","chapter_title"],
-  /* Row kinds that are content but not a sentence the learner shadows. */
-  skipRowTypes:["chapter_explainer","explainer","glossary","glossary_term","group_header","chapter_header","recognition","recognition_item","counterpart","exchange","parked","note","heading"]
+  /* The counterpart lane. Sentence Engine v2.3 §16: speaker_role is always
+     `learner` or `counterpart`; speaker_label names the real role — barista,
+     ticket clerk. The modules disagree on which column carries the lane, so
+     any of record_type, item_type, speaker_role, voice_lane or lane saying
+     `counterpart` is enough. */
+  speakerRole:["speaker_role","speakerrole"],
+  speakerLabel:["speaker_label","speakerlabel"],
+  voiceLane:["voice_lane","voicelane","lane"],
+  /* Row kinds that are content but not a sentence the learner shadows. A
+     counterpart line is a sentence from 1.17.0: it plays in its turn, in the
+     other voice, and the learner shadows it if they wish (Siro, 18 Sep 2026). */
+  skipRowTypes:["chapter_explainer","explainer","glossary","glossary_term","group_header","chapter_header","recognition","recognition_item","parked","note","heading"]
 };
 
 const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],row=[],f="",q=false;for(let i=0;i<text.length;i++){let c=text[i],n=text[i+1];if(c=='"'&&q&&n=='"'){f+='"';i++;}else if(c=='"')q=!q;else if(c==","&&!q){row.push(f);f="";}else if((c=="\n"||c=="\r")&&!q){if(c=="\r"&&n=="\n")i++;row.push(f);f="";if(row.some(x=>x.trim()))rows.push(row);row=[];}else f+=c;}row.push(f);if(row.some(x=>x.trim()))rows.push(row);return rows;},parseCSV(text,defs){
@@ -189,6 +199,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
         bi=idx(CSVCols.book),ci=idx(CSVCols.chapter),oi=idx(CSVCols.order),
         gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),cvi=idx(CSVCols.corpusVersion),gki=idx(CSVCols.groupKey),
         li=idx(CSVCols.gloss),ai=idx(CSVCols.address),
+        sri=idx(CSVCols.speakerRole),sli=idx(CSVCols.speakerLabel),vli=idx(CSVCols.voiceLane),
         ii=idx(CSVCols.italian),ei=idx(CSVCols.english);
     let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
     /* A row the file itself marks as something other than a shadowable sentence —
@@ -243,6 +254,13 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
          items have none. Empty stays empty rather than becoming an empty line. */
       let g=has?cell(r,li):"";if(g)s.gloss=g;
       let a=has?cell(r,ai):"";if(a&&a.toLowerCase()!=="neutral")s.address=a;
+      if(has){
+        let cp=v=>String(v||"").toLowerCase()==="counterpart";
+        if(cp(cell(r,ri))||cp(cell(r,sri))||cp(cell(r,vli))){
+          s.speakerRole="counterpart";
+          let lab=cell(r,sli);if(lab)s.speakerLabel=lab;
+        }
+      }
       return s;
     }).filter(x=>x.italian);
   },
@@ -324,6 +342,13 @@ const Gloss={
 };
 
 const SentenceRow={
+  /* "ticket_clerk" reads as "Ticket clerk". A counterpart row with no label is
+     still marked, so nothing in the other voice arrives unannounced. */
+  roleLabel(s){
+    if(!s||s.speakerRole!=="counterpart")return"";
+    let l=String(s.speakerLabel||"counterpart").replace(/[_-]+/g," ").trim();
+    return l.charAt(0).toUpperCase()+l.slice(1);
+  },
   LABEL:{play:"Play this sentence",bm:"Bookmark",edit:"Edit",drop:"Remove from the set"},
   /* The main sentence and each action are separate native buttons. This avoids
      nested interactive controls while making the entire learning flow keyboard operable. */
@@ -343,6 +368,10 @@ const SentenceRow={
         /* Number and register share one grid cell, so the row stays two columns. */
         `<span class="srow-meta"><span class="srow-num">${Util.esc(String(o.number))}</span>`+
         (o.address?`<span class="addr">${Util.esc(ADDRESS_LABEL[String(o.address).toLowerCase()]||o.address)}</span>`:"")+
+        /* Whose line it is. A counterpart row names its speaker — barista,
+           ticket clerk — so the learner sees the change of person as well as
+           hearing it. */
+        (o.role?`<span class="role">${Util.esc(o.role)}</span>`:"")+
         `</span>`+
         `<span class="srow-text">`+
           (o.context?`<span class="srow-context">${Util.esc(o.context)}</span>`:"")+
@@ -616,7 +645,7 @@ const UI={
 
   rowFor(s,i,list){
     return SentenceRow.build({
-      number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
+      number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),
       showEnglish:$("showEnglish").value=="show",
       showGloss:Gloss.on(),
       active:i===App.cur.index,
@@ -625,7 +654,7 @@ const UI={
       actions:["play","bm","edit"],
       on:{
         select:()=>SentenceController.jumpToIndex(i),
-        play:async()=>{await Speech.speak(s.italian);},
+        play:async()=>{await Speech.speak(s.italian,null,s.speakerRole);},
         bm:async()=>{s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();},
         edit:()=>Editor.open(s)
       }
@@ -653,7 +682,7 @@ const UI={
       head.textContent=`${hits.length} match${hits.length===1?"":"es"} across the library${hits.length===60?" (showing the first 60)":""}. Tap one to open its group.`;
       v.appendChild(head);
       hits.forEach(s=>v.appendChild(SentenceRow.build({
-        number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,
+        number:s.order,italian:s.italian,english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),
         showEnglish:$("showEnglish").value=="show",
         showGloss:Gloss.on(),
         bookmarked:!!s.bookmarked,
@@ -661,7 +690,7 @@ const UI={
         actions:["play","bm"],
         on:{
           select:()=>{$("search").value="";App.cur={book:s.book,chapter:s.chapter,group:Util.gnum(s),index:Math.max(0,Library.groupOf(s).findIndex(x=>x.id===s.id))};UI.renderAll();},
-          play:async()=>{await Speech.speak(s.italian);},
+          play:async()=>{await Speech.speak(s.italian,null,s.speakerRole);},
           bm:async()=>{s.bookmarked=!s.bookmarked;await Storage.put(SS,s);await Library.refresh();}
         }
       })));
@@ -682,7 +711,8 @@ const UI={
     let books=Util.uniq(App.sentences.map(s=>s.book)).length,
         ch=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter)).length,
         gs=Util.uniq(App.sentences.map(s=>s.book+"|"+s.chapter+"|"+Util.gnum(s))).length;
-    $("stats").innerHTML=`${App.sentences.length} sentences<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;
+    let cp=App.sentences.filter(s=>s.speakerRole==="counterpart").length;
+    $("stats").innerHTML=`${App.sentences.length} sentences${cp?` (${cp} counterpart)`:""}<br>${books} book(s), ${ch} chapter(s), ${gs} group(s)`;
   },
   status(msg,cls=""){$("status").textContent=msg;$("status").className="status "+cls;}
 };
@@ -701,7 +731,18 @@ const PlaybackControls={
 };
 
 const Speech={
-  loadVoices(){let vs=speechSynthesis.getVoices();App.alice=vs.find(v=>v.name=="Alice")||vs.find(v=>/alice/i.test(v.name))||vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith("it"))||null;},
+  loadVoices(){let vs=speechSynthesis.getVoices();App.alice=vs.find(v=>v.name=="Alice")||vs.find(v=>/alice/i.test(v.name))||vs.find(v=>v.lang&&v.lang.toLowerCase().startsWith("it"))||null;
+    /* The counterpart's system voice: any other Italian voice the device has,
+       so the change of person is audible without ElevenLabs. If there is only
+       one Italian voice, both parts share it. */
+    let it=vs.filter(v=>v.lang&&v.lang.toLowerCase().startsWith("it")&&v!==App.alice);
+    App.counterpartVoice=it.find(v=>/luca|federica|paola|emma/i.test(v.name))||it[0]||null;},
+  /* Which ElevenLabs voice speaks a line. The counterpart voice is optional;
+     with none set, both parts use the learner's voice. */
+  voiceFor(lane){
+    let learner=$("voiceId").value.trim(),cp=($("counterpartVoiceId")&&$("counterpartVoiceId").value.trim())||"";
+    return lane==="counterpart"&&cp?cp:learner;
+  },
   stopAudioOnly(){
     if(App.elevenAbort){try{App.elevenAbort.abort();}catch(e){}App.elevenAbort=null;}
     if(App.currentAudio){
@@ -725,7 +766,7 @@ const Speech={
   RELAY_TIMEOUT:{first:5000,settled:12000},
   relayProven:false,
   stop(){speechSynthesis.cancel();this.stopAudioOnly();},
-  system(text){return new Promise(res=>{speechSynthesis.cancel();let done=false,timer=null;const finish=()=>{if(done)return;done=true;if(timer)clearTimeout(timer);res();};let u=new SpeechSynthesisUtterance(text);u.lang="it-IT";u.rate=PlaybackControls.rate();if(App.alice)u.voice=App.alice;u.onend=finish;u.onerror=finish;timer=setTimeout(finish,25000);speechSynthesis.speak(u);});},
+  system(text,lane){return new Promise(res=>{speechSynthesis.cancel();let done=false,timer=null;const finish=()=>{if(done)return;done=true;if(timer)clearTimeout(timer);res();};let u=new SpeechSynthesisUtterance(text);u.lang="it-IT";u.rate=PlaybackControls.rate();let voice=lane==="counterpart"&&App.counterpartVoice?App.counterpartVoice:App.alice;if(voice)u.voice=voice;u.onend=finish;u.onerror=finish;timer=setTimeout(finish,25000);speechSynthesis.speak(u);});},
   playBlob(blob){return new Promise((res,rej)=>{
     this.stopAudioOnly();
     let url=URL.createObjectURL(blob),a=new Audio(),settled=false,started=false,startTimer=null,totalTimer=null;
@@ -774,7 +815,7 @@ const Speech={
   /* Recorded clips are cached by voice, model and text. The provider key stays
      in the relay; this browser sends only the approved voice/model/text fields. */
   audioRate(){let r=Number(PlaybackControls.rate());return isFinite(r)&&r>0?r:1;},
-  key(text){return `${$("voiceId").value}|${$("model").value}|${text}`;},
+  key(text,vid){return `${vid!==undefined?vid:$("voiceId").value}|${$("model").value}|${text}`;},
   relay(){
     let base=SecureConfig.relayUrl($("relayUrl")?$("relayUrl").value:"");
     let token=SecureConfig.get("relayToken")||($("relayToken")?$("relayToken").value:"").trim();
@@ -882,42 +923,43 @@ const Speech={
     if(response.ok){this.breaker.reset();return"Connected. Address, passphrase, Voice ID and model all check out.";}
     throw new Error(`The relay answered with an unexpected status ${response.status}.${detail?" "+detail:""}`);
   },
-  async prefetch(text){
-    let vid=$("voiceId").value.trim();
+  async prefetch(item){
+    let text=typeof item==="string"?item:item.text,lane=typeof item==="string"?"":item.lane;
+    let vid=this.voiceFor(lane);
     if(!vid)throw new Error("No Voice ID");
-    let key=this.key(text),cached=await Storage.get(AS,key);
+    let key=this.key(text,vid),cached=await Storage.get(AS,key);
     if(cached?.blob)return"cached";
     let blob=await this.fetchPremium(text,vid);
     if(!blob)return"cancelled";
     await Storage.put(AS,{key,blob,createdAt:Date.now()});
     return"fetched";
   },
-  async eleven(text){
-    let vid=$("voiceId").value.trim();
-    if(!vid){UI.status("Missing ElevenLabs Voice ID. Using system voice.","warntxt");return this.system(text);}
-    try{this.relay();}catch(e){UI.status("Missing relay settings. Using system voice.","warntxt");return this.system(text);}
+  async eleven(text,lane){
+    let vid=this.voiceFor(lane);
+    if(!vid){UI.status("Missing ElevenLabs Voice ID. Using system voice.","warntxt");return this.system(text,lane);}
+    try{this.relay();}catch(e){UI.status("Missing relay settings. Using system voice.","warntxt");return this.system(text,lane);}
     /* A cached clip still plays while the breaker is tripped — the recording is
        already on the device and costs nothing. This is also why a chapter could
        start in the ElevenLabs voice and change partway through: the opening
        sentences were cached from an earlier session and the first uncached one
        hit the fault. */
-    let key=this.key(text),cached=await Storage.get(AS,key),blob;
+    let key=this.key(text,vid),cached=await Storage.get(AS,key),blob;
     if(cached?.blob)return this.playBlob(cached.blob);
-    if(this.breaker.tripped)return this.system(text);
+    if(this.breaker.tripped)return this.system(text,lane);
     UI.status(this.relayProven?"Contacting premium speech…":"Contacting premium speech for the first time…");
     try{blob=await this.fetchPremium(text,vid);}
     catch(e){this.breaker.record(e);throw e;}
     /* fetchPremium returns null when its request was superseded rather than
        failed. Returning here left the sentence silent — the loop moved on with
        no sound at all. Say it in the system voice instead. */
-    if(!blob)return this.system(text);
+    if(!blob)return this.system(text,lane);
     this.breaker.ok();
     await Storage.put(AS,{key,blob,createdAt:Date.now()});
     return this.playBlob(blob);
   },
-  async speak(text,engine){
+  async speak(text,engine,lane){
     if($("voiceMode").value=="eleven"){
-      try{return await this.eleven(text);}
+      try{return await this.eleven(text,lane);}
       catch(e){
         /* A premium failure that lands while the learner has paused or stopped
            must not start the system voice. That is the app talking to an empty
@@ -925,14 +967,14 @@ const Speech={
            comes out — exactly the state that makes a bug feel like a haunting. */
         if(engine&&(engine.stopped||engine.paused))return;
         UI.status((e&&e.message?e.message:"ElevenLabs unavailable")+". Using system voice.","warntxt");
-        return this.system(text);
+        return this.system(text,lane);
       }
     }
-    return this.system(text);
+    return this.system(text,lane);
   }
 };
 
-class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;App.audioSuspended=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;App.audioSuspended=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;App.audioSuspended=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;MediaSessionMgr.claim(this);this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;App.audioSuspended=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text,this);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text,this);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
+class PlaybackEngine{constructor(name,button,statusPrefix=""){this.name=name;this.button=button;this.statusPrefix=statusPrefix;this.run=0;this.playing=false;this.paused=false;this.stopped=false;this.provider=null;}setButton(){if(this.button)this.button.textContent=this.playing?(this.paused?"Resume":"Pause"):"Start";}async wait(run){while(this.paused&&!this.stopped&&run===this.run)await Util.sleep(120);}toggle(providerFactory){if(!this.playing){this.start(providerFactory);return;}if(!this.paused){this.paused=true;App.audioSuspended=true;speechSynthesis.pause();if(App.currentAudio)App.currentAudio.pause();UI.status((this.statusPrefix||"Playback")+" paused.","warntxt");this.setButton();MediaSessionMgr.paused();return;}this.paused=false;App.audioSuspended=false;speechSynthesis.resume();if(App.currentAudio)App.currentAudio.play().catch(()=>{});UI.status("Playing…");this.setButton();MediaSessionMgr.playing();}stop(msg="Stopped."){this.run++;this.stopped=true;this.playing=false;this.paused=false;App.audioSuspended=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status(msg,"warntxt");if(!MainPlayer.playing&&!VerbPlayer.playing&&!GenPlayer.playing){WakeLock.release();MediaSessionMgr.none();}}restart(providerFactory,delay=140){this.stop("Restarting…");setTimeout(()=>this.start(providerFactory),delay);}async start(providerFactory){if(this.playing)return;MediaSessionMgr.claim(this);this.run++;let run=this.run;this.playing=true;this.paused=false;this.stopped=false;App.audioSuspended=false;this.setButton();this.provider=providerFactory();App.playbackContext=this.name;UI.status("Playing…");WakeLock.request();MediaSessionMgr.playing();try{while(run===this.run&&!this.stopped){let item=this.provider.next();if(!item)break;if(item.onBefore)item.onBefore();if(item.label){UI.status(item.label);MediaSessionMgr.update(item.label,App.cur.book||"");}let reps=item.repeat??1;if(reps==="infinite"){let rn=0;while(run===this.run&&!this.stopped){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(++rn,"infinite");await Speech.speak(item.text,this,item.lane);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}else{for(let i=0;i<Number(reps)&&run===this.run&&!this.stopped;i++){await this.wait(run);if(run!==this.run||this.stopped)break;if(item.onRepeat)item.onRepeat(i+1,Number(reps));await Speech.speak(item.text,this,item.lane);await this.wait(run);let pauseMs=PlaybackControls.pause();if(pauseMs>0)await Util.sleep(pauseMs);}}}}catch(e){UI.status("Playback error: "+(e&&e.message?e.message:e),"dangertxt");}finally{if(run===this.run){this.playing=false;this.paused=false;this.stopped=false;Speech.stop();if(App.playbackContext===this.name)App.playbackContext=null;this.setButton();UI.status("Finished.","oktxt");WakeLock.release();MediaSessionMgr.none();}}}}
 
 const MainPlayer=new PlaybackEngine("main",null,"Sentence playback");
 const VerbPlayer=new PlaybackEngine("verb",null,"Verb drill");
@@ -950,7 +992,7 @@ function withProgress(p){
   }};
 }
 
-const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},/* Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while showing Chapter 3. Playback now follows the selection, from a pause as well — the learner asked for this sentence, so this sentence is what should be spoken. */follow(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
+const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:s.italian,lane:s.speakerRole,repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:s.italian,lane:s.speakerRole,repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},/* Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while showing Chapter 3. Playback now follows the selection, from a pause as well — the learner asked for this sentence, so this sentence is what should be spoken. */follow(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
 const Verb={
   tenseOrder:["presente","passato","imperfetto","trapassato"],
@@ -1220,8 +1262,10 @@ const Editor={sentence:null,open(s){this.sentence=s;$("editItalian").value=s.ita
    structure line. So the explainer is deliberately kept out of the way — the
    learner asks for it, and reads it after practice rather than before.
 
-   It is written per group but read per chapter, which is how it was designed:
-   one sheet at chapter level, assembled from the groups that make it up. */
+   It is written per group and, from 1.16.0, read per group: the panel opens on
+   the section for the group the learner is in, with the chapter's opening on the
+   first group and its closing on the last, as Chapter_Explainers_Integration_Design
+   v1.1 specifies. The whole chapter is one tap away, opened at the current group. */
 const Explainer={
   all:[],
   async refresh(){try{this.all=await Storage.all(ES);}catch(e){this.all=[];}UI.explainerButton&&UI.explainerButton();},
@@ -1291,24 +1335,70 @@ const Explainer={
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/\*([^*]+)\*/g,'<em>$1</em>');},
 
-  open(){
+  /* The section for the group the learner is in.
+
+     Bound by group_id first (Protocol v2.1 §9.2). A library imported before the
+     app stored group_id has none, so it falls back to the group's position within
+     the chapter, matched against the sections' own section_order — the only
+     place position is used, and only for libraries that carry nothing better. */
+  current(secs){
+    let s=Library.current(),byId=s&&s.groupId?this.forGroup(s.groupId):null;
+    if(byId&&secs.includes(byId))return byId;
+    let groups=Util.uniq(Library.chapter().map(Util.gnum)).sort((a,b)=>a-b),
+        i=groups.indexOf(Number(App.cur.group));
+    return i>=0&&i<secs.length?secs[i]:null;
+  },
+  /* "Group 3 — Saying who you are" repeats the group number the title line
+     already carries, so the prefix comes off inside the panel. The data is untouched. */
+  shortHeading(h){return String(h||"").replace(/^\s*group\s+\d+[a-z]?\s*[—–-]\s*/i,"");},
+  section(s,here,short){
+    return `<section class="exp-sec${here?" here":""}" data-group="${Util.esc(s.groupId||"")}">`+
+      (s.heading?`<h3>${Util.esc(short?this.shortHeading(s.heading):s.heading)}</h3>`:"")+
+      this.render(s.body)+`</section>`;
+  },
+  /* mode "group": the current group's section alone, with the chapter opening on
+     the first group and the closing on the last. mode "chapter": every section,
+     the current one marked and scrolled into view. */
+  open(mode){
     let book=App.cur.book,chapter=App.cur.chapter,secs=this.forChapter(book,chapter);
     if(!secs.length)return;
-    let title=secs.find(s=>s.chapterTitle)||{};
-    $("explainerTitle").textContent=title.chapterTitle?`${chapter} — ${title.chapterTitle}`:`Chapter ${chapter}`;
-    let opening=secs.map(s=>s.opening).find(Boolean),closing=secs.map(s=>s.closing).find(Boolean);
+    let cur=this.current(secs),n=cur?secs.indexOf(cur)+1:0,total=secs.length;
+    mode=mode||(cur?"group":"chapter");
+    if(mode==="group"&&!cur)mode="chapter";
+    this.mode=mode;
+    let title=secs.find(s=>s.chapterTitle)||{},head=title.chapterTitle?`${chapter} — ${title.chapterTitle}`:`Chapter ${chapter}`;
+    let opening=secs.map(s=>s.opening).find(Boolean),closing=secs.map(s=>s.closing).find(Boolean),
+        first=secs.find(s=>s.body||s.heading),last=[...secs].reverse().find(s=>s.body||s.heading);
     let html="";
-    if(opening)html+=`<div class="exp-open">${this.render(opening)}</div>`;
-    html+=secs.filter(s=>s.body||s.heading).map(s=>
-      `<section class="exp-sec">`+
-      (s.heading?`<h3>${Util.esc(s.heading)}</h3>`:"")+
-      this.render(s.body)+
-      `</section>`).join("");
-    if(closing)html+=`<div class="exp-close">${this.render(closing)}</div>`;
-    $("explainerBody").innerHTML=html;
-    $("explainerBody").scrollTop=0;
+    if(mode==="group"){
+      $("explainerTitle").textContent=`${head} · Group ${n} of ${total}`;
+      if(opening&&cur===first)html+=`<div class="exp-open">${this.render(opening)}</div>`;
+      html+=this.section(cur,false,true);
+      if(closing&&cur===last)html+=`<div class="exp-close">${this.render(closing)}</div>`;
+      html+=`<p class="exp-switch"><button type="button" class="linklike" id="explainerWhole">Show the whole chapter</button></p>`;
+    }else{
+      $("explainerTitle").textContent=head;
+      if(opening)html+=`<div class="exp-open">${this.render(opening)}</div>`;
+      html+=secs.filter(s=>s.body||s.heading).map(s=>this.section(s,s===cur,false)).join("");
+      if(closing)html+=`<div class="exp-close">${this.render(closing)}</div>`;
+      if(cur)html+=`<p class="exp-switch"><button type="button" class="linklike" id="explainerOnly">Show this group only</button></p>`;
+    }
+    let body=$("explainerBody");
+    body.innerHTML=html;
+    body.scrollTop=0;
+    let w=$("explainerWhole"),o=$("explainerOnly");
+    if(w)w.onclick=()=>this.open("chapter");
+    if(o)o.onclick=()=>this.open("group");
+    let already=$("explainerModal").style.display==="flex";
     $("explainerModal").style.display="flex";
-    DialogManager.open($("explainerModal"),$("explainerTitle"),()=>this.close());
+    if(!already)DialogManager.open($("explainerModal"),$("explainerTitle"),()=>this.close());
+    /* Scroll to the marked section once layout has settled. iOS Safari lays the
+       tables out a frame late, so this is done twice; the second pass corrects
+       any drift the first one missed. */
+    if(mode==="chapter"&&cur){
+      let go=()=>{let el=body.querySelector(".exp-sec.here");if(el)body.scrollTop=Math.max(0,el.getBoundingClientRect().top-body.getBoundingClientRect().top+body.scrollTop-8);};
+      requestAnimationFrame(()=>{go();setTimeout(go,120);});
+    }
   },
   close(){$("explainerModal").style.display="none";DialogManager.close($("explainerModal"),$("openExplainer"));}
 };
@@ -1342,6 +1432,8 @@ const Importer={
          String(was.english||"").trim()===String(s.english||"").trim()&&
          String(was.gloss||"").trim()===String(s.gloss||"").trim()&&
          String(was.address||"").trim()===String(s.address||"").trim()&&
+         String(was.speakerRole||"")===String(s.speakerRole||"")&&
+         String(was.speakerLabel||"").trim()===String(s.speakerLabel||"").trim()&&
          String(was.book)===String(s.book)&&String(was.chapter)===String(s.chapter)&&
          Number(was.order)===Number(s.order)){dupes.push(s);return;}
       /* Keep the learner's own marks; only the corpus columns are replaced.
@@ -1354,6 +1446,8 @@ const Importer={
          including replacing them with nothing when the corpus has dropped one. */
       if(s.gloss)next.gloss=s.gloss;else delete next.gloss;
       if(s.address)next.address=s.address;else delete next.address;
+      if(s.speakerRole)next.speakerRole=s.speakerRole;else delete next.speakerRole;
+      if(s.speakerLabel)next.speakerLabel=s.speakerLabel;else delete next.speakerLabel;
       if(s.sentenceId)next.sentenceId=s.sentenceId;
       if(ik&&byId.get(ik)){next.book=s.book;next.chapter=s.chapter;next.order=s.order;}
       changed.push(next);
@@ -1418,6 +1512,8 @@ const Importer={
       if(App.analysedGlossary.length)extra.push(`${App.analysedGlossary.length} glossary term(s)`);
       msg+=` The file also carries ${extra.join(" and ")}, which will be imported together with the sentences.`;
     }
+    let cpCount=items.filter(s=>s.speakerRole==="counterpart").length;
+    if(cpCount)msg+=` ${cpCount} of them ${cpCount===1?"is a counterpart line":"are counterpart lines"} — the other person's words, played in the counterpart voice.`;
     let rep=Library.lastReport||{};
     if(items.length&&rep.headerFound&&!rep.placementFound){
       msg="This file has a header row but no column naming the book, chapter, group, item or order. "+
@@ -1578,6 +1674,15 @@ const Manage={
     if(books.map(String).includes(String(keep)))sel.value=keep;
     this.previewRemoveBook();
   },
+  /* The chapter notes that belong to a book. A section names its book where the
+     file carried one; an older explainer file did not, so a section with no book
+     belongs to the book if it names one of that book's chapters. Until 1.16.0
+     these survived the removal and sat orphaned in their own store. */
+  notesForBook(b){
+    let inBook=App.sentences.filter(s=>String(s.book)===String(b)),
+        chapters=new Set(inBook.map(s=>String(s.chapter)));
+    return Explainer.all.filter(x=>x.book?String(x.book)===String(b):chapters.has(String(x.chapter)));
+  },
   previewRemoveBook(){
     let sel=$("removeBook"),out=$("removeBookStatus"),go=$("removeBookGo");
     if(!sel||!out||!go)return;
@@ -1586,29 +1691,33 @@ const Manage={
     let inBook=App.sentences.filter(s=>String(s.book)===String(b)),
         chapters=Util.uniq(inBook.map(s=>s.chapter)).length,
         marked=inBook.filter(s=>s.bookmarked).length,
-        noted=inBook.filter(s=>s.notes&&s.notes.trim()).length;
+        noted=inBook.filter(s=>s.notes&&s.notes.trim()).length,
+        sections=this.notesForBook(b).length;
     out.textContent=`This would remove ${inBook.length} sentence(s) across ${chapters} chapter(s)`
       +(marked?`, including ${marked} bookmarked`:"")
-      +(noted?` and ${noted} with notes`:"")+". There is no undo.";
+      +(noted?` and ${noted} with notes`:"")
+      +(sections?`, and ${sections} chapter note section(s)`:"")+". There is no undo.";
     out.className="status warntxt";
     go.disabled=!inBook.length;
   },
   async removeBook(){
     let sel=$("removeBook"),out=$("removeBookStatus"),go=$("removeBookGo");
     let b=sel&&sel.value;if(!b)return;
-    let ids=App.sentences.filter(s=>String(s.book)===String(b)).map(s=>s.id).filter(Number.isInteger);
+    let ids=App.sentences.filter(s=>String(s.book)===String(b)).map(s=>s.id).filter(Number.isInteger),
+        noteKeys=this.notesForBook(b).map(x=>x.groupId).filter(Boolean);
     if(!ids.length)return;
     go.disabled=true;out.textContent="Removing\u2026";out.className="status";
     [MainPlayer,VerbPlayer,GenPlayer].forEach(p=>{if(p.playing)p.stop("Removing a book\u2026");});
     try{
       await Storage.deleteMany(ids);
+      if(noteKeys.length)await Storage.deleteKeys(ES,noteKeys);
       delete Titles.books[b];
       Object.keys(Titles.chapters).forEach(k=>{if(k.indexOf(b+"|")===0)delete Titles.chapters[k];});
       Titles.save&&Titles.save();
       App.cur={book:"",chapter:"",group:1,index:0};
       await Library.refresh();
       this.render();
-      out.textContent=`Removed ${ids.length} sentence(s).`;out.className="status oktxt";
+      out.textContent=`Removed ${ids.length} sentence(s)`+(noteKeys.length?` and ${noteKeys.length} chapter note section(s)`:"")+".";out.className="status oktxt";
     }catch(e){
       out.textContent="Could not remove that book: "+(e&&e.message?e.message:String(e));
       out.className="status dangertxt";go.disabled=false;
@@ -1729,7 +1838,7 @@ const Preloader={
     this.running=true;this.cancelled=false;
     this._setAllPreloadBtns(true);
     $("preloadCancel").classList.remove("hidden");
-    let texts=this.sentences().map(s=>s.italian);
+    let texts=this.sentences().map(s=>({text:s.italian,lane:s.speakerRole}));
     await this._runLoop(texts,(n,t)=>`Pre-downloading sentence ${n} of ${t}…`,"preloadCancel");
   },
   async startVerbs(){
@@ -1760,7 +1869,7 @@ function download(name,text,type){let b=new Blob([text],{type}),a=document.creat
 
 const Preferences={
   fields:{repeat:"v08repeat",rate:"v08rate",pause:"v08pause",playMode:"v08playMode",showEnglish:"v08showEnglish",showGloss:"v08showGloss",displayMode:"v08displayMode",verbRepeat:"v08verbRepeat",verbRate:"v08verbRate",verbPause:"v08verbPause",verbMode:"v08verbMode",verbScope:"v08verbScope"},
-  keys:["v08theme","v08voice","v08model","v08voiceMode","v08relayUrl","v08libCollapsed","v08repeat","v08rate","v08pause","v08playMode","v08showEnglish","v08showGloss","v08displayMode","v08verbRepeat","v08verbRate","v08verbPause","v08verbMode","v08verbScope"],
+  keys:["v08theme","v08voice","v08counterpartVoice","v08model","v08voiceMode","v08relayUrl","v08libCollapsed","v08repeat","v08rate","v08pause","v08playMode","v08showEnglish","v08showGloss","v08displayMode","v08verbRepeat","v08verbRate","v08verbPause","v08verbMode","v08verbScope"],
   save(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id);if(el)localStorage.setItem(key,el.value);});},
   load(){Object.entries(this.fields).forEach(([id,key])=>{let el=$(id),value=localStorage.getItem(key);if(!el||value===null)return;if(el.tagName==="SELECT"&&![...el.options].some(option=>option.value===value))return;el.value=value;});},
   export(){this.save();let out={};this.keys.forEach(key=>{let value=localStorage.getItem(key);if(value!==null)out[key]=value;});return out;},
@@ -1778,10 +1887,15 @@ const Backup={
     const boolean=name=>{let item=value[name];if(item===undefined)return false;if(typeof item!=="boolean")throw new Error(`Sentence ${index+1} has invalid ${name}.`);return item;};
     let out={book:string("book",500,true),chapter:string("chapter",500,true),order,italian:string("italian",4_000,true),english:string("english",8_000),bookmarked:boolean("bookmarked"),difficult:boolean("difficult"),notes:string("notes",20_000)};
     if(value.audioText!==undefined)out.audioText=string("audioText",4_000);
+    /* The corpus columns the app has learned to keep since the backup format
+       was written. Optional, so an older backup still restores. */
+    for(let [name,max] of [["sentenceId",200],["groupId",200],["corpusVersion",50],["gloss",4_000],["address",100],["speakerRole",50],["speakerLabel",200]]){
+      if(value[name]!==undefined){let v=string(name,max);if(v)out[name]=v;}
+    }
     if(value.id!==undefined){let id=Number(value.id);if(!Number.isInteger(id)||id<1||ids.has(id))throw new Error(`Sentence ${index+1} has invalid or duplicate ID.`);ids.add(id);out.id=id;}
     return out;
   },
-  create(){let sentences=App.sentences.map(sentence=>{let out={book:sentence.book,chapter:sentence.chapter,order:sentence.order,italian:sentence.italian,english:sentence.english||"",bookmarked:Boolean(sentence.bookmarked),difficult:Boolean(sentence.difficult),notes:sentence.notes||""};if(Number.isInteger(sentence.id))out.id=sentence.id;if(typeof sentence.audioText==="string")out.audioText=sentence.audioText;return out;});return{schema:this.SCHEMA,schemaVersion:this.VERSION,appVersion:Build.VERSION,exportedAt:new Date().toISOString(),sentences,titles:{books:{...Titles.books},chapters:{...Titles.chapters}},preferences:Preferences.export(),excludes:["relay passphrases","provider API keys","cached audio","pronunciation data"]};},
+  create(){let sentences=App.sentences.map(sentence=>{let out={book:sentence.book,chapter:sentence.chapter,order:sentence.order,italian:sentence.italian,english:sentence.english||"",bookmarked:Boolean(sentence.bookmarked),difficult:Boolean(sentence.difficult),notes:sentence.notes||""};if(Number.isInteger(sentence.id))out.id=sentence.id;if(typeof sentence.audioText==="string")out.audioText=sentence.audioText;for(let name of ["sentenceId","groupId","corpusVersion","gloss","address","speakerRole","speakerLabel"]){if(typeof sentence[name]==="string"&&sentence[name])out[name]=sentence[name];}return out;});return{schema:this.SCHEMA,schemaVersion:this.VERSION,appVersion:Build.VERSION,exportedAt:new Date().toISOString(),sentences,titles:{books:{...Titles.books},chapters:{...Titles.chapters}},preferences:Preferences.export(),excludes:["relay passphrases","provider API keys","cached audio","pronunciation data"]};},
   download(){let data=this.create(),date=data.exportedAt.slice(0,10);download(`shadowing-studio-backup-${date}.json`,JSON.stringify(data,null,2)+"\n","application/json;charset=utf-8");this.status(`Backup downloaded: ${data.sentences.length} sentence(s).`,"oktxt");},
   validate(data){
     if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==this.SCHEMA||data.schemaVersion!==this.VERSION)throw new Error("This is not a supported Shadowing Studio backup.");
@@ -1800,7 +1914,7 @@ const Backup={
     [MainPlayer,VerbPlayer,GenPlayer].forEach(player=>{if(player.playing)player.stop("Restoring backup…");});
     await Storage.replaceSentences(clean.sentences);await Storage.clear(AS);
     Titles.books=clean.books;Titles.chapters=clean.chapters;Titles.save();Preferences.restore(clean.preferences);
-    $("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";let collapsed=localStorage.getItem("v08libCollapsed")==="1";document.body.classList.toggle("lib-collapsed",collapsed);$("libShow").classList.toggle("hidden",!collapsed);
+    $("voiceId").value=localStorage.getItem("v08voice")||"";if($("counterpartVoiceId"))$("counterpartVoiceId").value=localStorage.getItem("v08counterpartVoice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";let collapsed=localStorage.getItem("v08libCollapsed")==="1";document.body.classList.toggle("lib-collapsed",collapsed);$("libShow").classList.toggle("hidden",!collapsed);
     App.cur={book:"",chapter:"",group:1,index:0};await Library.refresh();Manage.render();
     this.status(`Restore complete: ${clean.sentences.length} sentence(s). Cached audio was cleared.`,"oktxt");
   }
@@ -2146,7 +2260,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.15.1",
+  VERSION:"1.17.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2410,8 +2524,8 @@ function bind(){
   $("voiceMode").onchange=()=>{let _m=$("voiceMode").value;localStorage.setItem("v08voiceMode",_m);$("elevenPanel").classList.toggle("hidden",_m!=="eleven");Speech.breaker.reset();if($("voiceChipLabel"))$("voiceChipLabel").textContent=_m==="eleven"?"ElevenLabs":"System (Alice)";relayReadiness();};
   if($("relayToken"))$("relayToken").addEventListener("input",relayReadiness);
   if($("relayUrl"))$("relayUrl").addEventListener("input",relayReadiness);
-  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");Speech.breaker.reset();UI.status("ElevenLabs voice settings saved. Premium speech will use the relay connection above.","oktxt");relayReadiness();};
-  $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
+  $("saveElevenBtn").onclick=()=>{let voice=$("voiceId").value.trim();if(!voice){UI.status("Enter an ElevenLabs Voice ID.","warntxt");return;}localStorage.setItem("v08voice",voice);let cpv=($("counterpartVoiceId")&&$("counterpartVoiceId").value.trim())||"";if(cpv)localStorage.setItem("v08counterpartVoice",cpv);else localStorage.removeItem("v08counterpartVoice");localStorage.setItem("v08model",$("model").value);localStorage.setItem("v08voiceMode","eleven");$("voiceMode").value="eleven";$("elevenPanel").classList.remove("hidden");Speech.breaker.reset();UI.status("ElevenLabs voice settings saved. Premium speech will use the relay connection above.","oktxt");relayReadiness();};
+  $("clearElevenBtn").onclick=()=>{["v08key","v08voice","v08counterpartVoice","v08model"].forEach(k=>localStorage.removeItem(k));$("voiceId").value="";if($("counterpartVoiceId"))$("counterpartVoiceId").value="";UI.status("ElevenLabs voice settings cleared.","warntxt");};
   $("preloadBtn").onclick=()=>Preloader.start();
   $("preloadCancel").onclick=()=>Preloader.cancel();
   $("saveAiBtn").onclick=()=>{
@@ -2465,4 +2579,4 @@ function bind(){
   $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
-(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";try{App.db=await Storage.open();}catch(err){Storage.banner("The app could not open its database: "+(err&&err.message?err.message:String(err))+" Your sentences are still stored on this device.","Reload");return;}Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();
+(async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";try{App.db=await Storage.open();}catch(err){Storage.banner("The app could not open its database: "+(err&&err.message?err.message:String(err))+" Your sentences are still stored on this device.","Reload");return;}Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();if(speechSynthesis.onvoiceschanged!==undefined)speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";if($("counterpartVoiceId"))$("counterpartVoiceId").value=localStorage.getItem("v08counterpartVoice")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();

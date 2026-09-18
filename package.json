@@ -1,6 +1,6 @@
 {
   "name": "italian-shadowing-studio",
-  "version": "1.15.1",
+  "version": "1.17.0",
   "private": true,
   "description": "Offline-first Italian shadowing practice PWA",
   "scripts": {

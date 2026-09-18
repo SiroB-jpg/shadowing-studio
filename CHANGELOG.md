@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.14.3 — the chapter notes, as they were written
+
+**Ninety-three of the 231 explainer sections would have rendered with their markup showing.** The bodies use bold in 73 sections, quoted example pairs in 16, ordered lists in 3, and a level banner in 1 — and the reader handled none of them. `**infinitive**` would have appeared on screen with its asterisks. Found by building the validation gates that the Explainer Corpus Integration Protocol v2.0 §11 requires, and running them against the real collection rather than a fixture.
+
+The reader now covers what the bodies actually use: paragraphs, italics, **bold**, pipe tables, bullet and ordered lists, quoted example pairs, sub-headings and rules. Everything is still escaped before any markup is applied, so text from a spreadsheet can never become HTML. Bold is resolved before italics, because the italic pattern would otherwise match the inner pair of a `**bold**` run and leave the outer asterisks behind.
+
+**"Read after practice" is gone from the panel.** Protocol v2.0 §6.3 supersedes v1.0 on this: the explainer is learner-controlled and may be read before, during or after practice. The panel now says so.
+
+Fifteen suites, **608 checks** — 11 new, each one a piece of markup taken from the real bodies.
+
+## v1.14.2 — take a book off, and see what you have
+
+**The corpus file never named its own book.** `Italian_Core_A0-B2_App_Import` had no `book` column, so every import inherited whatever was typed in the Book box on the import screen. That is how 2,310 Core sentences came to be filed under a book called "Italian Subjunctive Corpus". The importer now also reads `corpus_version`, so the app can say which corpus it is holding. Corpus v1.70.1 onward carries `book` and `book_title`.
+
+**Manage library can remove one book.** Until now the only way to take anything off the device was "Clear all local data", which removes everything — no help at all when a rebuilt corpus names its book differently from the copy already here. Choosing a book says how many sentences, chapters, bookmarks and notes would go, before the button becomes live.
+
+**Manage library now says what is on the device.** The app version, the database version, how many sentences are held, and which corpus versions they came from — on one line. Two incidents in two days began with "which version is actually running?" and there was no quick way to answer.
+
+**And it says whether there are any chapter notes.** The "In this chapter" button appears only on chapters that have notes behind them, which is right — but with no notes imported at all, the feature was invisible with nothing anywhere to say why. Manage library now counts the sections it holds, or says where they come from if it holds none.
+
+**The README described v1.10.2 for four releases.** Only its first-line heading moved with the version. The body now describes the app rather than a release, and points at this file for what changed.
+
+Fifteen suites, **597 checks** — 23 new.
+
 ## v1.14.1 — two tabs no longer stop each other
 
 **A second tab could stop the app from starting at all, and it looked like the library had been wiped.**

@@ -1,23 +1,27 @@
-# Italian Shadowing Studio v1.14.1
+# Italian Shadowing Studio v1.14.3
 
 Italian Shadowing Studio is an **offline-first progressive web app** for practising Italian through repeated listening and shadowing. It provides a local sentence library, configurable Study playback, Focus mode, a 112-verb subjunctive drill, optional sentence generation, and optional premium speech through a private relay.
 
 > **Pronunciation annotations are intentionally excluded from v1.10.2.** The earlier preview has been removed, no pronunciation corpus is distributed, and no pronunciation data is exported in complete backups. The feature can be reintroduced after its source-data licensing and linguistic review are complete.
 
-## What v1.10.2 changes
+## What the app does
 
-This is a stabilization release rather than a feature release. It preserves the existing learning workflows while addressing the security, accessibility, recovery, playback, release, and test issues identified in the application assessment.
-
-| Area | Stabilization result |
+| Area | How it works |
 |---|---|
-| Security | Provider keys remain on the relay; the browser passphrase is session-only; relay requests use strict schemas, size limits, origin checks, optional native rate limiting, allowlisted premium voices/models, and emergency switches. |
-| Accessibility | Native buttons now power sentence and library selection; tabs support arrow-key navigation; dialogs trap and restore focus; form labels, live regions, contrast, visible focus, and 44-pixel targets are corrected. |
-| Playback | Lock-screen and headset actions now remain bound to the active Study, Verb, or Generate player. Only one player owns playback at a time. |
-| Recovery | A versioned complete JSON backup preserves sentences, bookmarks, notes, hierarchy titles, and non-secret preferences. Restore is validated and atomic; cached audio and secrets are excluded. |
-| Destructive actions | Clearing local data requires typing `DELETE ALL`; the interface recommends downloading a complete backup first. |
-| Offline updates | The service worker pre-caches the complete shell, uses network-first navigation with offline fallback, and waits for the user to approve a ready update. |
-| Release hygiene | One version utility updates HTML, JavaScript, CSS, service-worker, and package markers. GitHub Actions runs the complete regression suite. |
-| Verification | Nine suites pass **352 checks**. Final mobile Lighthouse scores are **97 Performance, 100 Accessibility, 100 Best Practices, and 100 SEO**. |
+| Library | Sentences are imported from CSV and filed by book, chapter and group. Chapter titles come from the corpus file; book names are given here, under Manage library. A corpus file that carries its own `book` column names its own book; one that does not inherits whatever is typed in the Book box on the import screen. |
+| Study | Configurable repeat, speed and pause, over a group or a whole chapter. The natural English can be shown or hidden, and a structural English line can be turned on beside it. |
+| Chapter notes | The one place grammar is explained in words. They live in their own CSV, and the "In this chapter" button appears only on chapters that have notes behind them. |
+| Security | Provider keys stay on the relay; the browser passphrase is session-only; relay requests use strict schemas, size limits, origin checks, optional rate limiting, allowlisted voices and models, and emergency switches. |
+| Accessibility | Native buttons drive sentence and library selection; tabs take arrow keys; dialogs trap and restore focus; labels, live regions, contrast, visible focus and 44-pixel targets are all checked by the test suite. |
+| Playback | Lock-screen and headset actions stay bound to the active Study, Verb or Generate player. One player owns playback at a time. |
+| Recovery | A versioned complete JSON backup holds sentences, bookmarks, notes, hierarchy titles and non-secret preferences. Restore is validated and atomic; cached audio and secrets are excluded. |
+| Destructive actions | Removing one book asks first and says exactly what would go. Clearing all local data requires typing `DELETE ALL`. |
+| Offline updates | The service worker pre-caches the shell, uses network-first navigation with an offline fallback, and waits for the user to approve a ready update. |
+| Release hygiene | One version utility updates the HTML, JavaScript, CSS, service-worker, package and README markers together, and a test asserts they agree. |
+
+**What changed in any given release is in [`CHANGELOG.md`](CHANGELOG.md).** This section
+describes the app, not a release, so that it does not go stale the way the old
+"What v1.10.2 changes" section did — that heading survived four releases.
 
 ## Running the app
 

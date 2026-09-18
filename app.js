@@ -162,6 +162,7 @@ const CSVCols={
   order:["order","number","no","#"],
   sentenceId:["sentence_id","sentenceid","line_id","lineid","record_id","recordid","id"],
   rowType:["record_type","recordtype","item_type","itemtype"],
+  corpusVersion:["corpus_version","corpusversion"],
   gloss:["literal_gloss","literalgloss","gloss","structural_english","structuralenglish"],
   address:["address_system","addresssystem","address_form","addressform"],
   bookTitle:["booktitle","book_title"],
@@ -181,7 +182,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
         data=has?rows.slice(1):rows,
         idx=names=>{for(let n of names){let i=heads.indexOf(n);if(i>=0)return i;}return -1;},
         bi=idx(CSVCols.book),ci=idx(CSVCols.chapter),oi=idx(CSVCols.order),
-        gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),
+        gi=idx(CSVCols.group),ti=idx(CSVCols.item),si=idx(CSVCols.sentenceId),ri=idx(CSVCols.rowType),cvi=idx(CSVCols.corpusVersion),
         li=idx(CSVCols.gloss),ai=idx(CSVCols.address),
         ii=idx(CSVCols.italian),ei=idx(CSVCols.english);
     let cell=(r,i)=>i>=0?Util.clean(r[i]):"";
@@ -228,6 +229,7 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
              order:ord(r,i),italian:Util.clean(italian),english:Util.clean(english),
              bookmarked:false,difficult:false,notes:""};
       let id=has?cell(r,si):"";if(id)s.sentenceId=id;
+      let cv=has?cell(r,cvi):"";if(cv)s.corpusVersion=cv;
       /* The gloss exists only where natural English inverts the Italian, so most
          items have none. Empty stays empty rather than becoming an empty line. */
       let g=has?cell(r,li):"";if(g)s.gloss=g;
@@ -1213,20 +1215,48 @@ const Explainer={
     for(let b of blocks){
       let lines=b.split("\n").map(l=>l.trim()).filter(Boolean);
       if(!lines.length)continue;
+      /* A pipe table. */
       if(lines.length>1&&lines[0].startsWith("|")&&/^\|[\s\-:|]+\|$/.test(lines[1]||"")){
         let cells=l=>l.replace(/^\||\|$/g,"").split("|").map(c=>this.inline(c.trim()));
         let head=cells(lines[0]),body=lines.slice(2).map(cells);
         out.push(`<table class="exp-table"><thead><tr>${head.map(c=>`<th>${c}</th>`).join("")}</tr></thead>`+
                  `<tbody>${body.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`);
-      }else if(lines.every(l=>/^[-*]\s+/.test(l))){
+      }
+      /* A heading. The section already owns an h3, so these sit under it. */
+      else if(lines.every(l=>/^(\*\s*){3,}$|^(-\s*){3,}$|^(_\s*){3,}$/.test(l))){
+        out.push('<hr class="exp-rule">');
+      }
+      else if(lines.length===1&&/^#{1,6}\s+/.test(lines[0])){
+        let depth=Math.min(6,4+((lines[0].match(/^#+/)||["#"])[0].length-1));
+        let text=this.inline(lines[0].replace(/^#{1,6}\s+/,""));
+        out.push(`<h${depth} class="exp-h">${text}</h${depth}>`);
+      }
+      /* A quoted example. The bodies use these for an Italian line and its
+         English underneath, so the pair has to stay together. Note the test is
+         for &gt; — everything is escaped before any markup is applied. */
+      else if(lines.every(l=>/^&gt;\s?/.test(l))){
+        out.push(`<blockquote class="exp-quote">`+
+          lines.map(l=>this.inline(l.replace(/^&gt;\s?/,""))).join("<br>")+`</blockquote>`);
+      }
+      /* An ordered list. */
+      else if(lines.length>1&&lines.every(l=>/^\d+\.\s+/.test(l))){
+        out.push(`<ol>${lines.map(l=>`<li>${this.inline(l.replace(/^\d+\.\s+/,""))}</li>`).join("")}</ol>`);
+      }
+      /* A bullet list. */
+      else if(lines.every(l=>/^[-*]\s+/.test(l))){
         out.push(`<ul>${lines.map(l=>`<li>${this.inline(l.replace(/^[-*]\s+/,""))}</li>`).join("")}</ul>`);
-      }else{
+      }
+      else{
         out.push(`<p>${lines.map(l=>this.inline(l)).join("<br>")}</p>`);
       }
     }
     return out.join("");
   },
-  inline(t){return String(t).replace(/\*([^*]+)\*/g,'<em>$1</em>');},
+  /* Bold before italics: on **infinitive** the italic pattern would otherwise
+     match the inner pair and leave the outer asterisks showing. */
+  inline(t){return String(t)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g,'<em>$1</em>');},
 
   open(){
     let book=App.cur.book,chapter=App.cur.chapter,secs=this.forChapter(book,chapter);
@@ -1454,7 +1484,82 @@ const Importer={
 
 /* Manage library — import, export, naming and the destructive action. */
 const Manage={
+  /* Removing one book.
+
+     Until 1.14.2 the only way to take anything off the device was "Clear all
+     local data", which removes everything. That is no help when a rebuilt
+     corpus names its book differently from the copy already here: without a
+     way to take the old book out first, the two sit side by side. */
+  fillRemoveBook(){
+    let sel=$("removeBook");if(!sel)return;
+    let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);
+    let keep=sel.value;
+    sel.innerHTML='<option value="">\u2014 choose \u2014</option>'+books.map(b=>{
+      let n=App.sentences.filter(s=>s.book==b).length,
+          name=Titles.book(b)||(/^\d+$/.test(String(b))?"Book "+b:String(b));
+      return `<option value="${Util.esc(b)}">${Util.esc(name)} \u2014 ${n} sentence(s)</option>`;
+    }).join("");
+    if(books.map(String).includes(String(keep)))sel.value=keep;
+    this.previewRemoveBook();
+  },
+  previewRemoveBook(){
+    let sel=$("removeBook"),out=$("removeBookStatus"),go=$("removeBookGo");
+    if(!sel||!out||!go)return;
+    let b=sel.value;
+    if(!b){out.textContent="Choose a book to see what would go.";out.className="status";go.disabled=true;return;}
+    let inBook=App.sentences.filter(s=>String(s.book)===String(b)),
+        chapters=Util.uniq(inBook.map(s=>s.chapter)).length,
+        marked=inBook.filter(s=>s.bookmarked).length,
+        noted=inBook.filter(s=>s.notes&&s.notes.trim()).length;
+    out.textContent=`This would remove ${inBook.length} sentence(s) across ${chapters} chapter(s)`
+      +(marked?`, including ${marked} bookmarked`:"")
+      +(noted?` and ${noted} with notes`:"")+". There is no undo.";
+    out.className="status warntxt";
+    go.disabled=!inBook.length;
+  },
+  async removeBook(){
+    let sel=$("removeBook"),out=$("removeBookStatus"),go=$("removeBookGo");
+    let b=sel&&sel.value;if(!b)return;
+    let ids=App.sentences.filter(s=>String(s.book)===String(b)).map(s=>s.id).filter(Number.isInteger);
+    if(!ids.length)return;
+    go.disabled=true;out.textContent="Removing\u2026";out.className="status";
+    [MainPlayer,VerbPlayer,GenPlayer].forEach(p=>{if(p.playing)p.stop("Removing a book\u2026");});
+    try{
+      await Storage.deleteMany(ids);
+      delete Titles.books[b];
+      Object.keys(Titles.chapters).forEach(k=>{if(k.indexOf(b+"|")===0)delete Titles.chapters[k];});
+      Titles.save&&Titles.save();
+      App.cur={book:"",chapter:"",group:1,index:0};
+      await Library.refresh();
+      this.render();
+      out.textContent=`Removed ${ids.length} sentence(s).`;out.className="status oktxt";
+    }catch(e){
+      out.textContent="Could not remove that book: "+(e&&e.message?e.message:String(e));
+      out.className="status dangertxt";go.disabled=false;
+    }
+  },
+  /* What is on this device, said plainly. Two incidents in two days began with
+     "which version is actually running?" and there was no quick way to answer. */
+  status(){
+    let ex=$("explainerStatus");
+    if(ex){
+      let n=Explainer.all.length,
+          chapters=Util.uniq(Explainer.all.map(x=>x.chapter).filter(Boolean)).length;
+      ex.textContent=n
+        ? `${n} section(s) across ${chapters} chapter(s). The "In this chapter" button appears on those chapters.`
+        : "No chapter notes on this device, so no chapter shows the \u201cIn this chapter\u201d button. Import the chapter-explainer CSV to add them.";
+      ex.className=n?"status oktxt":"status";
+    }
+    let v=$("versionStatus");
+    if(v){
+      let corpus=Util.uniq(App.sentences.map(s=>s.corpusVersion).filter(Boolean));
+      v.textContent=`App v${Build.VERSION} \u00b7 database v${App.db?App.db.version:"?"} \u00b7 `
+        +`${App.sentences.length} sentence(s)`
+        +(corpus.length?` \u00b7 corpus ${corpus.sort(Util.nat).join(", ")}`:"");
+    }
+  },
   render(){
+    this.fillRemoveBook();this.status();
     let host=$("bookTitles");if(!host)return;
     let books=Util.uniq(App.sentences.map(s=>s.book)).sort(Util.nat);
     if(!books.length){host.innerHTML='<p class="small">No books yet.</p>';return;}
@@ -1965,7 +2070,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.14.1",
+  VERSION:"1.14.3",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2198,6 +2303,8 @@ function bind(){
   $("analysePaste").onclick=()=>analyse($("pasteCsv").value);
   $("importPreviewed").onclick=()=>Importer.import();
   $("dedupe").onclick=()=>Importer.dedupe();
+  if($("removeBook"))$("removeBook").onchange=()=>Manage.previewRemoveBook();
+  if($("removeBookGo"))$("removeBookGo").onclick=()=>Manage.removeBook();
   $("exportCsv").onclick=()=>download(`italian-shadowing-library-v${Build.VERSION.replaceAll(".","")}.csv`,toCSV(),"text/csv;charset=utf-8");
   $("backupJson").onclick=()=>Backup.download();
   $("restoreJson").onclick=()=>$("restoreFile").click();

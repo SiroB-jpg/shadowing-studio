@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.14.1";
+  --css-version:"1.14.3";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -690,3 +690,12 @@ body.lib-collapsed .panel-art{display:block}
 :root[data-theme="dark"] .db-banner{background:#f2d98d;color:#241d05;}
 :root[data-theme="dark"] .db-banner-btn{border-color:rgba(36,29,5,.55);}
 :root[data-theme="dark"] .db-banner-btn:hover{background:rgba(36,29,5,.12);}
+
+/* Explainer bodies use quoted example pairs — an Italian line with its English
+   underneath — and occasional sub-headings. */
+.exp-quote{margin:.6rem 0;padding:.5rem .85rem;border-left:3px solid var(--accent);
+  background:var(--status-bg);border-radius:0 8px 8px 0;}
+.exp-h{margin:1rem 0 .35rem;font-size:1rem}
+.exp-body ol{margin:.5rem 0 .5rem 1.25rem;padding:0}
+.exp-body ol li{margin:.25rem 0}
+.exp-rule{border:0;border-top:1px solid var(--border);margin:1.1rem 0}

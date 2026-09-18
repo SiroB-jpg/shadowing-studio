@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="no-referrer">
-<meta name="app-version" content="1.14.1">
-<title>Italian Shadowing Studio — v1.14.1</title>
+<meta name="app-version" content="1.14.3">
+<title>Italian Shadowing Studio — v1.14.3</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="description" content="Offline-first Italian shadowing practice with sentence libraries, verb drills, configurable playback, and optional generated exercises.">
@@ -27,7 +27,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.14.1 — two tabs no longer stop each other.</p>
+      <p class="header-sub">v1.14.3 — the chapter notes, as they were written.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -337,6 +337,23 @@
     <p class="small mt">A complete backup includes sentences, bookmarks, notes, book and chapter titles, and non-secret preferences. It excludes relay passphrases, provider keys, and replaceable cached audio.</p>
     <p class="small mt">Already have these sentences and only want their chapter names? Use <strong>Update chapter names</strong> inside the import screen — it reads the titles without adding anything.</p>
     <hr>
+    <h3>Remove a book</h3>
+    <p class="small">Takes one whole book off this device — every sentence in it, with its bookmarks and notes. Use it before importing a rebuilt corpus that names its book differently, so the old copy does not sit alongside the new one. There is no undo, so download a complete backup first if you may want it again.</p>
+    <div class="row">
+      <label class="grow" for="removeBook"><span>Book</span>
+        <select id="removeBook"></select>
+      </label>
+      <button id="removeBookGo" class="danger" disabled>Remove this book</button>
+    </div>
+    <p id="removeBookStatus" class="status">Choose a book to see what would go.</p>
+    <hr>
+    <h3>Chapter notes</h3>
+    <p id="explainerStatus" class="status">No chapter notes on this device.</p>
+    <p class="small">Chapter notes are the "In this chapter" panel in Study. They live in their own CSV, separate from the sentences, and the button beside the breadcrumb only appears on chapters that have notes behind them. Import that file the same way as a corpus file — the import screen recognises which sort it has been given.</p>
+    <hr>
+    <h3>Versions on this device</h3>
+    <p id="versionStatus" class="status">—</p>
+    <hr>
     <h3>Tidying up</h3>
     <p class="small">If a corpus file was imported twice, every sentence appears twice and playback speaks both. This finds them and keeps one of each — including the harder case, where two files numbered their groups differently and the same sentence is filed twice under two different group numbers. That one shows up as a chapter with twice as many groups as it should have.</p>
     <button id="dedupe" class="secondary">Remove duplicated sentences</button>
@@ -352,7 +369,7 @@
 <div id="explainerModal" class="modalwrap" role="dialog" aria-modal="true" aria-labelledby="explainerTitle" aria-hidden="true">
   <div class="modal wide">
     <h2 id="explainerTitle" tabindex="-1">In this chapter</h2>
-    <p class="muted small">Written to be read after practice, not before it.</p>
+    <p class="muted small">Read these whenever they help — before, during or after practice.</p>
     <div id="explainerBody" class="exp-body"></div>
     <div class="row end mt"><button id="explainerClose" class="primary">Close</button></div>
   </div>

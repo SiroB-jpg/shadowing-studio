@@ -84,7 +84,7 @@ const r=await page.evaluate(async({travel,health,bundle,arts})=>{
   /* Playback: each line reaches Speech.speak with its lane. */
   const spoken=[];
   const realSystem=Speech.system;
-  Speech.system=(text,lane)=>{spoken.push({text,lane:lane||'learner'});return Promise.resolve();};
+  Speech.system=(text,lane)=>{spoken.push({text,lane:(lane&&lane.lane)||lane||'learner'});return Promise.resolve();};
   document.getElementById('voiceMode').value='system';
   document.getElementById('playMode').value='group';
   App.cur={book:'Demo',chapter:'1',group:1,index:0};UI.renderAll();

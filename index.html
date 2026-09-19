@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
 <meta name="referrer" content="no-referrer">
-<meta name="app-version" content="1.17.0">
-<title>Italian Shadowing Studio — v1.17.0</title>
+<meta name="app-version" content="1.18.0">
+<title>Italian Shadowing Studio — v1.18.0</title>
 <link rel="stylesheet" href="styles.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="description" content="Offline-first Italian shadowing practice with sentence libraries, verb drills, configurable playback, and optional generated exercises.">
@@ -27,7 +27,7 @@
       <span id="headerMark"></span>
     <div class="header-text">
       <h1>Italian Shadowing Studio</h1>
-      <p class="header-sub">v1.17.0 — the other person speaks.</p>
+      <p class="header-sub">v1.18.0 — say it in your own voice.</p>
     </div>
     </div>
     <label class="theme-toggle" title="Toggle dark mode">
@@ -204,14 +204,20 @@
         <div class="row mt"><button id="saveAiBtn" class="ok">Save</button><button id="testRelayBtn" class="secondary">Test connection</button><button id="clearAiBtn" class="danger">Clear</button></div>
       </div>
 
+      <label for="learnerGender">I am</label>
+      <select id="learnerGender"><option value="">— not chosen —</option><option value="m">male — say my lines in the masculine form</option><option value="f">female — say my lines in the feminine form</option></select>
+      <p class="small muted">Where a module carries both forms of a line (<em>sono stanco / sono stanca</em>), you get yours, in your voice. The other person's lines keep their own gender and voice.</p>
+
       <label for="voiceMode">Voice</label>
       <select id="voiceMode"><option value="system" selected>System voice: Alice</option><option value="eleven">ElevenLabs</option></select>
       <div id="elevenPanel" class="status mt">
         <h3>ElevenLabs voice</h3>
         <p id="premiumNotice" class="notice-warn hidden" role="status"></p>
         <div class="grid">
-          <div><label for="voiceId">Voice ID</label><input id="voiceId" autocomplete="off" autocapitalize="none" spellcheck="false"></div>
-          <div><label for="counterpartVoiceId">Counterpart voice ID <span class="muted">(optional)</span></label><input id="counterpartVoiceId" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="the other person's voice"></div>
+          <div><label for="voiceId">Learner voice — male</label><input id="voiceId" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Voice ID (required)"></div>
+          <div><label for="learnerFemaleVoiceId">Learner voice — female <span class="muted">(optional)</span></label><input id="learnerFemaleVoiceId" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Voice ID"></div>
+          <div><label for="counterpartMaleVoiceId">Counterpart voice — male <span class="muted">(optional)</span></label><input id="counterpartMaleVoiceId" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Voice ID"></div>
+          <div><label for="counterpartVoiceId">Counterpart voice — female <span class="muted">(optional)</span></label><input id="counterpartVoiceId" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Voice ID"></div>
           <div><label for="model">Model</label><select id="model"><option value="eleven_multilingual_v2">eleven_multilingual_v2</option><option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option></select></div>
         </div>
         <div class="row mt"><button id="saveElevenBtn" class="secondary">Save voice settings</button><button id="clearElevenBtn" class="danger">Clear voice settings</button></div>

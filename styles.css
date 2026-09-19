@@ -63,7 +63,7 @@
   --disabled-opacity:.5;
   --secondary-button:#5c5854;
 
-  --css-version:"1.17.0";
+  --css-version:"1.18.0";
 }
 :root[data-theme="dark"]{
   --bg:#1a1916;--panel:#201f1c;--ink:#f0ece6;--muted:#b9b2a8;
@@ -710,3 +710,6 @@ body.lib-collapsed .panel-art{display:block}
    register, and the row itself is tinted so a block of the other person's lines
    reads as a block. */
 .role{display:block;font-size:.68rem;line-height:1.1;color:var(--accent);font-weight:600;letter-spacing:.01em}
+
+/* 1.18.0 — a learner line kept in a gender that is not the learner's. */
+.gtag{display:block;font-size:.66rem;line-height:1.1;color:var(--muted);font-style:italic}

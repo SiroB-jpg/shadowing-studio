@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.18.0 — say it in your own voice
+
+**Settings gains "I am" — male or female.** Where a module carries both forms of a line — `italian` in the gender named by `speaker_gender`, `italian_alt` in the other — the learner sees and hears their own form: *Sono stanco* for one learner, *Sono stanca* for the next, *studente* or *studentessa*. Nothing is generated; both forms are authored and audited text. `alt_controller` says whose gender drives the change; blank or `speaker` means the learner's, anything else (an addressee's, say) is left alone. Not chosen, or no alternate in the file: the line plays as written, exactly as before.
+
+**Four voices, chosen by part and gender.** Learner male, learner female, counterpart male, counterpart female — each an ElevenLabs Voice ID in Settings, each on the Worker's allow-list. A counterpart line plays in its own gender's counterpart voice. A learner line plays in the learner's voice — of the learner's gender where the file has their form, otherwise of the gender the line was written in, with a small *(m)* or *(f)* on the row so the learner knows why. Blank boxes fall back sensibly: the other gender of the same part, then the learner's male voice, which is the one box that must be filled. On the system voice, male lines take Luca where the device has him, female lines Alice.
+
+**Files without any of this behave exactly as in 1.17.0.** `speaker_gender` and `italian_alt` are read from the columns the modules already use (`speaker_gender`, `italian_alt`/`alt_italian`/`alternate_render`, `alt_controller`/`agreement_controller`); nothing needs renaming.
+
+Re-import replaces the alternate in place; backups carry gender, alternate and controller.
+
+Thirteen suites in the repository, **490 checks** — 20 new, in `tests/test-gender.mjs`.
+
 ## v1.17.0 — the other person speaks
 
 **Counterpart lines now import, and play in the other voice.** Five modules ship the other person's lines — the barista, the ticket clerk, the doctor — and until now the importer silently threw every one of them away (`counterpart` was on the skip list, and the app read nothing from `speaker_role`). Siro's ruling of 18 September: a counterpart line is simply the next sentence down the list; it plays in its turn, in a different voice to signal the change of person, and the learner shadows it if they wish.

@@ -15,7 +15,8 @@ const suites = [
   ['Responsive layout and visual flows', 'test-responsive.mjs'],
   ['Pause, premium fallback and readiness', 'test-playback-pause.mjs'],
   ['Chapter explainer panel', 'test-explainer.mjs'],
-  ['Counterpart lane', 'test-counterpart.mjs']
+  ['Counterpart lane', 'test-counterpart.mjs'],
+  ['Gender lane', 'test-gender.mjs']
 ];
 let failed = 0, total = 0;
 for (const [name, file] of suites) {

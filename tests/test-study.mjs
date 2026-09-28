@@ -85,7 +85,8 @@ check('Stats report books, chapters and groups', /47 sentences/.test(stats)&&/2 
 check('Group and Item columns drive per-chapter order',
   await page.evaluate(()=>{
     const ch=App.sentences.filter(s=>s.book==='1'&&s.chapter==='1').map(s=>s.order).sort((a,b)=>a-b);
-    return ch.length===25&&ch[0]===1&&ch[24]===25;
+    /* 1.19.0: a hundred positions per group — three groups of 10, 10, 5. */
+    return ch.length===25&&ch[0]===1&&ch[9]===10&&ch[10]===101&&ch[24]===205&&ch.every(o=>Util.gnum({order:o})===Math.floor(ch.indexOf(o)/10)+1);
   }));
 check('Chapter titles are discarded on import (known limitation)',
   await page.evaluate(()=>App.sentences.every(s=>!('chapterTitle' in s)&&!('title' in s))));
@@ -463,7 +464,7 @@ check('A refused edit does not reach storage', await page.evaluate(async()=>{
 group('Export, settings and theme');
 const csvOut=await page.evaluate(()=>toCSV());
 check('Export header is the flat working shape',
-  csvOut.split('\n')[0]==='book,chapter,order,italian,english,bookmarked,difficult,notes', csvOut.split('\n')[0]);
+  csvOut.split('\n')[0]==='book,chapter,group,item,italian,english,bookmarked,difficult,notes', csvOut.split('\n')[0]);
 check('Export contains every sentence', csvOut.trim().split('\n').length===48);
 await page.click('.desktop-tabs [data-panel="settings"]');
 await page.selectOption('#voiceMode','eleven'); await page.waitForTimeout(150);

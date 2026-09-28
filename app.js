@@ -47,7 +47,18 @@ const SecureConfig={
   }
 };
 
-const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),gnum:s=>Math.floor((Number(s.order)-1)/10)+1,sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
+const Util={esc:s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m])),clean:s=>String(s??"").replace(/^["']|["']$/g,"").trim(),uniq:a=>[...new Set(a)],nat:(a,b)=>String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"}),sleep:ms=>new Promise(r=>setTimeout(r,ms)),POS:100,gnum:s=>Math.floor((Number(s.order)-1)/100)+1,item:s=>((Number(s.order)-1)%100)+1,fromTens:o=>{o=Number(o);return Number.isInteger(o)&&o>=1?Math.floor((o-1)/10)*100+((o-1)%10)+1:o;},toTens:o=>{o=Number(o);return Number.isInteger(o)&&o>=1?Math.floor((o-1)/100)*10+((o-1)%100)+1:o;},sortS:(a,b)=>String(a.book).localeCompare(String(b.book))||String(a.chapter).localeCompare(String(b.chapter),undefined,{numeric:true,sensitivity:"base"})||Number(a.order)-Number(b.order),slug:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"").slice(0,40)||"set",pad:(n,w=2)=>String(n).padStart(w,"0"),norm:s=>String(s??"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim()};
+/* The number a learner sees beside a sentence: its running place in its
+   chapter (1, 2, 3…). Before 1.19.0 the stored position was shown directly,
+   which for full ten-item groups is the same number; with a hundred positions
+   per group the raw value (101, 102…) would mean nothing to a learner. */
+Util.snum=function(s){
+  let key=x=>[x.book,x.chapter,x.order].join("|~|");
+  let build=()=>{let m=new Map(),n=new Map();(App.sentences||[]).slice().sort(Util.sortS).forEach(x=>{let c=x.book+"|~|"+x.chapter,k=(n.get(c)||0)+1;n.set(c,k);m.set(key(x),k);});Util._sn={src:App.sentences,len:(App.sentences||[]).length,map:m};};
+  if(!Util._sn||Util._sn.src!==App.sentences||Util._sn.len!==(App.sentences||[]).length)build();
+  let v=Util._sn.map.get(key(s));if(v===undefined){build();v=Util._sn.map.get(key(s));}
+  return v===undefined?Util.item(s):v;
+};
 
 /* Opening the database.
 
@@ -74,8 +85,13 @@ const Storage={
   },
   clearBanner(){let el=document.getElementById("dbBanner");if(el)el.remove();},
   open(){return new Promise((res,rej)=>{
-    let r=indexedDB.open(DB,4),settled=false;
-    r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction;let ss=d.objectStoreNames.contains(SS)?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});if(!d.objectStoreNames.contains(GS))d.createObjectStore(GS,{keyPath:"term"});};
+    let r=indexedDB.open(DB,5),settled=false;
+    r.onupgradeneeded=e=>{let d=e.target.result,tx=e.target.transaction,had=d.objectStoreNames.contains(SS);let ss=had?tx.objectStore(SS):d.createObjectStore(SS,{keyPath:"id",autoIncrement:true});
+      /* 1.19.0 (SIR-118): positions move from ten per group to a hundred. A
+         library saved by an older version is renumbered once, here, inside the
+         upgrade itself — so it either all happens or none of it does. Group,
+         item, order and every learner mark stay exactly as they were. */
+      if(had&&e.oldVersion>=1&&e.oldVersion<5){let c=ss.openCursor();c.onsuccess=()=>{let cur=c.result;if(!cur)return;let v=cur.value;v.order=Util.fromTens(v.order);cur.update(v);cur.continue();};}if(!ss.indexNames.contains("sentenceId"))ss.createIndex("sentenceId","sentenceId",{unique:false});if(!d.objectStoreNames.contains(AS))d.createObjectStore(AS,{keyPath:"key"});if(!d.objectStoreNames.contains(ES))d.createObjectStore(ES,{keyPath:"groupId"});if(!d.objectStoreNames.contains(GS))d.createObjectStore(GS,{keyPath:"term"});};
     /* Do not reject here. The other tab may yet close, and then this same
        request succeeds on its own. Rejecting would throw away a start-up
        that is still going to work. */
@@ -216,13 +232,16 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
        An unrecognised value is imported, so a new row type is never silently lost. */
     let kept=has&&ri>=0?data.filter(r=>!CSVCols.skipRowTypes.includes(cell(r,ri).toLowerCase())):data;
     let held=data.length-kept.length;
-    /* Position. A plain positive whole-numbered group keeps the original
-       arithmetic exactly, so every file that imports correctly today still does.
+    /* Position. Since 1.19.0 (SIR-118) a group owns a block of 100 positions:
+       position = (group − 1) × 100 + item. Before, it was × 10, so item 11 of
+       one group landed on item 1 of the next. Items 1–99 now fit; the Sentence
+       Engine's normal group is 10–15. A file with only an order column (no
+       groups) is still grouped in tens, exactly as before, via Util.fromTens.
        A labelled group — 1.1, TR1.1, A2.2.0 — is numbered by the order its label
        first appears within its own book and chapter. That makes a grounding group
        ending in .0 an ordinary group rather than a value the old test rejected. */
     let plain=v=>/^\d+$/.test(v)&&Number(v)>0,
-        SEP="|~|",labels=new Map(),runs=new Map();
+        SEP="|~|",labels=new Map(),runs=new Map(),over=0;
     if(has&&gi>=0)kept.forEach(r=>{
       let g=cell(r,gi);if(!g||plain(g))return;
       let scope=cell(r,bi)+SEP+cell(r,ci);
@@ -232,18 +251,20 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
     const ord=(r,i)=>{
       if(has&&gi>=0){
         let g=cell(r,gi),it=Number(cell(r,ti));
-        if(plain(g)&&it>0)return(Number(g)-1)*10+it;
+        if(plain(g)&&it>0){if(it>=Util.POS)over++;return(Number(g)-1)*Util.POS+it;}
         if(g){
-          let scope=cell(r,bi)+SEP+cell(r,ci),n=labels.get(scope).indexOf(g)+1,key=scope+SEP+g;
+          /* A plain group with no item column counts its rows in file order. */
+          let scope=cell(r,bi)+SEP+cell(r,ci),n=plain(g)?Number(g):labels.get(scope).indexOf(g)+1,key=scope+SEP+g;
           runs.set(key,(runs.get(key)||0)+1);
-          return(n-1)*10+(it>0?it:runs.get(key));
+          let k=it>0?it:runs.get(key);if(k>=Util.POS)over++;
+          return(n-1)*Util.POS+k;
         }
       }
-      return Number(cell(r,has&&oi>=0?oi:-1))||i+1;
+      return Util.fromTens(Number(cell(r,has&&oi>=0?oi:-1))||i+1);
     };
     let placed=has&&(bi>=0||ci>=0||gi>=0||ti>=0||oi>=0);
-    this.lastReport={headerFound:has,placementFound:placed,rowsHeldBack:held,columns:has?heads.filter(h=>h).length:0};
-    return kept.map((r,i)=>{
+    this.lastReport={headerFound:has,placementFound:placed,rowsHeldBack:held,itemsOverLimit:0,columns:has?heads.filter(h=>h).length:0};
+    let out=kept.map((r,i)=>{
       let italian="",english="";
       if(has){italian=ii>=0?r[ii]:"";english=ei>=0?r[ei]:"";}
       else if(r.length>=5){italian=r[3];english=r[4];}
@@ -275,6 +296,9 @@ const Library={rows(text){text=String(text||"").replace(/^﻿/,"");let rows=[],r
       }
       return s;
     }).filter(x=>x.italian);
+    /* Counted while positions were worked out, so read it only now. */
+    this.lastReport.itemsOverLimit=over;
+    return out;
   },
   /* An explainer file is not a sentence file: it has a heading and a body and no
      Italian at all. Recognised by its own columns so it can never be mistaken for
@@ -692,7 +716,7 @@ const UI={
 
   rowFor(s,i,list){
     return SentenceRow.build({
-      number:s.order,italian:Lines.italian(s),english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),gtag:Lines.tag(s),
+      number:Util.snum(s),italian:Lines.italian(s),english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),gtag:Lines.tag(s),
       showEnglish:$("showEnglish").value=="show",
       showGloss:Gloss.on(),
       active:i===App.cur.index,
@@ -729,7 +753,7 @@ const UI={
       head.textContent=`${hits.length} match${hits.length===1?"":"es"} across the library${hits.length===60?" (showing the first 60)":""}. Tap one to open its group.`;
       v.appendChild(head);
       hits.forEach(s=>v.appendChild(SentenceRow.build({
-        number:s.order,italian:Lines.italian(s),english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),gtag:Lines.tag(s),
+        number:Util.snum(s),italian:Lines.italian(s),english:s.english,gloss:s.gloss,address:s.address,role:SentenceRow.roleLabel(s),gtag:Lines.tag(s),
         showEnglish:$("showEnglish").value=="show",
         showGloss:Gloss.on(),
         bookmarked:!!s.bookmarked,
@@ -1059,7 +1083,7 @@ function withProgress(p){
   }};
 }
 
-const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:Lines.italian(s),lane:Lines.voice(s),repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+s.order,onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:Lines.italian(s),lane:Lines.voice(s),repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+s.order,onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},/* Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while showing Chapter 3. Playback now follows the selection, from a pause as well — the learner asked for this sentence, so this sentence is what should be spoken. */follow(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
+const SentenceController={repeat(){return PlaybackControls.repeat();},provider(){let mode=$("playMode").value||"group";if(mode==="current")return this.currentProvider(false);if(mode==="loop-current")return this.currentProvider(true);if(mode==="chapter")return this.sequenceProvider("chapter",false);if(mode==="loop-chapter")return this.sequenceProvider("chapter",true);if(mode==="loop-group")return this.sequenceProvider("group",true);return this.sequenceProvider("group",false);},currentProvider(loop){let done=false;return{next:()=>{let s=Library.current();if(!s)return null;if(done&&!loop)return null;done=true;return{text:Lines.italian(s),lane:Lines.voice(s),repeat:this.repeat(),label:(loop?"Looping sentence ":"Sentence ")+Util.snum(s),onBefore:()=>UI.renderViewer()};}};},itemsForScope(scope){if(scope==="group")return Library.group();if(scope==="chapter")return Library.chapter();return Library.group();},sequenceProvider(scope,loop){let items=this.itemsForScope(scope),idx=0;if(scope==="group")idx=Math.max(0,Math.min(App.cur.index,items.length-1));else{let cur=Library.current();let pos=items.findIndex(x=>x.id===cur?.id);idx=Math.max(0,pos);}return{next:()=>{if(!items.length)return null;if(idx>=items.length){if(!loop)return null;idx=0;}let s=items[idx++];return{text:Lines.italian(s),lane:Lines.voice(s),repeat:this.repeat(),label:(loop?"Looping "+scope+" — ":"")+"Sentence "+Util.snum(s),onBefore:()=>{App.cur.book=s.book;App.cur.chapter=s.chapter;App.cur.group=Util.gnum(s);App.cur.index=Library.group().findIndex(x=>x.id===s.id);if(App.cur.index<0)App.cur.index=0;UI.renderAll();}};}};},toggle(){MainPlayer.toggle(()=>withProgress(this.provider()));},reset(){MainPlayer.stop("Audio engine reset. Press Start to continue.");},restart(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},/* Choosing a book, chapter or group in the library moved the screen and left the voice behind: the running provider had already captured the old list, so the app read Chapter 1 aloud while showing Chapter 3. Playback now follows the selection, from a pause as well — the learner asked for this sentence, so this sentence is what should be spoken. */follow(){if(MainPlayer.playing)MainPlayer.restart(()=>withProgress(this.provider()));},jumpToIndex(i){App.cur.index=i;UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},next(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index<g.length-1)?App.cur.index+1:0;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());},prev(){let g=Library.group();if(g.length){App.cur.index=(App.cur.index>0)?App.cur.index-1:g.length-1;}UI.renderViewer();if(MainPlayer.playing)MainPlayer.restart(()=>this.provider());}};
 
 const Verb={
   tenseOrder:["presente","passato","imperfetto","trapassato"],
@@ -1597,15 +1621,21 @@ const Importer={
     }else if(rep.rowsHeldBack){
       msg+=` ${rep.rowsHeldBack} row(s) marked as something other than a sentence were left out.`;
     }
+    /* A group holds up to 99 items (SIR-118). Beyond that, positions would
+       run into the next group, so the file is not imported. */
+    if(items.length&&rep.itemsOverLimit){
+      msg=`${rep.itemsOverLimit} row(s) sit at item 100 or beyond in their group. A group can hold up to 99 items. Split the group in the CSV and import again.`;
+      cls="dangertxt";
+    }
     $("importSummary").textContent=msg;
     $("importSummary").className="status "+cls;
-    $("importPreviewed").disabled=!(fresh.length||changed.length);
+    $("importPreviewed").disabled=!(fresh.length||changed.length)||!!rep.itemsOverLimit;
     $("importPreviewed").textContent=
       !fresh.length&&changed.length?`Update the ${changed.length} changed one(s)`
       :fresh.length&&(dupes.length||changed.length)?`Import the ${fresh.length} new one(s)`
       :"Import";
     let sm=items.slice(0,12);
-    $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${s.order}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
+    $("importPreview").innerHTML=items.length?`<table><thead><tr><th>Book</th><th>Chapter</th><th>#</th><th>Italian</th><th>English</th></tr></thead><tbody>${sm.map(s=>`<tr><td>${Util.esc(s.book)}</td><td>${Util.esc(s.chapter)}</td><td>${Util.gnum(s)}.${Util.item(s)}</td><td>${Util.esc(s.italian)}</td><td>${Util.esc(s.english)}</td></tr>`).join("")}</tbody></table>`:"";
   },
   /* Explainer sections and glossary terms simply replace what is held for the
      same key; there are no learner marks on them to protect. Sentences are
@@ -1937,7 +1967,7 @@ const Preloader={
 
 function safeCsvValue(value){let s=String(value??"");return /^[=+\-@\t\r]/.test(s)?"'"+s:s;}
 function csvCell(value,alwaysQuote=false){let s=safeCsvValue(value);return alwaysQuote||/[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
-function toCSV(){let h=["book","chapter","order","italian","english","bookmarked","difficult","notes"];return h.join(",")+"\n"+App.sentences.map(s=>h.map(k=>csvCell(s[k],true)).join(",")).join("\n");}
+function toCSV(){let h=["book","chapter","group","item","italian","english","bookmarked","difficult","notes"];return h.join(",")+"\n"+App.sentences.map(s=>{let x={...s,group:Util.gnum(s),item:Util.item(s)};return h.map(k=>csvCell(x[k],true)).join(",");}).join("\n");}
 function download(name,text,type){let b=new Blob([text],{type}),a=document.createElement("a"),url=URL.createObjectURL(b);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),0);}
 
 const Preferences={
@@ -1950,7 +1980,7 @@ const Preferences={
 };
 
 const Backup={
-  SCHEMA:"shadowing-studio-backup",VERSION:1,MAX_FILE_BYTES:20_000_000,MAX_SENTENCES:100_000,
+  SCHEMA:"shadowing-studio-backup",VERSION:2,MAX_FILE_BYTES:20_000_000,MAX_SENTENCES:100_000,
   status(message,cls=""){let el=$("backupStatus");if(el){el.textContent=message;el.className="status "+cls;}},
   plainMap(value,label){if(!value||typeof value!=="object"||Array.isArray(value))throw new Error(`${label} must be an object.`);let entries=Object.entries(value);if(entries.length>10_000)throw new Error(`${label} contains too many entries.`);let out={};for(let [key,text] of entries){if(typeof key!=="string"||key.length>500||typeof text!=="string"||text.length>2_000)throw new Error(`${label} contains an invalid entry.`);out[key]=text;}return out;},
   sentence(value,index,ids){
@@ -1971,9 +2001,11 @@ const Backup={
   create(){let sentences=App.sentences.map(sentence=>{let out={book:sentence.book,chapter:sentence.chapter,order:sentence.order,italian:sentence.italian,english:sentence.english||"",bookmarked:Boolean(sentence.bookmarked),difficult:Boolean(sentence.difficult),notes:sentence.notes||""};if(Number.isInteger(sentence.id))out.id=sentence.id;if(typeof sentence.audioText==="string")out.audioText=sentence.audioText;for(let name of ["sentenceId","groupId","corpusVersion","gloss","address","speakerRole","speakerLabel","speakerGender","italianAlt","altController"]){if(typeof sentence[name]==="string"&&sentence[name])out[name]=sentence[name];}return out;});return{schema:this.SCHEMA,schemaVersion:this.VERSION,appVersion:Build.VERSION,exportedAt:new Date().toISOString(),sentences,titles:{books:{...Titles.books},chapters:{...Titles.chapters}},preferences:Preferences.export(),excludes:["relay passphrases","provider API keys","cached audio","pronunciation data"]};},
   download(){let data=this.create(),date=data.exportedAt.slice(0,10);download(`shadowing-studio-backup-${date}.json`,JSON.stringify(data,null,2)+"\n","application/json;charset=utf-8");this.status(`Backup downloaded: ${data.sentences.length} sentence(s).`,"oktxt");},
   validate(data){
-    if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==this.SCHEMA||data.schemaVersion!==this.VERSION)throw new Error("This is not a supported Shadowing Studio backup.");
+    if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==this.SCHEMA||![1,this.VERSION].includes(data.schemaVersion))throw new Error("This is not a supported Shadowing Studio backup.");
     if(!Array.isArray(data.sentences)||data.sentences.length>this.MAX_SENTENCES)throw new Error("The backup has an invalid sentence collection.");
     let ids=new Set(),sentences=data.sentences.map((sentence,index)=>this.sentence(sentence,index,ids));
+    /* A version-1 backup was made before 1.19.0, with ten positions per group. */
+    if(data.schemaVersion===1)sentences.forEach(x=>{x.order=Util.fromTens(x.order);});
     let titles=data.titles||{};
     let books=this.plainMap(titles.books||{},"Book titles"),chapters=this.plainMap(titles.chapters||{},"Chapter titles");
     let preferences={};if(data.preferences!==undefined){if(!data.preferences||typeof data.preferences!=="object"||Array.isArray(data.preferences))throw new Error("Preferences must be an object.");Object.entries(data.preferences).forEach(([key,value])=>{if(Preferences.keys.includes(key)&&typeof value==="string"&&value.length<=2_000)preferences[key]=value;});}
@@ -2183,7 +2215,7 @@ const Generator={
   nextOrder(chapter){
     let existing=App.sentences.filter(s=>s.book===GEN_BOOK&&String(s.chapter)===String(chapter));
     if(!existing.length)return 1;
-    return Math.max(...existing.map(s=>Number(s.order)||0))+1;
+    return Math.max(...existing.map(s=>Util.toTens(s.order)||0))+1;
   },
 
   report(){
@@ -2333,7 +2365,7 @@ const GenController={
    nothing on screen says why. Each file now carries its version, and this
    compares them at startup so a mismatched set announces itself. */
 const Build={
-  VERSION:"1.18.0",
+  VERSION:"1.19.0",
   html(){let m=document.querySelector('meta[name="app-version"]');
     return m?m.getAttribute("content").trim():null;},
   css(){let v=getComputedStyle(document.documentElement).getPropertyValue("--css-version");
@@ -2650,7 +2682,7 @@ function bind(){
   $("verbPreloadBtn").onclick=()=>Preloader.startVerbs();
   $("verbPreloadCancel").onclick=()=>Preloader.cancel();
   $("showBookmarks").onclick=()=>{$("reviewView").innerHTML=App.sentences.filter(s=>s.bookmarked).map(s=>`<div class="card"><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("")||"<p>No bookmarked sentences.</p>";};
-  $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${s.order}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
+  $("showAll").onclick=()=>{$("reviewView").innerHTML=App.sentences.map(s=>`<div class="card"><span class="pill">${Util.esc(s.book)} / ${Util.esc(s.chapter)} / ${Util.snum(s)}</span><div class="italian">${Util.esc(s.italian)}</div><div class="english">${Util.esc(s.english)}</div></div>`).join("");};;if($("themeToggle")){$("themeToggle").onchange=()=>{let d=$("themeToggle").checked;document.documentElement.setAttribute("data-theme",d?"dark":"sage");localStorage.setItem("v08theme",d?"dark":"sage");};}}
 
 window.speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();
 (async function init(){SecureConfig.migrateLegacy();let _th=localStorage.getItem("v08theme")||"sage";document.documentElement.setAttribute("data-theme",_th);if($("themeToggle"))$("themeToggle").checked=_th==="dark";try{App.db=await Storage.open();}catch(err){Storage.banner("The app could not open its database: "+(err&&err.message?err.message:String(err))+" Your sentences are still stored on this device.","Reload");return;}Titles.load();bind();Preferences.load();Build.check();if($("headerMark"))$("headerMark").innerHTML=Art.mark();if($("genArt"))$("genArt").innerHTML=Art.archPlate();document.querySelectorAll(".panel-art").forEach(el=>{el.innerHTML=Art.plate();});document.documentElement.style.setProperty("--backdrop",`url("${Art.LAND}")`);MediaSessionMgr.init();document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")WakeLock.reacquire();});window.addEventListener("orientationchange",()=>{setTimeout(()=>{let engine=MediaSessionMgr.active();if(engine&&!engine.paused&&!speechSynthesis.speaking&&!App.currentAudio)MediaSessionMgr.controller(engine).restart();},600);});Speech.loadVoices();if(speechSynthesis.onvoiceschanged!==undefined)speechSynthesis.onvoiceschanged=()=>Speech.loadVoices();$("voiceId").value=localStorage.getItem("v08voice")||"";if($("counterpartVoiceId"))$("counterpartVoiceId").value=localStorage.getItem("v08counterpartVoice")||"";if($("learnerFemaleVoiceId"))$("learnerFemaleVoiceId").value=localStorage.getItem("v08learnerFemaleVoice")||"";if($("counterpartMaleVoiceId"))$("counterpartMaleVoiceId").value=localStorage.getItem("v08counterpartMaleVoice")||"";if($("learnerGender"))$("learnerGender").value=localStorage.getItem("v08learnerGender")||"";$("model").value=localStorage.getItem("v08model")||"eleven_multilingual_v2";$("relayUrl").value=localStorage.getItem("v08relayUrl")||"";$("relayToken").value=SecureConfig.get("relayToken");if($("rememberToken"))$("rememberToken").checked=SecureConfig.isRemembered("relayToken");if(localStorage.getItem("v08relayUrl"))$("saveAi").value="yes";$("voiceMode").value=localStorage.getItem("v08voiceMode")||"system";$("elevenPanel").classList.toggle("hidden",$("voiceMode").value!=="eleven");if($("voiceChipLabel"))$("voiceChipLabel").textContent=$("voiceMode").value==="eleven"?"ElevenLabs":"System (Alice)";if(localStorage.getItem("v08libCollapsed")==="1"){document.body.classList.add("lib-collapsed");$("libShow").classList.remove("hidden");}await Library.refresh();Playbar.attach("study");MainPlayer.setButton();VerbPlayer.setButton();relayReadiness();})();

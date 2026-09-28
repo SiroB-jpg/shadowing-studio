@@ -84,7 +84,7 @@ const lib=await page.evaluate(()=>({total:App.sentences.length,book:App.sentence
 check('Saved to library', lib.total===20&&lib.book==='Generated'&&lib.chapter==='farcela', JSON.stringify(lib).slice(0,80));
 check('Set stays on screen after saving', (await page.$$eval('#genCards .srow',c=>c.length))===20);
 check('Save button reports saved and disables', await page.evaluate(()=>{const b=document.getElementById('genSave');return b.disabled&&/Saved/.test(b.textContent);}));
-check('Order 1..20 after round-trip', JSON.stringify(lib.orders)===JSON.stringify(Array.from({length:20},(_,i)=>i+1)));
+check('Order 1..10, 101..110 after round-trip (two groups of ten)', JSON.stringify(lib.orders)===JSON.stringify(Array.from({length:20},(_,i)=>i<10?i+1:i+91)));
 check('Groups derived correctly', JSON.stringify(lib.groups)==='[1,2]');
 
 await page.click('.desktop-tabs [data-panel="settings"]'); await page.selectOption('#voiceMode','system');
@@ -282,7 +282,7 @@ const corpus=`ID,Book,Chapter,ChapterTitle,Group,Item,Italian,English,AudioText,
 B1-01-01-01,1,1,"Opinions",1,1,Credo che tu sia pronto.,I think you're ready.,x,translated,f.docx,n
 B1-01-02-01,1,1,"Opinions",2,1,Penso che abbia ragione.,I think they're right.,x,translated,f.docx,n`;
 const parsed=await page.evaluate(c=>Library.parseCSV(c,{book:'X',chapter:'Y'}),corpus);
-check('Corpus CSV still imports with correct groups', parsed.length===2&&parsed[0].order===1&&parsed[1].order===11);
+check('Corpus CSV still imports with correct groups', parsed.length===2&&parsed[0].order===1&&parsed[1].order===101);
 const legacy=`book,chapter,order,italian,english\nBk,Ch,1,Ciao a tutti.,Hi everyone.\nBk,Ch,2,Come stai?,How are you?`;
 const lp=await page.evaluate(c=>Library.parseCSV(c,{book:'X',chapter:'Y'}),legacy);
 check('Legacy CSV still imports', lp.length===2&&lp[1].italian==='Come stai?');

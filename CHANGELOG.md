@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.19.0 — room for longer groups
+
+**A group can now hold up to 99 sentences** (Linear SIR-118). The importer used to place a sentence at (group − 1) × 10 + item, so item 11 of one group landed on item 1 of the next. It now uses (group − 1) × 100 + item. The Sentence Engine's normal teaching group of 10–15 and chapter reviews of 12–16 import as single groups — no more splitting into parts of ten.
+
+**Your library is converted once, automatically.** The first time 1.19.0 opens, it renumbers the saved library in a single step (database version 4 → 5). Every sentence keeps its book, chapter, group, place, bookmark, difficult mark and note. Re-importing an existing ten-item module finds nothing new and nothing changed.
+
+**What stays the same.** A file with only an order column (no groups) is still grouped in tens. Generated sets are still saved in groups of ten. The number beside each sentence is its running place in the chapter — for full ten-item groups, the same number as before; a 15-item group numbers 1–15, and the next group carries on from 16.
+
+**Backups.** New backups are format version 2. Version-1 backups from earlier releases still restore and are converted on the way in. A version-2 backup cannot be restored into 1.18.0 or earlier.
+
+**CSV export** now writes group and item columns instead of the raw position, so an export imports back to exactly the same places.
+
+**Guard.** A row at item 100 or beyond is refused with a message saying to split the group; nothing from that file is imported.
+
+Fourteen suites in the repository, **518 checks** — 28 new, in `tests/test-group-size.mjs`. Six existing checks updated: they wrote positions in the old ten-per-group form directly.
+
 ## v1.18.0 — say it in your own voice
 
 **Settings gains "I am" — male or female.** Where a module carries both forms of a line — `italian` in the gender named by `speaker_gender`, `italian_alt` in the other — the learner sees and hears their own form: *Sono stanco* for one learner, *Sono stanca* for the next, *studente* or *studentessa*. Nothing is generated; both forms are authored and audited text. `alt_controller` says whose gender drives the change; blank or `speaker` means the learner's, anything else (an addressee's, say) is left alone. Not chosen, or no alternate in the file: the line plays as written, exactly as before.

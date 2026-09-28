@@ -19,7 +19,7 @@ const pass={};
 const noOverflow=async()=>page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
 try{
   await page.goto('http://127.0.0.1:8947/',{waitUntil:'load'});await page.waitForTimeout(250);
-  await page.evaluate(async()=>{const rows=Array.from({length:12},(_,index)=>({book:'1',chapter:'1',order:index+1,italian:`Credo che la frase numero ${index+1} sia utile per esercitarsi.`,english:`I think sentence number ${index+1} is useful for practice.`,bookmarked:index===2,difficult:false,notes:''}));await Storage.addMany(rows);Titles.books={'1':'Present Subjunctive'};Titles.chapters={'1|1':'Opinions and Judgements'};Titles.save();await Library.refresh();});
+  await page.evaluate(async()=>{const rows=Array.from({length:12},(_,index)=>({book:'1',chapter:'1',order:Util.fromTens(index+1),italian:`Credo che la frase numero ${index+1} sia utile per esercitarsi.`,english:`I think sentence number ${index+1} is useful for practice.`,bookmarked:index===2,difficult:false,notes:''}));await Storage.addMany(rows);Titles.books={'1':'Present Subjunctive'};Titles.chapters={'1|1':'Opinions and Judgements'};Titles.save();await Library.refresh();});
   pass.desktopRows=await page.locator('#viewer .srow').count()===10;
   pass.desktopNoOverflow=await noOverflow();
   await page.screenshot({path:path.join(out,'desktop-study.png'),fullPage:true});

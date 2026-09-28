@@ -111,7 +111,7 @@ const pass={
   travelKeepsCounterpartRows:r.travel.count===4&&r.travel.held===0,
   travelRoles:JSON.stringify(r.travel.roles)==='["learner","learner","counterpart","counterpart"]',
   travelLabels:r.travel.labels[2]==='ticket_clerk',
-  travelPositionUntouched:JSON.stringify(r.travel.orders)==='[1,2,61,62]'&&r.travel.groupIds[2]==='TR1.7',
+  travelPositionUntouched:JSON.stringify(r.travel.orders)==='[1,2,601,602]'&&r.travel.groupIds[2]==='TR1.7',
   healthDistinctBooks:r.health.count===2&&r.health.books[1]==='Italian Health — Counterpart'&&r.health.roles[1]==='counterpart'&&r.health.label==='doctor',
   bundleRecordType:r.bundle.count===3&&r.bundle.held===1&&JSON.stringify(r.bundle.roles)==='["learner","counterpart","learner"]'&&r.bundle.label==='barista',
   artsItemType:r.arts.count===1&&r.arts.role==='counterpart'&&r.arts.label==='information_staff',

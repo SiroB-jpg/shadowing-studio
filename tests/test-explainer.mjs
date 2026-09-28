@@ -23,9 +23,9 @@ const r=await page.evaluate(async()=>{
      with no group ids and a chapter whose notes carry no book at all. */
   const rows=[];
   for(const ch of ['A0.1','A0.2'])for(let g=1;g<=3;g++)for(let i=1;i<=2;i++)
-    rows.push({book:'Core A0-B2',chapter:ch,order:(g-1)*10+i,groupId:`${ch}.${g}`,sentenceId:`ITA-${ch}.${g}-0${i}`,italian:`Frase ${ch} ${g} ${i}`,english:`Sentence ${ch} ${g} ${i}`,bookmarked:false,difficult:false,notes:''});
+    rows.push({book:'Core A0-B2',chapter:ch,order:(g-1)*100+i,groupId:`${ch}.${g}`,sentenceId:`ITA-${ch}.${g}-0${i}`,italian:`Frase ${ch} ${g} ${i}`,english:`Sentence ${ch} ${g} ${i}`,bookmarked:false,difficult:false,notes:''});
   for(let g=1;g<=2;g++)for(let i=1;i<=2;i++)
-    rows.push({book:'Old',chapter:'1',order:(g-1)*10+i,italian:`Vecchia ${g} ${i}`,english:'',bookmarked:false,difficult:false,notes:''});
+    rows.push({book:'Old',chapter:'1',order:(g-1)*100+i,italian:`Vecchia ${g} ${i}`,english:'',bookmarked:false,difficult:false,notes:''});
   await Storage.addMany(rows);
   const secs=[];
   for(const ch of ['A0.1','A0.2'])for(let g=1;g<=3;g++)
